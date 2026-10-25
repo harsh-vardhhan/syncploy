@@ -81,14 +81,9 @@ export function api<TReq = any, TRes = any>(
   return {
     _kind: "api",
     options: {
+      ...options,
       method: options.method ?? "POST",
-      path: options.path,
-      auth: options.auth,
       ingress: options.ingress ?? "api-gateway",
-      timeout: options.timeout,
-      memory: options.memory,
-      concurrency: options.concurrency,
-      cors: options.cors,
     },
     handler,
   };
