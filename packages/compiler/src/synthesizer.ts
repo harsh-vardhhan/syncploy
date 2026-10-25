@@ -415,7 +415,7 @@ export class Synthesizer {
     for (const ds of graph.deliveryStreams || []) {
       const cleanName = this.sanitizeName(ds.name);
       const upperName = ds.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-      const baseUpper = upperName.replace(/_?(DELIVERY_)?STREAM$/, "");
+      const baseUpper = upperName.replace(/_?(DELIVERY)?_?STREAM$/, "");
 
       envVars[`SYNCPLOY_DELIVERY_STREAM_${upperName}`] = { Ref: `DeliveryStream${cleanName}` };
       envVars[`DELIVERY_STREAM_${upperName}_NAME`] = { Ref: `DeliveryStream${cleanName}` };
@@ -461,6 +461,15 @@ export class Synthesizer {
       };
 
       const functionEnv = this.mergeEnvironment(envVars, api.environment);
+      // Remove self-referential variables to prevent CloudFormation circular dependency
+      const upperName = api.id.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+      delete functionEnv[`SYNCPLOY_FUNCTION_${upperName}`];
+      delete functionEnv[`FUNCTION_${upperName}_NAME`];
+      delete functionEnv[`${upperName}_FUNCTION_NAME`];
+      delete functionEnv[api.id];
+      if (api.id.toLowerCase().includes("backend")) {
+        delete functionEnv["BACKEND_FUNCTION_NAME"];
+      }
 
       if (Object.keys(functionEnv).length > 0) {
         funcProps["Environment"] = { Variables: functionEnv };
