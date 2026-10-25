@@ -7,11 +7,18 @@ import {
 } from "@aws-sdk/client-s3";
 import type { Queue } from "./queue";
 
+export interface BucketObjectLockOptions {
+  mode?: "COMPLIANCE" | "GOVERNANCE";
+  days?: number;
+  years?: number;
+}
+
 export interface BucketOptions {
   versioned?: boolean;
   public?: boolean;
   eventBridge?: boolean;
   publicAccessBlock?: boolean;
+  objectLock?: boolean | BucketObjectLockOptions;
 }
 
 export class Bucket {

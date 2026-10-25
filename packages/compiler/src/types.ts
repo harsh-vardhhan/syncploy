@@ -57,6 +57,14 @@ export interface BucketIR {
   versioned?: boolean | undefined;
   eventBridge?: boolean | undefined;
   publicAccessBlock?: boolean | undefined;
+  objectLock?:
+    | boolean
+    | {
+        mode?: "COMPLIANCE" | "GOVERNANCE" | undefined;
+        days?: number | undefined;
+        years?: number | undefined;
+      }
+    | undefined;
   sourceFile: string;
 }
 
@@ -162,6 +170,18 @@ export interface EventBindingIR {
   suffix?: string | undefined;
 }
 
+export interface DeliveryStreamIR {
+  id: string;
+  name: string;
+  destinationBucketName: string;
+  prefix?: string | undefined;
+  errorPrefix?: string | undefined;
+  bufferingInterval?: number | undefined; // in seconds
+  bufferingSize?: number | undefined; // in MB
+  compression?: "GZIP" | "ZIP" | "SNAPPY" | "UNCOMPRESSED" | undefined;
+  sourceFile: string;
+}
+
 export interface ResourceGraph {
   apis: ApiRouteIR[];
   tables: TableIR[];
@@ -172,6 +192,7 @@ export interface ResourceGraph {
   topics: TopicIR[];
   topicSubscribers: TopicSubscriberIR[];
   alarms: AlarmIR[];
+  deliveryStreams: DeliveryStreamIR[];
   bindings: EventBindingIR[];
 }
 

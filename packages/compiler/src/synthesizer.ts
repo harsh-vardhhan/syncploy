@@ -147,6 +147,20 @@ export class Synthesizer {
       });
     }
 
+    // Add Firehose permissions if delivery streams exist
+    if (graph.deliveryStreams && graph.deliveryStreams.length > 0) {
+      roleStatements.push({
+        Effect: "Allow",
+        Action: [
+          "firehose:PutRecord",
+          "firehose:PutRecordBatch",
+        ],
+        Resource: graph.deliveryStreams.map((ds) => ({
+          "Fn::GetAtt": [`DeliveryStream${this.sanitizeName(ds.name)}`, "Arn"],
+        })),
+      });
+    }
+
     // Add custom policy statements declared on APIs, Consumers, Streams, or Subscribers
     const customStatements = [
       ...graph.apis.flatMap((a) => a.policies || []),
@@ -294,6 +308,35 @@ export class Synthesizer {
         };
       }
 
+      if (bucket.objectLock) {
+        bucketProps["ObjectLockEnabled"] = true;
+        const config: any = {
+          ObjectLockEnabled: "Enabled",
+        };
+        if (typeof bucket.objectLock === "object") {
+          const rule: any = {};
+          const defaultRetention: any = {};
+          defaultRetention.Mode = bucket.objectLock.mode || "COMPLIANCE";
+          if (bucket.objectLock.days !== undefined) {
+            defaultRetention.Days = bucket.objectLock.days;
+          } else if (bucket.objectLock.years !== undefined) {
+            defaultRetention.Years = bucket.objectLock.years;
+          } else {
+            defaultRetention.Days = 1;
+          }
+          rule.DefaultRetention = defaultRetention;
+          config.Rule = rule;
+        } else {
+          config.Rule = {
+            DefaultRetention: {
+              Mode: "COMPLIANCE",
+              Days: 1,
+            },
+          };
+        }
+        bucketProps["ObjectLockConfiguration"] = config;
+      }
+
       resources[resourceKey] = {
         Type: "AWS::S3::Bucket",
         Properties: bucketProps,
@@ -369,6 +412,20 @@ export class Synthesizer {
       envVars[topic.name] = { Ref: `Topic${cleanName}` };
     }
 
+    for (const ds of graph.deliveryStreams || []) {
+      const cleanName = this.sanitizeName(ds.name);
+      const upperName = ds.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+      const baseUpper = upperName.replace(/_?(DELIVERY_)?STREAM$/, "");
+
+      envVars[`SYNCPLOY_DELIVERY_STREAM_${upperName}`] = { Ref: `DeliveryStream${cleanName}` };
+      envVars[`DELIVERY_STREAM_${upperName}_NAME`] = { Ref: `DeliveryStream${cleanName}` };
+      envVars[`${upperName}_DELIVERY_STREAM_NAME`] = { Ref: `DeliveryStream${cleanName}` };
+      if (baseUpper) {
+        envVars[`${baseUpper}_DELIVERY_STREAM_NAME`] = { Ref: `DeliveryStream${cleanName}` };
+      }
+      envVars[ds.name] = { Ref: `DeliveryStream${cleanName}` };
+    }
+
     for (const api of graph.apis) {
       const logicalId = this.sanitizeName(api.id);
       const upperName = api.id.toUpperCase().replace(/[^A-Z0-9]/g, "_");
@@ -403,10 +460,7 @@ export class Synthesizer {
         Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
       };
 
-      const functionEnv = {
-        ...envVars,
-        ...(api.environment || {}),
-      };
+      const functionEnv = this.mergeEnvironment(envVars, api.environment);
 
       if (Object.keys(functionEnv).length > 0) {
         funcProps["Environment"] = { Variables: functionEnv };
@@ -517,10 +571,7 @@ export class Synthesizer {
         Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
       };
 
-      const consumerEnv = {
-        ...envVars,
-        ...(consumer.environment || {}),
-      };
+      const consumerEnv = this.mergeEnvironment(envVars, consumer.environment);
 
       if (Object.keys(consumerEnv).length > 0) {
         funcProps["Environment"] = { Variables: consumerEnv };
@@ -587,10 +638,7 @@ export class Synthesizer {
         Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
       };
 
-      const consumerEnv = {
-        ...envVars,
-        ...(consumer.environment || {}),
-      };
+      const consumerEnv = this.mergeEnvironment(envVars, consumer.environment);
       if (Object.keys(consumerEnv).length > 0) {
         funcProps["Environment"] = { Variables: consumerEnv };
       }
@@ -643,10 +691,7 @@ export class Synthesizer {
         Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
       };
 
-      const subEnv = {
-        ...envVars,
-        ...(subscriber.environment || {}),
-      };
+      const subEnv = this.mergeEnvironment(envVars, subscriber.environment);
       if (Object.keys(subEnv).length > 0) {
         funcProps["Environment"] = { Variables: subEnv };
       }
@@ -789,6 +834,105 @@ export class Synthesizer {
       };
     }
 
+    // 13. Kinesis Firehose Delivery Streams & IAM Roles
+    for (const ds of graph.deliveryStreams || []) {
+      const cleanName = this.sanitizeName(ds.name);
+      const streamKey = `DeliveryStream${cleanName}`;
+      const roleKey = `FirehoseRole${cleanName}`;
+
+      const matchingBucket = graph.buckets.find(
+        (b) => b.name === ds.destinationBucketName || b.id === ds.destinationBucketName
+      );
+
+      const bucketArn = matchingBucket
+        ? { "Fn::GetAtt": [`Bucket${this.sanitizeName(matchingBucket.name)}`, "Arn"] }
+        : ds.destinationBucketName.startsWith("arn:aws:s3:::")
+        ? ds.destinationBucketName
+        : { "Fn::Sub": `arn:aws:s3:::${ds.destinationBucketName}` };
+
+      const bucketWildcardArn = matchingBucket
+        ? {
+            "Fn::Sub": [
+              "${BucketArn}/*",
+              { BucketArn: { "Fn::GetAtt": [`Bucket${this.sanitizeName(matchingBucket.name)}`, "Arn"] } },
+            ],
+          }
+        : ds.destinationBucketName.startsWith("arn:aws:s3:::")
+        ? `${ds.destinationBucketName}/*`
+        : { "Fn::Sub": `arn:aws:s3:::${ds.destinationBucketName}/*` };
+
+      // IAM Role for Firehose
+      resources[roleKey] = {
+        Type: "AWS::IAM::Role",
+        Properties: {
+          AssumeRolePolicyDocument: {
+            Version: "2012-10-17",
+            Statement: [
+              {
+                Effect: "Allow",
+                Principal: { Service: "firehose.amazonaws.com" },
+                Action: "sts:AssumeRole",
+              },
+            ],
+          },
+          Policies: [
+            {
+              PolicyName: "FirehoseWriteS3",
+              PolicyDocument: {
+                Version: "2012-10-17",
+                Statement: [
+                  {
+                    Effect: "Allow",
+                    Action: [
+                      "s3:AbortMultipartUpload",
+                      "s3:GetBucketLocation",
+                      "s3:GetObject",
+                      "s3:ListBucket",
+                      "s3:ListBucketMultipartUploads",
+                      "s3:PutObject",
+                    ],
+                    Resource: [bucketArn, bucketWildcardArn],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      };
+
+      // Extended S3 Destination Configuration
+      const s3DestConfig: any = {
+        BucketARN: bucketArn,
+        RoleARN: { "Fn::GetAtt": [roleKey, "Arn"] },
+        CompressionFormat: ds.compression || "GZIP",
+        BufferingHints: {
+          IntervalInSeconds: ds.bufferingInterval ?? 900,
+          SizeInMBs: ds.bufferingSize ?? 5,
+        },
+      };
+
+      if (ds.prefix) {
+        s3DestConfig.Prefix = ds.prefix;
+      }
+      if (ds.errorPrefix) {
+        s3DestConfig.ErrorOutputPrefix = ds.errorPrefix;
+      }
+
+      resources[streamKey] = {
+        Type: "AWS::KinesisFirehose::DeliveryStream",
+        Properties: {
+          DeliveryStreamName: { "Fn::Sub": `\${AWS::StackName}-${ds.name}` },
+          DeliveryStreamType: "DirectPut",
+          ExtendedS3DestinationConfiguration: s3DestConfig,
+        },
+      };
+
+      outputs[`${cleanName}DeliveryStreamName`] = {
+        Description: `Name of the ${ds.name} Kinesis Firehose Delivery Stream`,
+        Value: { Ref: streamKey },
+      };
+    }
+
     const template = {
       AWSTemplateFormatVersion: "2010-09-09",
       Description: "Synthesized by Syncploy",
@@ -818,5 +962,20 @@ export class Synthesizer {
       case "binary":
         return "B";
     }
+  }
+
+  private mergeEnvironment(
+    base: Record<string, any>,
+    overrides?: Record<string, any>
+  ): Record<string, any> {
+    const result = { ...base };
+    for (const [k, v] of Object.entries(overrides || {})) {
+      if (v !== "" && v !== undefined) {
+        result[k] = v;
+      } else if (result[k] === undefined) {
+        result[k] = v;
+      }
+    }
+    return result;
   }
 }

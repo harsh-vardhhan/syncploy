@@ -12,6 +12,7 @@ import type {
   TopicIR,
   TopicSubscriberIR,
   AlarmIR,
+  DeliveryStreamIR,
   TableIndexIR,
   CorsConfig,
   PolicyStatementIR,
@@ -44,6 +45,7 @@ export class Parser {
     const topics: TopicIR[] = [];
     const topicSubscribers: TopicSubscriberIR[] = [];
     const alarms: AlarmIR[] = [];
+    const deliveryStreams: DeliveryStreamIR[] = [];
     const bindings: EventBindingIR[] = [];
 
     // Maps to track variable names to resource names
@@ -51,6 +53,7 @@ export class Parser {
     const varToQueueName: Record<string, string> = {};
     const varToBucketName: Record<string, string> = {};
     const varToTopicName: Record<string, string> = {};
+    const varToDeliveryStreamName: Record<string, string> = {};
 
     for (const sourceFile of this.project.getSourceFiles()) {
       for (const decl of sourceFile.getVariableDeclarations()) {
@@ -447,6 +450,7 @@ export class Parser {
             let versioned = false;
             let eventBridge = false;
             let publicAccessBlock = true;
+            let objectLock: BucketIR["objectLock"];
 
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
               const opts = args[1] as ObjectLiteralExpression;
@@ -462,6 +466,18 @@ export class Parser {
               if (pabProp && pabProp.isKind(SyntaxKind.PropertyAssignment)) {
                 publicAccessBlock = pabProp.getInitializer()?.getText() !== "false";
               }
+              const olProp = opts.getProperty("objectLock");
+              if (olProp && olProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const olInit = olProp.getInitializer();
+                if (olInit && olInit.getText() === "true") {
+                  objectLock = true;
+                } else if (olInit && olInit.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                  const mode = this.extractString(olInit.getProperty("mode")) as any;
+                  const days = this.extractNumber(olInit.getProperty("days"));
+                  const years = this.extractNumber(olInit.getProperty("years"));
+                  objectLock = { mode, days, years };
+                }
+              }
             }
 
             buckets.push({
@@ -470,6 +486,7 @@ export class Parser {
               versioned,
               eventBridge,
               publicAccessBlock,
+              objectLock,
               sourceFile: sourceFile.getFilePath(),
             });
           } else if (className === "Queue") {
@@ -606,6 +623,53 @@ export class Parser {
               actions,
               sourceFile: sourceFile.getFilePath(),
             });
+          } else if (className === "DeliveryStream") {
+            if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
+              throw new Error(
+                `DeliveryStream '${varName}' in ${sourceFile.getFilePath()} must have a string literal name as first argument.`
+              );
+            }
+            const streamName = args[0].getLiteralValue();
+            varToDeliveryStreamName[varName] = streamName;
+
+            let destinationBucketName = "";
+            let prefix: string | undefined;
+            let errorPrefix: string | undefined;
+            let bufferingInterval: number | undefined;
+            let bufferingSize: number | undefined;
+            let compression: DeliveryStreamIR["compression"] = "GZIP";
+
+            if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+              const opts = args[1] as ObjectLiteralExpression;
+              const destProp = opts.getProperty("destination");
+              if (destProp && destProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const destInit = destProp.getInitializer();
+                if (destInit) {
+                  const rawDest = destInit.getText().replace(/['"]/g, "");
+                  destinationBucketName = varToBucketName[rawDest] || rawDest;
+                }
+              }
+              prefix = this.extractString(opts.getProperty("prefix"));
+              errorPrefix = this.extractString(opts.getProperty("errorPrefix"));
+              bufferingInterval = this.extractDuration(opts.getProperty("bufferingInterval"));
+              bufferingSize = this.extractMemory(opts.getProperty("bufferingSize"));
+              const compStr = this.extractString(opts.getProperty("compression"));
+              if (compStr) {
+                compression = compStr as DeliveryStreamIR["compression"];
+              }
+            }
+
+            deliveryStreams.push({
+              id: varName,
+              name: streamName,
+              destinationBucketName,
+              prefix,
+              errorPrefix,
+              bufferingInterval,
+              bufferingSize,
+              compression,
+              sourceFile: sourceFile.getFilePath(),
+            });
           }
         }
       }
@@ -666,6 +730,14 @@ export class Parser {
       }
     }
 
+    // Resolve bucket references for delivery streams if defined after
+    for (const ds of deliveryStreams) {
+      const mapped = varToBucketName[ds.destinationBucketName];
+      if (mapped) {
+        ds.destinationBucketName = mapped;
+      }
+    }
+
     return {
       apis,
       tables,
@@ -676,6 +748,7 @@ export class Parser {
       topics,
       topicSubscribers,
       alarms,
+      deliveryStreams,
       bindings,
     };
   }

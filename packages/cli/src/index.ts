@@ -80,6 +80,11 @@ program
           `  ${pc.green("•")} ${pc.bold("Alarms:")}      ${graph.alarms.map((a) => a.name).join(", ")}`
         );
       }
+      if (graph.deliveryStreams && graph.deliveryStreams.length > 0) {
+        console.log(
+          `  ${pc.green("•")} ${pc.bold("Firehose:")}    ${graph.deliveryStreams.map((d) => `${d.name} -> ${d.destinationBucketName}`).join(", ")}`
+        );
+      }
 
       console.log(pc.cyan("\nBundling Lambdas & synthesizing CloudFormation..."));
       const output = await compiler.build();

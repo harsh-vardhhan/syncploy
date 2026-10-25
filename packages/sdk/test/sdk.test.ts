@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from "bun:test";
-import { api, HttpError, Table, Bucket, Queue, Secret, Topic, Alarm } from "../src/index";
+import { api, HttpError, Table, Bucket, Queue, Secret, Topic, Alarm, DeliveryStream } from "../src/index";
 
 describe("@syncploy/sdk", () => {
   it("creates an API endpoint definition", () => {
@@ -169,6 +169,30 @@ describe("@syncploy/sdk", () => {
       expect(alarm.name).toBe("HighErrors");
       expect(alarm.options.threshold).toBe(100);
       expect(alarm.options.actions?.[0]).toBe(topic);
+    });
+  });
+
+  describe("DeliveryStream Runtime Client", () => {
+    beforeEach(() => {
+      delete process.env.SYNCPLOY_DELIVERY_STREAM_AUDIT;
+    });
+
+    it("resolves delivery stream name from environment variable or fallback", () => {
+      const bucket = new Bucket("audit-logs", {
+        objectLock: { mode: "COMPLIANCE", days: 1 },
+      });
+      const stream = new DeliveryStream("audit", {
+        destination: bucket,
+        bufferingInterval: "900s",
+        bufferingSize: "5MB",
+        compression: "GZIP",
+      });
+
+      expect(stream._kind).toBe("delivery_stream");
+      expect(stream.streamName).toBe("audit");
+
+      process.env.SYNCPLOY_DELIVERY_STREAM_AUDIT = "ehr-stack-audit-stream";
+      expect(stream.streamName).toBe("ehr-stack-audit-stream");
     });
   });
 });

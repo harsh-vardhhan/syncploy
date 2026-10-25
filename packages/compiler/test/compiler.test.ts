@@ -12,7 +12,7 @@ describe("@syncploy/compiler - In-Code Configurations & Function URLs", () => {
     await fs.writeFile(
       path.join(TEST_DIR, "app.ts"),
       `
-import { api, Table, Bucket, Queue, Topic, Alarm } from "@syncploy/sdk";
+import { api, Table, Bucket, Queue, Topic, Alarm, DeliveryStream } from "@syncploy/sdk";
 
 export const ehrTable = new Table("ehr", {
   partitionKey: { name: "PK", type: "string" },
@@ -29,6 +29,30 @@ export const documentsBucket = new Bucket("documents", {
   versioned: true,
   eventBridge: true,
   publicAccessBlock: true,
+});
+
+export const auditLogsBucket = new Bucket("audit-logs", {
+  objectLock: {
+    mode: "COMPLIANCE",
+    days: 1,
+  },
+  publicAccessBlock: true,
+});
+
+export const auditDeliveryStream = new DeliveryStream("audit-stream", {
+  destination: auditLogsBucket,
+  bufferingInterval: "900s",
+  bufferingSize: "5MB",
+  compression: "GZIP",
+});
+
+export const omopDeliveryStream = new DeliveryStream("omop-stream", {
+  destination: documentsBucket,
+  prefix: "omop/",
+  errorPrefix: "omop-failures/",
+  bufferingInterval: "900s",
+  bufferingSize: "5MB",
+  compression: "GZIP",
 });
 
 export const annotationQueue = new Queue("annotations", {
@@ -196,6 +220,25 @@ export const alertSubscriber = alertTopic.subscribe(
     expect(graph.topicSubscribers[0]?.topicName).toBe("alerts");
     expect(graph.topicSubscribers[0]?.timeout).toBe(30);
     expect(graph.topicSubscribers[0]?.memory).toBe(256);
+
+    // Verify Bucket ObjectLock & DeliveryStream Config
+    const auditBucket = graph.buckets.find((b) => b.name === "audit-logs")!;
+    expect(auditBucket.objectLock).toEqual({ mode: "COMPLIANCE", days: 1, years: undefined });
+
+    expect(graph.deliveryStreams.length).toBe(2);
+    expect(graph.deliveryStreams[0]?.name).toBe("audit-stream");
+    expect(graph.deliveryStreams[0]?.destinationBucketName).toBe("audit-logs");
+    expect(graph.deliveryStreams[0]?.bufferingInterval).toBe(900);
+    expect(graph.deliveryStreams[0]?.bufferingSize).toBe(5);
+    expect(graph.deliveryStreams[0]?.compression).toBe("GZIP");
+
+    expect(graph.deliveryStreams[1]?.name).toBe("omop-stream");
+    expect(graph.deliveryStreams[1]?.destinationBucketName).toBe("documents");
+    expect(graph.deliveryStreams[1]?.prefix).toBe("omop/");
+    expect(graph.deliveryStreams[1]?.errorPrefix).toBe("omop-failures/");
+    expect(graph.deliveryStreams[1]?.bufferingInterval).toBe(900);
+    expect(graph.deliveryStreams[1]?.bufferingSize).toBe(5);
+    expect(graph.deliveryStreams[1]?.compression).toBe("GZIP");
   });
 
   it("synthesizes accurate CloudFormation properties for both API Gateway and Lambda Function URLs", async () => {
@@ -316,5 +359,36 @@ export const alertSubscriber = alertTopic.subscribe(
     expect(permRes).toBeDefined();
     expect(permRes.Type).toBe("AWS::Lambda::Permission");
     expect(permRes.Properties.Principal).toBe("sns.amazonaws.com");
+
+    // 11. S3 Bucket ObjectLock
+    const auditBucketRes = res["Bucketauditlogs"];
+    expect(auditBucketRes).toBeDefined();
+    expect(auditBucketRes.Properties.ObjectLockEnabled).toBe(true);
+    expect(auditBucketRes.Properties.ObjectLockConfiguration.Rule.DefaultRetention.Mode).toBe("COMPLIANCE");
+    expect(auditBucketRes.Properties.ObjectLockConfiguration.Rule.DefaultRetention.Days).toBe(1);
+
+    // 12. Firehose DeliveryStreams & Roles
+    const auditStreamRes = res["DeliveryStreamauditstream"];
+    expect(auditStreamRes).toBeDefined();
+    expect(auditStreamRes.Type).toBe("AWS::KinesisFirehose::DeliveryStream");
+    expect(auditStreamRes.Properties.ExtendedS3DestinationConfiguration.CompressionFormat).toBe("GZIP");
+    expect(auditStreamRes.Properties.ExtendedS3DestinationConfiguration.BufferingHints.IntervalInSeconds).toBe(900);
+    expect(auditStreamRes.Properties.ExtendedS3DestinationConfiguration.BufferingHints.SizeInMBs).toBe(5);
+    expect(auditStreamRes.Properties.ExtendedS3DestinationConfiguration.BucketARN).toEqual({ "Fn::GetAtt": ["Bucketauditlogs", "Arn"] });
+
+    const omopStreamRes = res["DeliveryStreamomopstream"];
+    expect(omopStreamRes).toBeDefined();
+    expect(omopStreamRes.Properties.ExtendedS3DestinationConfiguration.Prefix).toBe("omop/");
+    expect(omopStreamRes.Properties.ExtendedS3DestinationConfiguration.ErrorOutputPrefix).toBe("omop-failures/");
+    expect(omopStreamRes.Properties.ExtendedS3DestinationConfiguration.BucketARN).toEqual({ "Fn::GetAtt": ["Bucketdocuments", "Arn"] });
+
+    expect(res["FirehoseRoleauditstream"]).toBeDefined();
+    expect(res["FirehoseRoleomopstream"]).toBeDefined();
+    expect(template.Outputs["auditstreamDeliveryStreamName"]).toBeDefined();
+    expect(template.Outputs["omopstreamDeliveryStreamName"]).toBeDefined();
+
+    // Verify Injected Delivery Stream Environment Variables in Lambda
+    expect(getUserFunc.Properties.Environment.Variables.AUDIT_DELIVERY_STREAM_NAME).toEqual({ Ref: "DeliveryStreamauditstream" });
+    expect(getUserFunc.Properties.Environment.Variables.OMOP_DELIVERY_STREAM_NAME).toEqual({ Ref: "DeliveryStreamomopstream" });
   });
 });
