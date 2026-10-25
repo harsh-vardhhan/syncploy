@@ -10,6 +10,8 @@ export interface DeliveryStreamOptions {
   bufferingInterval?: Duration;
   bufferingSize?: MemorySize;
   compression?: "GZIP" | "ZIP" | "SNAPPY" | "UNCOMPRESSED";
+  logicalId?: string;
+  streamName?: string;
 }
 
 export class DeliveryStream {

@@ -127,7 +127,7 @@ export class Parser {
               }
             }
 
-            // In-code configuration: timeout, memory, concurrency, cors, policies, environment, container
+            // In-code configuration: timeout, memory, concurrency, cors, policies, environment, container, logicalId, functionName
             const timeout = this.extractDuration(optionsObj.getProperty("timeout"));
             const memory = this.extractMemory(optionsObj.getProperty("memory"));
             const concurrency = this.extractNumber(optionsObj.getProperty("concurrency"));
@@ -135,6 +135,8 @@ export class Parser {
             const policies = this.extractPolicies(optionsObj.getProperty("policies"));
             const environment = this.extractEnvironment(optionsObj.getProperty("environment"));
             const container = this.extractContainer(optionsObj.getProperty("container"));
+            const logicalId = this.extractString(optionsObj.getProperty("logicalId"));
+            const functionName = this.extractString(optionsObj.getProperty("functionName"));
 
             apis.push({
               id: varName,
@@ -151,6 +153,8 @@ export class Parser {
               policies,
               environment,
               container,
+              logicalId,
+              functionName,
             });
           }
 
@@ -167,6 +171,8 @@ export class Parser {
               let policies: PolicyStatementIR[] | undefined;
               let environment: Record<string, string> | undefined;
               let container: ContainerIR | undefined;
+              let logicalId: string | undefined;
+              let functionName: string | undefined;
 
               if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
                 const consumerOpts = args[0] as ObjectLiteralExpression;
@@ -177,6 +183,8 @@ export class Parser {
                 policies = this.extractPolicies(consumerOpts.getProperty("policies"));
                 environment = this.extractEnvironment(consumerOpts.getProperty("environment"));
                 container = this.extractContainer(consumerOpts.getProperty("container"));
+                logicalId = this.extractString(consumerOpts.getProperty("logicalId"));
+                functionName = this.extractString(consumerOpts.getProperty("functionName"));
               }
 
               consumers.push({
@@ -191,6 +199,8 @@ export class Parser {
                 policies,
                 environment,
                 container,
+                logicalId,
+                functionName,
               });
             }
 
@@ -207,6 +217,8 @@ export class Parser {
               let policies: PolicyStatementIR[] | undefined;
               let environment: Record<string, string> | undefined;
               let container: ContainerIR | undefined;
+              let logicalId: string | undefined;
+              let functionName: string | undefined;
 
               if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
                 const streamOpts = args[0] as ObjectLiteralExpression;
@@ -223,6 +235,8 @@ export class Parser {
                 policies = this.extractPolicies(streamOpts.getProperty("policies"));
                 environment = this.extractEnvironment(streamOpts.getProperty("environment"));
                 container = this.extractContainer(streamOpts.getProperty("container"));
+                logicalId = this.extractString(streamOpts.getProperty("logicalId"));
+                functionName = this.extractString(streamOpts.getProperty("functionName"));
               }
 
               tableStreams.push({
@@ -239,11 +253,13 @@ export class Parser {
                 policies,
                 environment,
                 container,
+                logicalId,
+                functionName,
               });
             }
 
-            // Topic subscriber: topic.subscribe(...)
-            if (propName === "subscribe") {
+            // Topic subscriber: topic.subscribe(...) or topic.subscriber(...)
+            if (propName === "subscribe" || propName === "subscriber") {
               const targetTopicVar = expr.getExpression().getText();
               const args = init.getArguments();
               let timeout: number | undefined;
@@ -252,6 +268,8 @@ export class Parser {
               let policies: PolicyStatementIR[] | undefined;
               let environment: Record<string, string> | undefined;
               let container: ContainerIR | undefined;
+              let logicalId: string | undefined;
+              let functionName: string | undefined;
 
               if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
                 const subOpts = args[0] as ObjectLiteralExpression;
@@ -261,6 +279,8 @@ export class Parser {
                 policies = this.extractPolicies(subOpts.getProperty("policies"));
                 environment = this.extractEnvironment(subOpts.getProperty("environment"));
                 container = this.extractContainer(subOpts.getProperty("container"));
+                logicalId = this.extractString(subOpts.getProperty("logicalId"));
+                functionName = this.extractString(subOpts.getProperty("functionName"));
               }
 
               topicSubscribers.push({
@@ -274,6 +294,8 @@ export class Parser {
                 policies,
                 environment,
                 container,
+                logicalId,
+                functionName,
               });
             }
           }
@@ -300,9 +322,13 @@ export class Parser {
             let stream: "NEW_IMAGE" | "OLD_IMAGE" | "NEW_AND_OLD_IMAGES" | "KEYS_ONLY" | undefined;
             let pointInTimeRecovery: boolean | undefined;
             const indexes: Record<string, TableIndexIR> = {};
+            let logicalId: string | undefined;
+            let customTableName: string | undefined;
 
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
               const optionsObj = args[1] as ObjectLiteralExpression;
+              logicalId = this.extractString(optionsObj.getProperty("logicalId"));
+              customTableName = this.extractString(optionsObj.getProperty("tableName"));
 
               // Partition Key
               const pkProp = optionsObj.getProperty("partitionKey");
@@ -450,6 +476,8 @@ export class Parser {
               pointInTimeRecovery,
               indexes,
               sourceFile: sourceFile.getFilePath(),
+              logicalId,
+              tableName: customTableName,
             });
           } else if (className === "Bucket") {
             if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
@@ -465,9 +493,13 @@ export class Parser {
             let publicAccessBlock = true;
             let accountScoped = false;
             let objectLock: BucketIR["objectLock"];
+            let logicalId: string | undefined;
+            let customBucketName: string | undefined;
 
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
               const opts = args[1] as ObjectLiteralExpression;
+              logicalId = this.extractString(opts.getProperty("logicalId"));
+              customBucketName = this.extractString(opts.getProperty("bucketName"));
               const vProp = opts.getProperty("versioned");
               if (vProp && vProp.isKind(SyntaxKind.PropertyAssignment)) {
                 versioned = vProp.getInitializer()?.getText() === "true";
@@ -507,6 +539,8 @@ export class Parser {
               accountScoped,
               objectLock,
               sourceFile: sourceFile.getFilePath(),
+              logicalId,
+              bucketName: customBucketName,
             });
           } else if (className === "Queue") {
             if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
@@ -518,11 +552,15 @@ export class Parser {
             varToQueueName[varName] = queueName;
 
             let visibilityTimeout: number | undefined;
-            let deadLetterQueue: { maxReceiveCount: number } | undefined;
+            let deadLetterQueue: { maxReceiveCount: number; logicalId?: string | undefined; queueName?: string | undefined } | undefined;
             let fifo = false;
+            let logicalId: string | undefined;
+            let customQueueName: string | undefined;
 
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
               const opts = args[1] as ObjectLiteralExpression;
+              logicalId = this.extractString(opts.getProperty("logicalId"));
+              customQueueName = this.extractString(opts.getProperty("queueName"));
               visibilityTimeout = this.extractDuration(opts.getProperty("visibilityTimeout"));
 
               const fifoProp = opts.getProperty("fifo");
@@ -536,7 +574,9 @@ export class Parser {
                 if (dlqObj && dlqObj.isKind(SyntaxKind.ObjectLiteralExpression)) {
                   const mrcProp = dlqObj.getProperty("maxReceiveCount");
                   const maxReceiveCount = this.extractNumber(mrcProp) ?? 3;
-                  deadLetterQueue = { maxReceiveCount };
+                  const dlqLogicalId = this.extractString(dlqObj.getProperty("logicalId"));
+                  const dlqQueueName = this.extractString(dlqObj.getProperty("queueName"));
+                  deadLetterQueue = { maxReceiveCount, logicalId: dlqLogicalId, queueName: dlqQueueName };
                 }
               }
             }
@@ -548,6 +588,8 @@ export class Parser {
               deadLetterQueue,
               fifo,
               sourceFile: sourceFile.getFilePath(),
+              logicalId,
+              queueName: customQueueName,
             });
           } else if (className === "Topic") {
             if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
@@ -560,8 +602,13 @@ export class Parser {
 
             let fifo = false;
             let subscriptions: TopicIR["subscriptions"];
+            let logicalId: string | undefined;
+            let customTopicName: string | undefined;
+
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
               const opts = args[1] as ObjectLiteralExpression;
+              logicalId = this.extractString(opts.getProperty("logicalId"));
+              customTopicName = this.extractString(opts.getProperty("topicName"));
               fifo = opts.getProperty("fifo")?.getText() === "true";
               const subsProp = opts.getProperty("subscriptions");
               if (subsProp && subsProp.isKind(SyntaxKind.PropertyAssignment)) {
@@ -587,6 +634,8 @@ export class Parser {
               fifo,
               subscriptions,
               sourceFile: sourceFile.getFilePath(),
+              logicalId,
+              topicName: customTopicName,
             });
           } else if (className === "Alarm") {
             if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
@@ -603,9 +652,13 @@ export class Parser {
             let metric: AlarmIR["metric"] | undefined;
             let metrics: AlarmIR["metrics"];
             const actions: string[] = [];
+            let logicalId: string | undefined;
+            let customAlarmName: string | undefined;
 
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
               const opts = args[1] as ObjectLiteralExpression;
+              logicalId = this.extractString(opts.getProperty("logicalId"));
+              customAlarmName = this.extractString(opts.getProperty("alarmName"));
               threshold = this.extractNumber(opts.getProperty("threshold")) ?? 0;
               evaluationPeriods = this.extractNumber(opts.getProperty("evaluationPeriods")) ?? 1;
               comparison = this.extractString(opts.getProperty("comparison")) || "GreaterThanOrEqualToThreshold";
@@ -726,6 +779,8 @@ export class Parser {
               metrics,
               actions,
               sourceFile: sourceFile.getFilePath(),
+              logicalId,
+              alarmName: customAlarmName,
             });
           } else if (className === "DeliveryStream") {
             if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
@@ -742,9 +797,13 @@ export class Parser {
             let bufferingInterval: number | undefined;
             let bufferingSize: number | undefined;
             let compression: DeliveryStreamIR["compression"] = "GZIP";
+            let logicalId: string | undefined;
+            let customStreamName: string | undefined;
 
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
               const opts = args[1] as ObjectLiteralExpression;
+              logicalId = this.extractString(opts.getProperty("logicalId"));
+              customStreamName = this.extractString(opts.getProperty("streamName"));
               const destProp = opts.getProperty("destination");
               if (destProp && destProp.isKind(SyntaxKind.PropertyAssignment)) {
                 const destInit = destProp.getInitializer();
@@ -773,6 +832,8 @@ export class Parser {
               bufferingSize,
               compression,
               sourceFile: sourceFile.getFilePath(),
+              logicalId,
+              streamName: customStreamName,
             });
           }
         }

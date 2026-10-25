@@ -38,6 +38,8 @@ export interface TableStreamOptions {
   policies?: PolicyStatement[];
   environment?: Record<string, string>;
   container?: ContainerOptions | boolean;
+  logicalId?: string;
+  functionName?: string;
 }
 
 export interface TableStreamConsumer<T = any> {
@@ -54,6 +56,8 @@ export interface TableOptions {
   stream?: "NEW_IMAGE" | "OLD_IMAGE" | "NEW_AND_OLD_IMAGES" | "KEYS_ONLY";
   pointInTimeRecovery?: boolean;
   indexes?: Record<string, TableIndexDefinition>;
+  logicalId?: string;
+  tableName?: string;
 }
 
 export class Table {

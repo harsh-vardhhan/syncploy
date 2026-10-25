@@ -46,6 +46,8 @@ export interface AlarmOptions {
   metric?: AlarmMetricStat;
   metrics?: AlarmMetricDataQuery[];
   actions?: (Topic | string)[];
+  logicalId?: string;
+  alarmName?: string;
 }
 
 export class Alarm {

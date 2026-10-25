@@ -1,9 +1,80 @@
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
-import type { ResourceGraph, ContainerIR } from "./types";
+import type {
+  ResourceGraph,
+  ContainerIR,
+  TableIR,
+  BucketIR,
+  QueueIR,
+  TopicIR,
+  DeliveryStreamIR,
+  AlarmIR,
+} from "./types";
 
 export class Synthesizer {
   constructor(public readonly workDir: string) {}
+
+  public getTableLogicalId(tableOrName: TableIR | string, graph?: ResourceGraph): string {
+    if (typeof tableOrName === "string") {
+      const found = graph?.tables.find((t) => t.name === tableOrName || t.id === tableOrName);
+      if (found && found.logicalId) return found.logicalId;
+      return `Table${this.sanitizeName(tableOrName)}`;
+    }
+    return tableOrName.logicalId || `Table${this.sanitizeName(tableOrName.name)}`;
+  }
+
+  public getBucketLogicalId(bucketOrName: BucketIR | string, graph?: ResourceGraph): string {
+    if (typeof bucketOrName === "string") {
+      const found = graph?.buckets.find((b) => b.name === bucketOrName || b.id === bucketOrName);
+      if (found && found.logicalId) return found.logicalId;
+      return `Bucket${this.sanitizeName(bucketOrName)}`;
+    }
+    return bucketOrName.logicalId || `Bucket${this.sanitizeName(bucketOrName.name)}`;
+  }
+
+  public getQueueLogicalId(queueOrName: QueueIR | string, graph?: ResourceGraph): string {
+    if (typeof queueOrName === "string") {
+      const found = graph?.queues.find((q) => q.name === queueOrName || q.id === queueOrName);
+      if (found && found.logicalId) return found.logicalId;
+      return `Queue${this.sanitizeName(queueOrName)}`;
+    }
+    return queueOrName.logicalId || `Queue${this.sanitizeName(queueOrName.name)}`;
+  }
+
+  public getDLQLogicalId(queue: QueueIR): string {
+    return queue.deadLetterQueue?.logicalId || `Queue${this.sanitizeName(queue.name)}DLQ`;
+  }
+
+  public getTopicLogicalId(topicOrName: TopicIR | string, graph?: ResourceGraph): string {
+    if (typeof topicOrName === "string") {
+      const found = graph?.topics?.find((t) => t.name === topicOrName || t.id === topicOrName);
+      if (found && found.logicalId) return found.logicalId;
+      return `Topic${this.sanitizeName(topicOrName)}`;
+    }
+    return topicOrName.logicalId || `Topic${this.sanitizeName(topicOrName.name)}`;
+  }
+
+  public getDeliveryStreamLogicalId(dsOrName: DeliveryStreamIR | string, graph?: ResourceGraph): string {
+    if (typeof dsOrName === "string") {
+      const found = graph?.deliveryStreams?.find((d) => d.name === dsOrName || d.id === dsOrName);
+      if (found && found.logicalId) return found.logicalId;
+      return `DeliveryStream${this.sanitizeName(dsOrName)}`;
+    }
+    return dsOrName.logicalId || `DeliveryStream${this.sanitizeName(dsOrName.name)}`;
+  }
+
+  public getFunctionLogicalId(func: { id: string; logicalId?: string | undefined }): string {
+    return func.logicalId || `Function${this.sanitizeName(func.id)}`;
+  }
+
+  public getAlarmLogicalId(alarm: AlarmIR): string {
+    return alarm.logicalId || `Alarm${this.sanitizeName(alarm.name)}`;
+  }
+
+  private resolvePhysicalName(name: string | undefined, defaultSub: any): any {
+    if (!name) return defaultSub;
+    return name.includes("${") ? { "Fn::Sub": name } : name;
+  }
 
   public async synthesize(
     graph: ResourceGraph,
@@ -71,11 +142,11 @@ export class Synthesizer {
           "dynamodb:Scan",
         ],
         Resource: graph.tables.flatMap((t) => [
-          { "Fn::GetAtt": [`Table${this.sanitizeName(t.name)}`, "Arn"] },
+          { "Fn::GetAtt": [this.getTableLogicalId(t), "Arn"] },
           {
             "Fn::Sub": [
               "${TableArn}/index/*",
-              { TableArn: { "Fn::GetAtt": [`Table${this.sanitizeName(t.name)}`, "Arn"] } },
+              { TableArn: { "Fn::GetAtt": [this.getTableLogicalId(t), "Arn"] } },
             ],
           },
         ]),
@@ -93,11 +164,11 @@ export class Synthesizer {
           "s3:ListBucket",
         ],
         Resource: graph.buckets.flatMap((b) => [
-          { "Fn::GetAtt": [`Bucket${this.sanitizeName(b.name)}`, "Arn"] },
+          { "Fn::GetAtt": [this.getBucketLogicalId(b), "Arn"] },
           {
             "Fn::Sub": [
               "${BucketArn}/*",
-              { BucketArn: { "Fn::GetAtt": [`Bucket${this.sanitizeName(b.name)}`, "Arn"] } },
+              { BucketArn: { "Fn::GetAtt": [this.getBucketLogicalId(b), "Arn"] } },
             ],
           },
         ]),
@@ -115,7 +186,7 @@ export class Synthesizer {
           "sqs:GetQueueAttributes",
         ],
         Resource: graph.queues.map((q) => ({
-          "Fn::GetAtt": [`Queue${this.sanitizeName(q.name)}`, "Arn"],
+          "Fn::GetAtt": [this.getQueueLogicalId(q), "Arn"],
         })),
       });
     }
@@ -131,7 +202,7 @@ export class Synthesizer {
           "dynamodb:ListStreams",
         ],
         Resource: graph.tableStreams.map((s) => ({
-          "Fn::GetAtt": [`Table${this.sanitizeName(s.tableName)}`, "StreamArn"],
+          "Fn::GetAtt": [this.getTableLogicalId(s.tableName, graph), "StreamArn"],
         })),
       });
     }
@@ -142,7 +213,7 @@ export class Synthesizer {
         Effect: "Allow",
         Action: ["sns:Publish"],
         Resource: graph.topics.map((t) => ({
-          Ref: `Topic${this.sanitizeName(t.name)}`,
+          Ref: this.getTopicLogicalId(t),
         })),
       });
     }
@@ -156,7 +227,7 @@ export class Synthesizer {
           "firehose:PutRecordBatch",
         ],
         Resource: graph.deliveryStreams.map((ds) => ({
-          "Fn::GetAtt": [`DeliveryStream${this.sanitizeName(ds.name)}`, "Arn"],
+          "Fn::GetAtt": [this.getDeliveryStreamLogicalId(ds), "Arn"],
         })),
       });
     }
@@ -203,7 +274,7 @@ export class Synthesizer {
 
     // 3. DynamoDB Tables
     for (const table of graph.tables) {
-      const resourceKey = `Table${this.sanitizeName(table.name)}`;
+      const resourceKey = this.getTableLogicalId(table);
       const attrMap = new Map<string, string>();
       attrMap.set(table.partitionKey.name, this.toDdbType(table.partitionKey.type));
 
@@ -253,7 +324,7 @@ export class Synthesizer {
       }));
 
       const tableProps: any = {
-        TableName: { "Fn::Sub": `\${AWS::StackName}-${table.name}` },
+        TableName: this.resolvePhysicalName(table.tableName, { "Fn::Sub": `\${AWS::StackName}-${table.name}` }),
         BillingMode: table.billingMode ?? "PAY_PER_REQUEST",
         AttributeDefinitions: attributeDefinitions,
         KeySchema: keySchema,
@@ -284,12 +355,12 @@ export class Synthesizer {
 
     // 4. S3 Buckets
     for (const bucket of graph.buckets) {
-      const resourceKey = `Bucket${this.sanitizeName(bucket.name)}`;
-      const bucketNameSub = bucket.accountScoped
+      const resourceKey = this.getBucketLogicalId(bucket);
+      const defaultBucketNameSub = bucket.accountScoped
         ? `\${AWS::StackName}-${bucket.name}-\${AWS::AccountId}`
         : `\${AWS::StackName}-${bucket.name}`;
       const bucketProps: any = {
-        BucketName: { "Fn::Sub": bucketNameSub },
+        BucketName: this.resolvePhysicalName(bucket.bucketName, { "Fn::Sub": defaultBucketNameSub }),
       };
 
       if (bucket.versioned) {
@@ -348,20 +419,23 @@ export class Synthesizer {
 
     // 5. SQS Queues & DLQs
     for (const queue of graph.queues) {
-      const cleanName = this.sanitizeName(queue.name);
-      const resourceKey = `Queue${cleanName}`;
+      const resourceKey = this.getQueueLogicalId(queue);
       const queueProps: any = {
-        QueueName: { "Fn::Sub": `\${AWS::StackName}-${queue.name}` },
+        QueueName: this.resolvePhysicalName(queue.queueName, { "Fn::Sub": `\${AWS::StackName}-${queue.name}` }),
         VisibilityTimeout: queue.visibilityTimeout ?? 180,
       };
 
       if (queue.deadLetterQueue) {
-        const dlqKey = `Queue${cleanName}DLQ`;
+        const dlqKey = this.getDLQLogicalId(queue);
+        const dlqProps: any = {
+          QueueName: this.resolvePhysicalName(
+            queue.deadLetterQueue.queueName,
+            { "Fn::Sub": `\${AWS::StackName}-${queue.name}-dlq` }
+          ),
+        };
         resources[dlqKey] = {
           Type: "AWS::SQS::Queue",
-          Properties: {
-            QueueName: { "Fn::Sub": `\${AWS::StackName}-${queue.name}-dlq` },
-          },
+          Properties: dlqProps,
         };
 
         queueProps["RedrivePolicy"] = {
@@ -380,88 +454,88 @@ export class Synthesizer {
     const envVars: Record<string, any> = {};
 
     for (const table of graph.tables) {
-      const cleanName = this.sanitizeName(table.name);
+      const logicalId = this.getTableLogicalId(table);
       const upperName = table.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-      envVars[`SYNCPLOY_TABLE_${upperName}`] = { Ref: `Table${cleanName}` };
-      envVars[`TABLE_${upperName}_NAME`] = { Ref: `Table${cleanName}` };
-      envVars[`${upperName}_TABLE_NAME`] = { Ref: `Table${cleanName}` };
-      envVars[table.name] = { Ref: `Table${cleanName}` };
+      envVars[`SYNCPLOY_TABLE_${upperName}`] = { Ref: logicalId };
+      envVars[`TABLE_${upperName}_NAME`] = { Ref: logicalId };
+      envVars[`${upperName}_TABLE_NAME`] = { Ref: logicalId };
+      envVars[table.name] = { Ref: logicalId };
     }
 
     for (const bucket of graph.buckets) {
-      const cleanName = this.sanitizeName(bucket.name);
+      const logicalId = this.getBucketLogicalId(bucket);
       const upperName = bucket.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-      envVars[`SYNCPLOY_BUCKET_${upperName}`] = { Ref: `Bucket${cleanName}` };
-      envVars[`BUCKET_${upperName}_NAME`] = { Ref: `Bucket${cleanName}` };
-      envVars[`${upperName}_BUCKET_NAME`] = { Ref: `Bucket${cleanName}` };
-      envVars[bucket.name] = { Ref: `Bucket${cleanName}` };
+      envVars[`SYNCPLOY_BUCKET_${upperName}`] = { Ref: logicalId };
+      envVars[`BUCKET_${upperName}_NAME`] = { Ref: logicalId };
+      envVars[`${upperName}_BUCKET_NAME`] = { Ref: logicalId };
+      envVars[bucket.name] = { Ref: logicalId };
     }
 
     for (const queue of graph.queues) {
-      const cleanName = this.sanitizeName(queue.name);
+      const logicalId = this.getQueueLogicalId(queue);
       const upperName = queue.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-      envVars[`SYNCPLOY_QUEUE_${upperName}`] = { Ref: `Queue${cleanName}` };
-      envVars[`QUEUE_${upperName}_URL`] = { Ref: `Queue${cleanName}` };
-      envVars[`${upperName}_QUEUE_URL`] = { Ref: `Queue${cleanName}` };
-      envVars[queue.name] = { Ref: `Queue${cleanName}` };
+      envVars[`SYNCPLOY_QUEUE_${upperName}`] = { Ref: logicalId };
+      envVars[`QUEUE_${upperName}_URL`] = { Ref: logicalId };
+      envVars[`${upperName}_QUEUE_URL`] = { Ref: logicalId };
+      envVars[queue.name] = { Ref: logicalId };
     }
 
     for (const topic of graph.topics || []) {
-      const cleanName = this.sanitizeName(topic.name);
+      const logicalId = this.getTopicLogicalId(topic);
       const upperName = topic.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-      envVars[`SYNCPLOY_TOPIC_${upperName}`] = { Ref: `Topic${cleanName}` };
-      envVars[`TOPIC_${upperName}_ARN`] = { Ref: `Topic${cleanName}` };
-      envVars[`${upperName}_TOPIC_ARN`] = { Ref: `Topic${cleanName}` };
-      envVars[topic.name] = { Ref: `Topic${cleanName}` };
+      envVars[`SYNCPLOY_TOPIC_${upperName}`] = { Ref: logicalId };
+      envVars[`TOPIC_${upperName}_ARN`] = { Ref: logicalId };
+      envVars[`${upperName}_TOPIC_ARN`] = { Ref: logicalId };
+      envVars[topic.name] = { Ref: logicalId };
     }
 
     for (const ds of graph.deliveryStreams || []) {
-      const cleanName = this.sanitizeName(ds.name);
+      const logicalId = this.getDeliveryStreamLogicalId(ds);
       const upperName = ds.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
       const baseUpper = upperName.replace(/_?(DELIVERY)?_?STREAM$/, "");
 
-      envVars[`SYNCPLOY_DELIVERY_STREAM_${upperName}`] = { Ref: `DeliveryStream${cleanName}` };
-      envVars[`DELIVERY_STREAM_${upperName}_NAME`] = { Ref: `DeliveryStream${cleanName}` };
-      envVars[`${upperName}_DELIVERY_STREAM_NAME`] = { Ref: `DeliveryStream${cleanName}` };
+      envVars[`SYNCPLOY_DELIVERY_STREAM_${upperName}`] = { Ref: logicalId };
+      envVars[`DELIVERY_STREAM_${upperName}_NAME`] = { Ref: logicalId };
+      envVars[`${upperName}_DELIVERY_STREAM_NAME`] = { Ref: logicalId };
       if (baseUpper) {
-        envVars[`${baseUpper}_DELIVERY_STREAM_NAME`] = { Ref: `DeliveryStream${cleanName}` };
+        envVars[`${baseUpper}_DELIVERY_STREAM_NAME`] = { Ref: logicalId };
       }
-      envVars[ds.name] = { Ref: `DeliveryStream${cleanName}` };
+      envVars[ds.name] = { Ref: logicalId };
     }
 
     for (const api of graph.apis) {
-      const logicalId = this.sanitizeName(api.id);
+      const logicalId = this.getFunctionLogicalId(api);
       const upperName = api.id.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-      envVars[`SYNCPLOY_FUNCTION_${upperName}`] = { Ref: `Function${logicalId}` };
-      envVars[`FUNCTION_${upperName}_NAME`] = { Ref: `Function${logicalId}` };
-      envVars[`${upperName}_FUNCTION_NAME`] = { Ref: `Function${logicalId}` };
-      envVars[api.id] = { Ref: `Function${logicalId}` };
+      envVars[`SYNCPLOY_FUNCTION_${upperName}`] = { Ref: logicalId };
+      envVars[`FUNCTION_${upperName}_NAME`] = { Ref: logicalId };
+      envVars[`${upperName}_FUNCTION_NAME`] = { Ref: logicalId };
+      envVars[api.id] = { Ref: logicalId };
       if (api.id.toLowerCase().includes("backend")) {
-        envVars["BACKEND_FUNCTION_NAME"] = { Ref: `Function${logicalId}` };
+        envVars["BACKEND_FUNCTION_NAME"] = { Ref: logicalId };
       }
     }
 
     // 7. Lambdas and API Gateway Routes
     for (const api of graph.apis) {
-      const logicalId = this.sanitizeName(api.id);
-      const funcKey = `Function${logicalId}`;
-      const integKey = `Integration${logicalId}`;
-      const routeKey = `Route${logicalId}`;
-      const permKey = `Permission${logicalId}`;
+      const baseId = api.logicalId || this.sanitizeName(api.id);
+      const funcKey = this.getFunctionLogicalId(api);
+      const integKey = `Integration${baseId}`;
+      const routeKey = `Route${baseId}`;
+      const permKey = `Permission${baseId}`;
 
       const artifactDir = lambdaArtifactDirs[api.id];
       const relArtifactDir = path.relative(this.workDir, artifactDir || "");
       const apiGatewayPath = api.path.replace(/:([a-zA-Z0-9_]+)/g, "{$1}");
 
-      const roleKey = `Role${logicalId}`;
+      const roleKey = `Role${baseId}`;
       resources[roleKey] = this.createLambdaRole(
-        logicalId,
+        baseId,
         { tables: true, buckets: true, policies: api.policies },
         graph
       );
 
       const funcProps: any = {
-        FunctionName: { "Fn::Sub": `\${AWS::StackName}-${api.id}` },
+        FunctionName: this.resolvePhysicalName(api.functionName, { "Fn::Sub": `\${AWS::StackName}-${api.id}` }),
         Runtime: "nodejs20.x",
         Handler: "index.handler",
         Code: relArtifactDir,
@@ -480,6 +554,13 @@ export class Synthesizer {
       if (api.id.toLowerCase().includes("backend")) {
         delete functionEnv["BACKEND_FUNCTION_NAME"];
       }
+      if (api.logicalId) {
+        const upperLogical = api.logicalId.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+        delete functionEnv[`SYNCPLOY_FUNCTION_${upperLogical}`];
+        delete functionEnv[`FUNCTION_${upperLogical}_NAME`];
+        delete functionEnv[`${upperLogical}_FUNCTION_NAME`];
+        delete functionEnv[api.logicalId];
+      }
 
       if (Object.keys(functionEnv).length > 0) {
         funcProps["Environment"] = { Variables: functionEnv };
@@ -496,8 +577,8 @@ export class Synthesizer {
       this.applyContainerConfig(funcProps, api.container, api.id, resources, funcKey);
 
       if (api.ingress === "function-url") {
-        const urlKey = `FunctionUrl${logicalId}`;
-        const urlPermKey = `Permission${logicalId}Url`;
+        const urlKey = api.logicalId ? `${api.logicalId}Url` : `FunctionUrl${baseId}`;
+        const urlPermKey = api.logicalId ? `Permission${api.logicalId}Url` : `Permission${baseId}Url`;
 
         const corsProp: any = {
           AllowOrigins: ["*"],
@@ -530,10 +611,17 @@ export class Synthesizer {
           },
         };
 
-        outputs[`${logicalId}Url`] = {
+        outputs[`${baseId}Url`] = {
           Description: `Direct Lambda Function URL for ${api.id}`,
           Value: { "Fn::GetAtt": [urlKey, "FunctionUrl"] },
         };
+
+        if (!outputs["ApiEndpoint"]) {
+          outputs["ApiEndpoint"] = {
+            Description: "Lambda Function URL",
+            Value: { "Fn::GetAtt": [urlKey, "FunctionUrl"] },
+          };
+        }
       } else {
         resources[integKey] = {
           Type: "AWS::ApiGatewayV2::Integration",
@@ -573,17 +661,17 @@ export class Synthesizer {
 
     // 7. Queue Consumers (Workers)
     for (const consumer of graph.consumers) {
-      const logicalId = this.sanitizeName(consumer.id);
-      const funcKey = `Function${logicalId}`;
-      const mappingKey = `EventSourceMapping${logicalId}`;
-      const queueKey = `Queue${this.sanitizeName(consumer.queueName)}`;
+      const baseId = consumer.logicalId || this.sanitizeName(consumer.id);
+      const funcKey = this.getFunctionLogicalId(consumer);
+      const mappingKey = `EventSourceMapping${baseId}`;
+      const queueKey = this.getQueueLogicalId(consumer.queueName, graph);
 
       const artifactDir = lambdaArtifactDirs[consumer.id];
       const relArtifactDir = path.relative(this.workDir, artifactDir || "");
 
-      const roleKey = `Role${logicalId}`;
+      const roleKey = `Role${baseId}`;
       resources[roleKey] = this.createLambdaRole(
-        logicalId,
+        baseId,
         {
           tables: true,
           buckets: true,
@@ -594,7 +682,7 @@ export class Synthesizer {
       );
 
       const funcProps: any = {
-        FunctionName: { "Fn::Sub": `\${AWS::StackName}-${consumer.id}` },
+        FunctionName: this.resolvePhysicalName(consumer.functionName, { "Fn::Sub": `\${AWS::StackName}-${consumer.id}` }),
         Runtime: "nodejs20.x",
         Handler: "index.handler",
         Code: relArtifactDir,
@@ -632,10 +720,9 @@ export class Synthesizer {
 
     // 8. SNS Topics
     for (const topic of graph.topics || []) {
-      const logicalId = this.sanitizeName(topic.name);
-      const resourceKey = `Topic${logicalId}`;
+      const resourceKey = this.getTopicLogicalId(topic);
       const topicProps: any = {
-        TopicName: { "Fn::Sub": `\${AWS::StackName}-${topic.name}` },
+        TopicName: this.resolvePhysicalName(topic.topicName, { "Fn::Sub": `\${AWS::StackName}-${topic.name}` }),
       };
       if (topic.fifo) {
         topicProps["FifoTopic"] = true;
@@ -651,7 +738,7 @@ export class Synthesizer {
         Properties: topicProps,
       };
 
-      outputs[`${logicalId}TopicArn`] = {
+      outputs[`${this.sanitizeName(resourceKey)}TopicArn`] = {
         Description: `ARN of SNS Topic ${topic.name}`,
         Value: { Ref: resourceKey },
       };
@@ -659,17 +746,17 @@ export class Synthesizer {
 
     // 9. DynamoDB Stream Consumers
     for (const consumer of graph.tableStreams || []) {
-      const logicalId = this.sanitizeName(consumer.id);
-      const funcKey = `Function${logicalId}`;
-      const mappingKey = `EventSourceMapping${logicalId}`;
-      const tableKey = `Table${this.sanitizeName(consumer.tableName)}`;
+      const baseId = consumer.logicalId || this.sanitizeName(consumer.id);
+      const funcKey = this.getFunctionLogicalId(consumer);
+      const mappingKey = `EventSourceMapping${baseId}`;
+      const tableKey = this.getTableLogicalId(consumer.tableName, graph);
 
       const artifactDir = lambdaArtifactDirs[consumer.id];
       const relArtifactDir = path.relative(this.workDir, artifactDir || "");
 
-      const roleKey = `Role${logicalId}`;
+      const roleKey = `Role${baseId}`;
       resources[roleKey] = this.createLambdaRole(
-        logicalId,
+        baseId,
         {
           tableStreams: [consumer.tableName],
           firehose: true,
@@ -679,7 +766,7 @@ export class Synthesizer {
       );
 
       const funcProps: any = {
-        FunctionName: { "Fn::Sub": `\${AWS::StackName}-${consumer.id}` },
+        FunctionName: this.resolvePhysicalName(consumer.functionName, { "Fn::Sub": `\${AWS::StackName}-${consumer.id}` }),
         Runtime: "nodejs20.x",
         Handler: "index.handler",
         Code: relArtifactDir,
@@ -723,18 +810,18 @@ export class Synthesizer {
 
     // 10. SNS Topic Subscribers
     for (const subscriber of graph.topicSubscribers || []) {
-      const logicalId = this.sanitizeName(subscriber.id);
-      const funcKey = `Function${logicalId}`;
-      const permKey = `Permission${logicalId}Sns`;
-      const subKey = `Subscription${logicalId}`;
-      const topicKey = `Topic${this.sanitizeName(subscriber.topicName)}`;
+      const baseId = subscriber.logicalId || this.sanitizeName(subscriber.id);
+      const funcKey = this.getFunctionLogicalId(subscriber);
+      const permKey = `Permission${baseId}Sns`;
+      const subKey = `Subscription${baseId}`;
+      const topicKey = this.getTopicLogicalId(subscriber.topicName, graph);
 
       const artifactDir = lambdaArtifactDirs[subscriber.id];
       const relArtifactDir = path.relative(this.workDir, artifactDir || "");
 
-      const roleKey = `Role${logicalId}`;
+      const roleKey = `Role${baseId}`;
       resources[roleKey] = this.createLambdaRole(
-        logicalId,
+        baseId,
         {
           policies: subscriber.policies,
         },
@@ -742,7 +829,7 @@ export class Synthesizer {
       );
 
       const funcProps: any = {
-        FunctionName: { "Fn::Sub": `\${AWS::StackName}-${subscriber.id}` },
+        FunctionName: this.resolvePhysicalName(subscriber.functionName, { "Fn::Sub": `\${AWS::StackName}-${subscriber.id}` }),
         Runtime: "nodejs20.x",
         Handler: "index.handler",
         Code: relArtifactDir,
@@ -788,13 +875,12 @@ export class Synthesizer {
 
     // 11. CloudWatch Alarms
     for (const alarm of graph.alarms || []) {
-      const logicalId = this.sanitizeName(alarm.name);
-      const resourceKey = `Alarm${logicalId}`;
+      const resourceKey = this.getAlarmLogicalId(alarm);
 
       const alarmActions = (alarm.actions || []).map((act) => {
-        const matchingTopic = (graph.topics || []).find((t) => t.name === act || t.id === act);
+        const matchingTopic = (graph.topics || []).find((t) => t.name === act || t.id === act || t.logicalId === act);
         if (matchingTopic) {
-          return { Ref: `Topic${this.sanitizeName(matchingTopic.name)}` };
+          return { Ref: this.getTopicLogicalId(matchingTopic) };
         }
         return act;
       });
@@ -806,6 +892,10 @@ export class Synthesizer {
         ComparisonOperator: alarm.comparison || "GreaterThanOrEqualToThreshold",
         AlarmActions: alarmActions,
       };
+
+      if (alarm.alarmName) {
+        alarmProps["AlarmName"] = this.resolvePhysicalName(alarm.alarmName, undefined);
+      }
 
       if (alarm.treatMissingData) {
         alarmProps["TreatMissingData"] = alarm.treatMissingData;
@@ -834,10 +924,10 @@ export class Synthesizer {
                 ? dims.map((d) => [d.name, d.value])
                 : Object.entries(dims);
               statObj.Metric.Dimensions = dimEntries.map(([k, v]) => {
-                const matchingApi = graph.apis.find((a) => a.id === v || a.exportName === v);
+                const matchingApi = graph.apis.find((a) => a.id === v || a.exportName === v || a.logicalId === v);
                 return {
                   Name: k,
-                  Value: matchingApi ? { Ref: `Function${this.sanitizeName(matchingApi.id)}` } : v,
+                  Value: matchingApi ? { Ref: this.getFunctionLogicalId(matchingApi) } : v,
                 };
               });
             }
@@ -860,10 +950,10 @@ export class Synthesizer {
 
         if (metric.dimensions && Object.keys(metric.dimensions).length > 0) {
           alarmProps["Dimensions"] = Object.entries(metric.dimensions).map(([k, v]) => {
-            const matchingApi = graph.apis.find((a) => a.id === v || a.exportName === v);
+            const matchingApi = graph.apis.find((a) => a.id === v || a.exportName === v || a.logicalId === v);
             return {
               Name: k,
-              Value: matchingApi ? { Ref: `Function${this.sanitizeName(matchingApi.id)}` } : v,
+              Value: matchingApi ? { Ref: this.getFunctionLogicalId(matchingApi) } : v,
             };
           });
         }
@@ -879,11 +969,13 @@ export class Synthesizer {
     for (const binding of graph.bindings) {
       const cleanBucket = this.sanitizeName(binding.sourceBucketName);
       const cleanQueue = this.sanitizeName(binding.targetQueueName);
+      const bucketKey = this.getBucketLogicalId(binding.sourceBucketName, graph);
+      const queueKey = this.getQueueLogicalId(binding.targetQueueName, graph);
       const ruleKey = `EventRule${cleanBucket}To${cleanQueue}`;
       const policyKey = `QueuePolicy${cleanQueue}EventBridge`;
 
       const detailPattern: any = {
-        bucket: { name: [{ Ref: `Bucket${cleanBucket}` }] },
+        bucket: { name: [{ Ref: bucketKey }] },
       };
 
       if (binding.prefix) {
@@ -904,8 +996,8 @@ export class Synthesizer {
           },
           Targets: [
             {
-              Arn: { "Fn::GetAtt": [`Queue${cleanQueue}`, "Arn"] },
-              Id: `${cleanQueue}Target`,
+              Arn: { "Fn::GetAtt": [queueKey, "Arn"] },
+              Id: `${this.sanitizeName(queueKey)}Target`,
             },
           ],
         },
@@ -914,7 +1006,7 @@ export class Synthesizer {
       resources[policyKey] = {
         Type: "AWS::SQS::QueuePolicy",
         Properties: {
-          Queues: [{ Ref: `Queue${cleanQueue}` }],
+          Queues: [{ Ref: queueKey }],
           PolicyDocument: {
             Version: "2012-10-17",
             Statement: [
@@ -922,7 +1014,7 @@ export class Synthesizer {
                 Effect: "Allow",
                 Principal: { Service: "events.amazonaws.com" },
                 Action: "sqs:SendMessage",
-                Resource: { "Fn::GetAtt": [`Queue${cleanQueue}`, "Arn"] },
+                Resource: { "Fn::GetAtt": [queueKey, "Arn"] },
                 Condition: {
                   ArnEquals: {
                     "aws:SourceArn": { "Fn::GetAtt": [ruleKey, "Arn"] },
@@ -938,15 +1030,15 @@ export class Synthesizer {
     // 13. Kinesis Firehose Delivery Streams & IAM Roles
     for (const ds of graph.deliveryStreams || []) {
       const cleanName = this.sanitizeName(ds.name);
-      const streamKey = `DeliveryStream${cleanName}`;
-      const roleKey = `FirehoseRole${cleanName}`;
+      const streamKey = this.getDeliveryStreamLogicalId(ds);
+      const roleKey = ds.logicalId ? `FirehoseRole${ds.logicalId}` : `FirehoseRole${cleanName}`;
 
       const matchingBucket = graph.buckets.find(
-        (b) => b.name === ds.destinationBucketName || b.id === ds.destinationBucketName
+        (b) => b.name === ds.destinationBucketName || b.id === ds.destinationBucketName || b.logicalId === ds.destinationBucketName
       );
 
       const bucketArn = matchingBucket
-        ? { "Fn::GetAtt": [`Bucket${this.sanitizeName(matchingBucket.name)}`, "Arn"] }
+        ? { "Fn::GetAtt": [this.getBucketLogicalId(matchingBucket), "Arn"] }
         : ds.destinationBucketName.startsWith("arn:aws:s3:::")
         ? ds.destinationBucketName
         : { "Fn::Sub": `arn:aws:s3:::${ds.destinationBucketName}` };
@@ -955,7 +1047,7 @@ export class Synthesizer {
         ? {
             "Fn::Sub": [
               "${BucketArn}/*",
-              { BucketArn: { "Fn::GetAtt": [`Bucket${this.sanitizeName(matchingBucket.name)}`, "Arn"] } },
+              { BucketArn: { "Fn::GetAtt": [this.getBucketLogicalId(matchingBucket), "Arn"] } },
             ],
           }
         : ds.destinationBucketName.startsWith("arn:aws:s3:::")
@@ -1022,13 +1114,13 @@ export class Synthesizer {
       resources[streamKey] = {
         Type: "AWS::KinesisFirehose::DeliveryStream",
         Properties: {
-          DeliveryStreamName: { "Fn::Sub": `\${AWS::StackName}-${ds.name}` },
+          DeliveryStreamName: this.resolvePhysicalName(ds.streamName, { "Fn::Sub": `\${AWS::StackName}-${ds.name}` }),
           DeliveryStreamType: "DirectPut",
           ExtendedS3DestinationConfiguration: s3DestConfig,
         },
       };
 
-      outputs[`${cleanName}DeliveryStreamName`] = {
+      outputs[`${this.sanitizeName(ds.name)}DeliveryStreamName`] = {
         Description: `Name of the ${ds.name} Kinesis Firehose Delivery Stream`,
         Value: { Ref: streamKey },
       };
@@ -1142,11 +1234,11 @@ export class Synthesizer {
           "dynamodb:Scan",
         ],
         Resource: graph.tables.flatMap((t) => [
-          { "Fn::GetAtt": [`Table${this.sanitizeName(t.name)}`, "Arn"] },
+          { "Fn::GetAtt": [this.getTableLogicalId(t), "Arn"] },
           {
             "Fn::Sub": [
               "${TableArn}/index/*",
-              { TableArn: { "Fn::GetAtt": [`Table${this.sanitizeName(t.name)}`, "Arn"] } },
+              { TableArn: { "Fn::GetAtt": [this.getTableLogicalId(t), "Arn"] } },
             ],
           },
         ]),
@@ -1163,11 +1255,11 @@ export class Synthesizer {
           "s3:ListBucket",
         ],
         Resource: graph.buckets.flatMap((b) => [
-          { "Fn::GetAtt": [`Bucket${this.sanitizeName(b.name)}`, "Arn"] },
+          { "Fn::GetAtt": [this.getBucketLogicalId(b), "Arn"] },
           {
             "Fn::Sub": [
               "${BucketArn}/*",
-              { BucketArn: { "Fn::GetAtt": [`Bucket${this.sanitizeName(b.name)}`, "Arn"] } },
+              { BucketArn: { "Fn::GetAtt": [this.getBucketLogicalId(b), "Arn"] } },
             ],
           },
         ]),
@@ -1183,7 +1275,7 @@ export class Synthesizer {
           "sqs:GetQueueAttributes",
         ],
         Resource: options.queues.map((q) => ({
-          "Fn::GetAtt": [`Queue${this.sanitizeName(q)}`, "Arn"],
+          "Fn::GetAtt": [this.getQueueLogicalId(q, graph), "Arn"],
         })),
       });
     }
@@ -1198,7 +1290,7 @@ export class Synthesizer {
           "dynamodb:ListStreams",
         ],
         Resource: options.tableStreams.map((tableName) => ({
-          "Fn::GetAtt": [`Table${this.sanitizeName(tableName)}`, "StreamArn"],
+          "Fn::GetAtt": [this.getTableLogicalId(tableName, graph), "StreamArn"],
         })),
       });
     }
@@ -1208,7 +1300,7 @@ export class Synthesizer {
         Effect: "Allow",
         Action: ["firehose:PutRecord", "firehose:PutRecordBatch"],
         Resource: graph.deliveryStreams.map((ds) => ({
-          "Fn::GetAtt": [`DeliveryStream${this.sanitizeName(ds.name)}`, "Arn"],
+          "Fn::GetAtt": [this.getDeliveryStreamLogicalId(ds), "Arn"],
         })),
       });
     }

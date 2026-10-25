@@ -67,6 +67,8 @@ export interface ApiOptions {
   policies?: PolicyStatement[];
   environment?: Record<string, string>;
   container?: ContainerOptions | boolean;
+  logicalId?: string;
+  functionName?: string;
 }
 
 export type ApiHandler<TReq = any, TRes = any> = (

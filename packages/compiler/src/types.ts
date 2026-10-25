@@ -41,6 +41,8 @@ export interface ApiRouteIR {
   policies?: PolicyStatementIR[] | undefined;
   environment?: Record<string, string> | undefined;
   container?: ContainerIR | undefined;
+  logicalId?: string | undefined;
+  functionName?: string | undefined;
 }
 
 export interface TableIndexIR {
@@ -59,6 +61,8 @@ export interface TableIR {
   pointInTimeRecovery?: boolean | undefined;
   indexes?: Record<string, TableIndexIR> | undefined;
   sourceFile: string;
+  logicalId?: string | undefined;
+  tableName?: string | undefined;
 }
 
 export interface BucketIR {
@@ -77,6 +81,8 @@ export interface BucketIR {
       }
     | undefined;
   sourceFile: string;
+  logicalId?: string | undefined;
+  bucketName?: string | undefined;
 }
 
 export interface QueueIR {
@@ -85,9 +91,13 @@ export interface QueueIR {
   visibilityTimeout?: number | undefined; // in seconds
   deadLetterQueue?: {
     maxReceiveCount: number;
+    logicalId?: string | undefined;
+    queueName?: string | undefined;
   } | undefined;
   fifo?: boolean | undefined;
   sourceFile: string;
+  logicalId?: string | undefined;
+  queueName?: string | undefined;
 }
 
 export interface QueueConsumerIR {
@@ -102,6 +112,8 @@ export interface QueueConsumerIR {
   policies?: PolicyStatementIR[] | undefined;
   environment?: Record<string, string> | undefined;
   container?: ContainerIR | undefined;
+  logicalId?: string | undefined;
+  functionName?: string | undefined;
 }
 
 export interface TableStreamConsumerIR {
@@ -118,6 +130,8 @@ export interface TableStreamConsumerIR {
   policies?: PolicyStatementIR[] | undefined;
   environment?: Record<string, string> | undefined;
   container?: ContainerIR | undefined;
+  logicalId?: string | undefined;
+  functionName?: string | undefined;
 }
 
 export interface TopicIR {
@@ -126,6 +140,8 @@ export interface TopicIR {
   fifo?: boolean | undefined;
   subscriptions?: { protocol: string; endpoint: string }[] | undefined;
   sourceFile: string;
+  logicalId?: string | undefined;
+  topicName?: string | undefined;
 }
 
 export interface TopicSubscriberIR {
@@ -139,6 +155,8 @@ export interface TopicSubscriberIR {
   policies?: PolicyStatementIR[] | undefined;
   environment?: Record<string, string> | undefined;
   container?: ContainerIR | undefined;
+  logicalId?: string | undefined;
+  functionName?: string | undefined;
 }
 
 export interface AlarmMetricQueryIR {
@@ -175,6 +193,8 @@ export interface AlarmIR {
   metrics?: AlarmMetricQueryIR[] | undefined;
   actions?: string[] | undefined;
   sourceFile: string;
+  logicalId?: string | undefined;
+  alarmName?: string | undefined;
 }
 
 export interface EventBindingIR {
@@ -196,6 +216,8 @@ export interface DeliveryStreamIR {
   bufferingSize?: number | undefined; // in MB
   compression?: "GZIP" | "ZIP" | "SNAPPY" | "UNCOMPRESSED" | undefined;
   sourceFile: string;
+  logicalId?: string | undefined;
+  streamName?: string | undefined;
 }
 
 export interface ResourceGraph {

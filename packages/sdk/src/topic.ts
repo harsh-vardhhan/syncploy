@@ -18,6 +18,8 @@ export interface TopicSubscription {
 export interface TopicOptions {
   fifo?: boolean;
   subscriptions?: TopicSubscription[];
+  logicalId?: string;
+  topicName?: string;
 }
 
 export interface TopicSubscriberOptions {
@@ -27,6 +29,8 @@ export interface TopicSubscriberOptions {
   policies?: PolicyStatement[];
   environment?: Record<string, string>;
   container?: ContainerOptions | boolean;
+  logicalId?: string;
+  functionName?: string;
 }
 
 export interface TopicSubscriber<T = any> {
@@ -92,6 +96,13 @@ export class Topic<T = any> {
       options,
       handler,
     };
+  }
+
+  subscriber(
+    optionsOrHandler: TopicSubscriberOptions | ((message: T, ctx: any) => Promise<void> | void),
+    maybeHandler?: (message: T, ctx: any) => Promise<void> | void
+  ): TopicSubscriber<T> {
+    return this.subscribe(optionsOrHandler, maybeHandler);
   }
 
   email(endpoint: string): this {

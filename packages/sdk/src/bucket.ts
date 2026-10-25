@@ -20,6 +20,8 @@ export interface BucketOptions {
   publicAccessBlock?: boolean;
   objectLock?: boolean | BucketObjectLockOptions;
   accountScoped?: boolean;
+  logicalId?: string;
+  bucketName?: string;
 }
 
 export class Bucket {

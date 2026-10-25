@@ -6,12 +6,16 @@ export type MemorySize = `${number}MB` | `${number}GB` | number;
 
 export interface DeadLetterQueueOptions {
   maxReceiveCount: number;
+  logicalId?: string;
+  queueName?: string;
 }
 
 export interface QueueOptions {
   visibilityTimeout?: Duration;
   deadLetterQueue?: DeadLetterQueueOptions;
   fifo?: boolean;
+  logicalId?: string;
+  queueName?: string;
 }
 
 export interface PolicyStatement {
@@ -28,6 +32,8 @@ export interface ConsumerOptions {
   policies?: PolicyStatement[];
   environment?: Record<string, string>;
   container?: ContainerOptions | boolean;
+  logicalId?: string;
+  functionName?: string;
 }
 
 export interface QueueConsumer<T = any> {

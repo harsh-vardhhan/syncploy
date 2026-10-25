@@ -580,3 +580,238 @@ export const containerWorker = workQueue.consumer(
     expect(funcWorker.Metadata).toBeUndefined();
   });
 });
+
+const BROWNFIELD_TEST_DIR = path.join(__dirname, ".tmp-test-app-brownfield");
+
+describe("@syncploy/compiler - Brownfield Adoption (logicalId & physical name overrides)", () => {
+  beforeAll(async () => {
+    await fs.mkdir(BROWNFIELD_TEST_DIR, { recursive: true });
+
+    await fs.writeFile(
+      path.join(BROWNFIELD_TEST_DIR, "app.ts"),
+      `
+import { api, Table, Bucket, Queue, Topic, Alarm, DeliveryStream } from "@syncploy/sdk";
+
+export const ehrTable = new Table("ehr", {
+  logicalId: "EhrTable",
+  tableName: "\${AWS::StackName}-custom-ehr",
+  partitionKey: { name: "PK", type: "string" },
+  sortKey: { name: "SK", type: "string" },
+  stream: "NEW_IMAGE",
+});
+
+export const documentsBucket = new Bucket("documents", {
+  logicalId: "DocumentsBucket",
+  bucketName: "my-custom-documents-bucket",
+});
+
+export const annotationQueue = new Queue("annotations", {
+  logicalId: "EhrAnnotationQueue",
+  queueName: "my-custom-queue",
+  deadLetterQueue: {
+    maxReceiveCount: 3,
+    logicalId: "EhrAnnotationDLQ",
+    queueName: "my-custom-dlq",
+  },
+});
+
+export const ddosTopic = new Topic("ddos-alerts", {
+  logicalId: "DdosAlertTopic",
+  topicName: "my-custom-topic",
+});
+
+export const omopStream = new DeliveryStream("omop-stream", {
+  logicalId: "EhrOmopDeliveryStream",
+  streamName: "my-custom-stream",
+  destination: documentsBucket,
+});
+
+export const backend = api({
+  method: "GET",
+  path: "/health",
+  logicalId: "EhrBackendFunction",
+  functionName: "my-custom-backend-fn",
+  ingress: "function-url",
+  handler: async () => ({ status: 200, body: "ok" }),
+});
+
+export const annotationWorker = annotationQueue.consumer({
+  logicalId: "EhrAnnotationWorkerFunction",
+  functionName: "my-custom-worker-fn",
+  batchSize: 5,
+  handler: async (event) => {},
+});
+
+export const omopPipeline = ehrTable.stream({
+  logicalId: "EhrOmopPipelineFunction",
+  functionName: "my-custom-pipeline-fn",
+  handler: async (event) => {},
+});
+
+export const ddosSubscriber = ddosTopic.subscriber({
+  logicalId: "DdosAlertSubscriber",
+  functionName: "my-custom-subscriber-fn",
+  handler: async (event) => {},
+});
+
+export const killSwitchAlarm = new Alarm("ddos-kill-switch", {
+  logicalId: "DdosKillSwitchAlarm",
+  alarmName: "my-custom-alarm",
+  metric: {
+    namespace: "AWS/Lambda",
+    metricName: "Invocations",
+    stat: "Sum",
+    period: 60,
+  },
+  threshold: 2000,
+  actions: ["DdosAlertTopic"],
+});
+`
+    );
+  });
+
+  afterAll(async () => {
+    await fs.rm(BROWNFIELD_TEST_DIR, { recursive: true, force: true });
+  });
+
+  it("extracts all logicalId and custom physical name properties into IR", async () => {
+    const compiler = new Compiler(BROWNFIELD_TEST_DIR);
+    const graph = await compiler.parse();
+
+    const table = graph.tables.find((t) => t.name === "ehr");
+    expect(table?.logicalId).toBe("EhrTable");
+    expect(table?.tableName).toBe("${AWS::StackName}-custom-ehr");
+
+    const bucket = graph.buckets.find((b) => b.name === "documents");
+    expect(bucket?.logicalId).toBe("DocumentsBucket");
+    expect(bucket?.bucketName).toBe("my-custom-documents-bucket");
+
+    const queue = graph.queues.find((q) => q.name === "annotations");
+    expect(queue?.logicalId).toBe("EhrAnnotationQueue");
+    expect(queue?.queueName).toBe("my-custom-queue");
+    expect(queue?.deadLetterQueue?.logicalId).toBe("EhrAnnotationDLQ");
+    expect(queue?.deadLetterQueue?.queueName).toBe("my-custom-dlq");
+
+    const topic = graph.topics?.find((t) => t.name === "ddos-alerts");
+    expect(topic?.logicalId).toBe("DdosAlertTopic");
+    expect(topic?.topicName).toBe("my-custom-topic");
+
+    const stream = graph.deliveryStreams?.find((d) => d.name === "omop-stream");
+    expect(stream?.logicalId).toBe("EhrOmopDeliveryStream");
+    expect(stream?.streamName).toBe("my-custom-stream");
+
+    const apiRoute = graph.apis.find((a) => a.id === "backend");
+    expect(apiRoute?.logicalId).toBe("EhrBackendFunction");
+    expect(apiRoute?.functionName).toBe("my-custom-backend-fn");
+
+    const consumer = graph.consumers.find((c) => c.id === "annotationWorker");
+    expect(consumer?.logicalId).toBe("EhrAnnotationWorkerFunction");
+    expect(consumer?.functionName).toBe("my-custom-worker-fn");
+
+    const tableStream = graph.tableStreams?.find((s) => s.id === "omopPipeline");
+    expect(tableStream?.logicalId).toBe("EhrOmopPipelineFunction");
+    expect(tableStream?.functionName).toBe("my-custom-pipeline-fn");
+
+    const subscriber = graph.topicSubscribers?.find((s) => s.id === "ddosSubscriber");
+    expect(subscriber?.logicalId).toBe("DdosAlertSubscriber");
+    expect(subscriber?.functionName).toBe("my-custom-subscriber-fn");
+
+    const alarm = graph.alarms?.find((a) => a.name === "ddos-kill-switch");
+    expect(alarm?.logicalId).toBe("DdosKillSwitchAlarm");
+    expect(alarm?.alarmName).toBe("my-custom-alarm");
+  });
+
+  it("synthesizes exact brownfield Logical IDs and physical names with resolved references", async () => {
+    const compiler = new Compiler(BROWNFIELD_TEST_DIR);
+    const buildOutput = await compiler.build();
+    const template = JSON.parse(await fs.readFile(buildOutput.templatePath, "utf-8"));
+    const res = template.Resources;
+
+    // 1. Table
+    expect(res["EhrTable"]).toBeDefined();
+    expect(res["Tableehr"]).toBeUndefined();
+    expect(res["EhrTable"].Properties.TableName).toEqual({ "Fn::Sub": "${AWS::StackName}-custom-ehr" });
+
+    // 2. Bucket
+    expect(res["DocumentsBucket"]).toBeDefined();
+    expect(res["Bucketdocuments"]).toBeUndefined();
+    expect(res["DocumentsBucket"].Properties.BucketName).toBe("my-custom-documents-bucket");
+
+    // 3. Queue & DLQ
+    expect(res["EhrAnnotationQueue"]).toBeDefined();
+    expect(res["Queueannotations"]).toBeUndefined();
+    expect(res["EhrAnnotationQueue"].Properties.QueueName).toBe("my-custom-queue");
+    expect(res["EhrAnnotationQueue"].Properties.RedrivePolicy.deadLetterTargetArn).toEqual({
+      "Fn::GetAtt": ["EhrAnnotationDLQ", "Arn"],
+    });
+
+    expect(res["EhrAnnotationDLQ"]).toBeDefined();
+    expect(res["QueueannotationsDLQ"]).toBeUndefined();
+    expect(res["EhrAnnotationDLQ"].Properties.QueueName).toBe("my-custom-dlq");
+
+    // 4. Topic
+    expect(res["DdosAlertTopic"]).toBeDefined();
+    expect(res["Topicddosalerts"]).toBeUndefined();
+    expect(res["DdosAlertTopic"].Properties.TopicName).toBe("my-custom-topic");
+
+    // 5. DeliveryStream
+    expect(res["EhrOmopDeliveryStream"]).toBeDefined();
+    expect(res["DeliveryStreamomopstream"]).toBeUndefined();
+    expect(res["EhrOmopDeliveryStream"].Properties.DeliveryStreamName).toBe("my-custom-stream");
+    expect(res["EhrOmopDeliveryStream"].Properties.ExtendedS3DestinationConfiguration.BucketARN).toEqual({
+      "Fn::GetAtt": ["DocumentsBucket", "Arn"],
+    });
+    expect(res["FirehoseRoleEhrOmopDeliveryStream"]).toBeDefined();
+
+    // 6. Backend API Function & FunctionUrl
+    expect(res["EhrBackendFunction"]).toBeDefined();
+    expect(res["Functionbackend"]).toBeUndefined();
+    expect(res["EhrBackendFunction"].Properties.FunctionName).toBe("my-custom-backend-fn");
+    expect(res["EhrBackendFunction"].Properties.Environment.Variables.SYNCPLOY_TABLE_EHR).toEqual({
+      Ref: "EhrTable",
+    });
+    expect(res["EhrBackendFunction"].Properties.Environment.Variables.SYNCPLOY_BUCKET_DOCUMENTS).toEqual({
+      Ref: "DocumentsBucket",
+    });
+    expect(res["EhrBackendFunctionUrl"]).toBeDefined();
+
+    // 7. SQS Consumer Function & Mapping
+    expect(res["EhrAnnotationWorkerFunction"]).toBeDefined();
+    expect(res["FunctionannotationWorker"]).toBeUndefined();
+    expect(res["EhrAnnotationWorkerFunction"].Properties.FunctionName).toBe("my-custom-worker-fn");
+    expect(res["EventSourceMappingEhrAnnotationWorkerFunction"].Properties.EventSourceArn).toEqual({
+      "Fn::GetAtt": ["EhrAnnotationQueue", "Arn"],
+    });
+    expect(res["EventSourceMappingEhrAnnotationWorkerFunction"].Properties.FunctionName).toEqual({
+      Ref: "EhrAnnotationWorkerFunction",
+    });
+
+    // 8. DynamoDB Stream Function & Mapping
+    expect(res["EhrOmopPipelineFunction"]).toBeDefined();
+    expect(res["FunctionomopPipeline"]).toBeUndefined();
+    expect(res["EhrOmopPipelineFunction"].Properties.FunctionName).toBe("my-custom-pipeline-fn");
+    expect(res["EventSourceMappingEhrOmopPipelineFunction"].Properties.EventSourceArn).toEqual({
+      "Fn::GetAtt": ["EhrTable", "StreamArn"],
+    });
+    expect(res["EventSourceMappingEhrOmopPipelineFunction"].Properties.FunctionName).toEqual({
+      Ref: "EhrOmopPipelineFunction",
+    });
+
+    // 9. Topic Subscriber Function & Subscription
+    expect(res["DdosAlertSubscriber"]).toBeDefined();
+    expect(res["FunctionddosSubscriber"]).toBeUndefined();
+    expect(res["DdosAlertSubscriber"].Properties.FunctionName).toBe("my-custom-subscriber-fn");
+    expect(res["SubscriptionDdosAlertSubscriber"].Properties.TopicArn).toEqual({
+      Ref: "DdosAlertTopic",
+    });
+    expect(res["SubscriptionDdosAlertSubscriber"].Properties.Endpoint).toEqual({
+      "Fn::GetAtt": ["DdosAlertSubscriber", "Arn"],
+    });
+
+    // 10. CloudWatch Alarm
+    expect(res["DdosKillSwitchAlarm"]).toBeDefined();
+    expect(res["Alarmddoskillswitch"]).toBeUndefined();
+    expect(res["DdosKillSwitchAlarm"].Properties.AlarmName).toBe("my-custom-alarm");
+    expect(res["DdosKillSwitchAlarm"].Properties.AlarmActions).toEqual([{ Ref: "DdosAlertTopic" }]);
+  });
+});

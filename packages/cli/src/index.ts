@@ -101,4 +101,34 @@ program
     }
   });
 
+program
+  .command("diff")
+  .description("Compare synthesized infrastructure against an existing template or deployed AWS stack")
+  .argument("[dir]", "Project root directory", ".")
+  .option("-a, --against <file>", "Existing template file to diff against (e.g. template.yaml, template.json)")
+  .option("-s, --stack-name <name>", "AWS CloudFormation stack name for pre-flight live ChangeSet diff")
+  .option("--region <region>", "AWS region for live ChangeSet diff")
+  .action(async (dir, opts) => {
+    const projectRoot = path.resolve(process.cwd(), dir);
+    const envPath = path.join(projectRoot, ".env");
+    if (fs.existsSync(envPath) && typeof (process as any).loadEnvFile === "function") {
+      try {
+        (process as any).loadEnvFile(envPath);
+      } catch {}
+    }
+
+    try {
+      const { runDiff } = await import("./diff");
+      await runDiff({
+        projectRoot,
+        against: opts.against ? path.resolve(process.cwd(), opts.against) : undefined,
+        stackName: opts.stackName,
+        region: opts.region,
+      });
+    } catch (err: any) {
+      console.error(pc.red(`\n✖ Diff failed: ${err.message}`));
+      process.exit(1);
+    }
+  });
+
 program.parse(process.argv);
