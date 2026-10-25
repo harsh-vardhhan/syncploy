@@ -1,0 +1,19 @@
+{
+  "name": "syncploy",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "syncploy": "./src/index.ts"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@syncploy/compiler": "workspace:*",
+    "@syncploy/sdk": "workspace:*",
+    "commander": "^13.1.0",
+    "picocolors": "^1.1.1"
+  }
+}

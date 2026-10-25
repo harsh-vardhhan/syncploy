@@ -1,0 +1,19 @@
+{
+  "name": "@syncploy/compiler",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@syncploy/sdk": "workspace:*",
+    "ts-morph": "^25.0.1",
+    "esbuild": "^0.25.0",
+    "zod": "^3.24.2"
+  }
+}
