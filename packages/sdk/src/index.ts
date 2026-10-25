@@ -2,6 +2,26 @@
 // Syncploy SDK Core Primitives
 // ==========================================
 
+export class HttpError extends Error {
+  constructor(public readonly statusCode: number, message: string) {
+    super(message);
+    this.name = "HttpError";
+  }
+}
+
+export const notFound = (message = "Not Found") => new HttpError(404, message);
+export const badRequest = (message = "Bad Request") => new HttpError(400, message);
+export const unauthorized = (message = "Unauthorized") => new HttpError(401, message);
+export const forbidden = (message = "Forbidden") => new HttpError(403, message);
+export const internalError = (message = "Internal Server Error") => new HttpError(500, message);
+
+export interface RequestContext {
+  headers: Record<string, string | undefined>;
+  pathParameters: Record<string, string | undefined>;
+  queryStringParameters: Record<string, string | undefined>;
+  rawEvent?: unknown;
+}
+
 export interface ApiOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
   path: string;
@@ -9,7 +29,8 @@ export interface ApiOptions {
 }
 
 export type ApiHandler<TReq = any, TRes = any> = (
-  req: TReq
+  req: TReq,
+  ctx: RequestContext
 ) => Promise<TRes> | TRes;
 
 export interface ApiEndpoint<TReq = any, TRes = any> {
@@ -24,7 +45,11 @@ export function api<TReq = any, TRes = any>(
 ): ApiEndpoint<TReq, TRes> {
   return {
     _kind: "api",
-    options,
+    options: {
+      method: options.method ?? "POST",
+      path: options.path,
+      auth: options.auth,
+    },
     handler,
   };
 }

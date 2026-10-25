@@ -8,6 +8,13 @@
         "typescript": "^5.7.3",
       },
     },
+    "examples/basic-app": {
+      "name": "basic-app",
+      "version": "0.1.0",
+      "dependencies": {
+        "@syncploy/sdk": "workspace:*",
+      },
+    },
     "packages/cli": {
       "name": "syncploy",
       "version": "0.1.0",
@@ -172,6 +179,8 @@
     "@ts-morph/common": ["@ts-morph/common@0.26.1", "", { "dependencies": { "fast-glob": "^3.3.2", "minimatch": "^9.0.4", "path-browserify": "^1.0.1" } }, "sha512-Sn28TGl/4cFpcM+jwsH1wLncYq3FtN/BIpem+HOygfBWPT5pAeS5dB4VFVzV8FbnOKHpDLZmvAl4AjPEev5idA=="],
 
     "balanced-match": ["balanced-match@1.0.2", "", {}, "sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw=="],
+
+    "basic-app": ["basic-app@workspace:examples/basic-app"],
 
     "bowser": ["bowser@2.14.1", "", {}, "sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg=="],
 
