@@ -10,9 +10,11 @@ import {
   type ScanCommandInput,
 } from "@aws-sdk/lib-dynamodb";
 
+export type KeyDefinition = string | { name: string; type?: "string" | "number" | "binary" };
+
 export interface TableIndexDefinition {
-  partitionKey: string;
-  sortKey?: string;
+  partitionKey: KeyDefinition;
+  sortKey?: KeyDefinition;
   projection?: "ALL" | "KEYS_ONLY";
 }
 
@@ -27,9 +29,14 @@ export interface TableOptions {
 
 export class Table {
   readonly _kind = "table" as const;
+  readonly name: string;
+  readonly options: TableOptions;
   private docClient?: DynamoDBDocumentClient;
 
-  constructor(public readonly name: string, public readonly options: TableOptions) {}
+  constructor(name: string, options: TableOptions) {
+    this.name = name;
+    this.options = options;
+  }
 
   public get tableName(): string {
     const envKey = `SYNCPLOY_TABLE_${this.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;

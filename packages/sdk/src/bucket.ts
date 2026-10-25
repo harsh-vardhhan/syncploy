@@ -16,9 +16,14 @@ export interface BucketOptions {
 
 export class Bucket {
   readonly _kind = "bucket" as const;
+  readonly name: string;
+  readonly options: BucketOptions;
   private s3Client?: S3Client;
 
-  constructor(public readonly name: string, public readonly options: BucketOptions = {}) {}
+  constructor(name: string, options: BucketOptions = {}) {
+    this.name = name;
+    this.options = options;
+  }
 
   public get bucketName(): string {
     const envKey = `SYNCPLOY_BUCKET_${this.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
@@ -107,9 +112,9 @@ export class Bucket {
   }
 
   on(
-    event: "objectCreated" | "objectRemoved",
-    target: Queue,
-    options?: { prefix?: string; suffix?: string }
+    _event: "objectCreated" | "objectRemoved",
+    _target: Queue,
+    _options?: { prefix?: string; suffix?: string }
   ): void {
     // Compile-time event binding marker
   }

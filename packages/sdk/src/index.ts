@@ -7,9 +7,11 @@ export * from "./bucket";
 export * from "./queue";
 
 export class HttpError extends Error {
-  constructor(public readonly statusCode: number, message: string) {
+  readonly statusCode: number;
+  constructor(statusCode: number, message: string) {
     super(message);
     this.name = "HttpError";
+    this.statusCode = statusCode;
   }
 }
 
@@ -23,6 +25,10 @@ export interface RequestContext {
   headers: Record<string, string | undefined>;
   pathParameters: Record<string, string | undefined>;
   queryStringParameters: Record<string, string | undefined>;
+  rawPath?: string;
+  rawQueryString?: string;
+  method?: string;
+  request: Request;
   rawEvent?: unknown;
 }
 
@@ -91,7 +97,10 @@ export function api<TReq = any, TRes = any>(
 // Secret (AWS Secrets Manager / SSM)
 export class Secret {
   readonly _kind = "secret" as const;
-  constructor(public readonly name: string) {}
+  readonly name: string;
+  constructor(name: string) {
+    this.name = name;
+  }
 
   get(): string {
     return process.env[this.name] || "";

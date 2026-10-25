@@ -37,9 +37,14 @@ export interface QueueConsumer<T = any> {
 
 export class Queue {
   readonly _kind = "queue" as const;
+  readonly name: string;
+  readonly options: QueueOptions;
   private sqsClient?: SQSClient;
 
-  constructor(public readonly name: string, public readonly options: QueueOptions = {}) {}
+  constructor(name: string, options: QueueOptions = {}) {
+    this.name = name;
+    this.options = options;
+  }
 
   public get queueUrl(): string {
     const envKey = `SYNCPLOY_QUEUE_${this.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;

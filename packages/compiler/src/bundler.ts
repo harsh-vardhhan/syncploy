@@ -86,7 +86,6 @@ export class Bundler {
       minify: options.minify ?? false,
       sourcemap: true,
       outfile: outFile,
-      external: ["@aws-sdk/*"],
       nodePaths,
       alias: aliases,
       banner: {
