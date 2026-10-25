@@ -38,6 +38,8 @@ export const annotationQueue = new Queue("annotations", {
   },
 });
 
+documentsBucket.on("objectCreated", annotationQueue, { prefix: "documents/" });
+
 export const getUser = api(
   {
     method: "GET",
@@ -133,6 +135,12 @@ export const processDoc = annotationQueue.consumer(
     expect(consumer.batchSize).toBe(5);
     expect(consumer.timeout).toBe(120);
     expect(consumer.concurrency).toBe(2);
+
+    // Verify Event Pipeline Binding
+    expect(graph.bindings.length).toBe(1);
+    expect(graph.bindings[0]?.sourceBucketName).toBe("documents");
+    expect(graph.bindings[0]?.targetQueueName).toBe("annotations");
+    expect(graph.bindings[0]?.prefix).toBe("documents/");
   });
 
   it("synthesizes accurate CloudFormation properties for both API Gateway and Lambda Function URLs", async () => {
@@ -203,5 +211,15 @@ export const processDoc = annotationQueue.consumer(
     const mappingRes = res["EventSourceMappingprocessDoc"];
     expect(mappingRes.Properties.BatchSize).toBe(5);
     expect(mappingRes.Properties.FunctionResponseTypes).toEqual(["ReportBatchItemFailures"]);
+
+    // 7. EventBridge Rule & SQS Queue Policy
+    const ruleRes = res["EventRuledocumentsToannotations"];
+    expect(ruleRes).toBeDefined();
+    expect(ruleRes.Type).toBe("AWS::Events::Rule");
+    expect(ruleRes.Properties.EventPattern.detail.object.key[0].prefix).toBe("documents/");
+
+    const policyRes = res["QueuePolicyannotationsEventBridge"];
+    expect(policyRes).toBeDefined();
+    expect(policyRes.Type).toBe("AWS::SQS::QueuePolicy");
   });
 });

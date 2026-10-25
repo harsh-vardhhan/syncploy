@@ -33,9 +33,11 @@ export class Parser {
     const buckets: BucketIR[] = [];
     const queues: QueueIR[] = [];
     const consumers: QueueConsumerIR[] = [];
+    const bindings: EventBindingIR[] = [];
 
-    // Map to track variable names to queue names
+    // Maps to track variable names to resource names
     const varToQueueName: Record<string, string> = {};
+    const varToBucketName: Record<string, string> = {};
 
     for (const sourceFile of this.project.getSourceFiles()) {
       for (const decl of sourceFile.getVariableDeclarations()) {
@@ -323,6 +325,7 @@ export class Parser {
               );
             }
             const bucketName = args[0].getLiteralValue();
+            varToBucketName[varName] = bucketName;
 
             let versioned = false;
             let eventBridge = false;
@@ -396,6 +399,61 @@ export class Parser {
           }
         }
       }
+
+      // Scan for event bindings: bucketVar.on("objectCreated", queueVar, { prefix })
+      for (const statement of sourceFile.getStatements()) {
+        if (statement.isKind(SyntaxKind.ExpressionStatement)) {
+          const expr = statement.getExpression();
+          if (expr.isKind(SyntaxKind.CallExpression)) {
+            const callee = expr.getExpression();
+            if (
+              callee.isKind(SyntaxKind.PropertyAccessExpression) &&
+              callee.getName() === "on"
+            ) {
+              const bucketVar = callee.getExpression().getText();
+              const args = expr.getArguments();
+              if (args.length >= 2) {
+                const eventArg = args[0]
+                  ?.getText()
+                  .replace(/['"]/g, "") as "objectCreated" | "objectRemoved";
+                const targetQueueVar = args[1]?.getText() || "";
+                let prefix: string | undefined;
+                let suffix: string | undefined;
+
+                if (args.length > 2 && args[2]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                  const opts = args[2] as ObjectLiteralExpression;
+                  const pProp = opts.getProperty("prefix");
+                  if (pProp && pProp.isKind(SyntaxKind.PropertyAssignment)) {
+                    prefix = pProp.getInitializer()?.getText().replace(/['"]/g, "");
+                  }
+                  const sProp = opts.getProperty("suffix");
+                  if (sProp && sProp.isKind(SyntaxKind.PropertyAssignment)) {
+                    suffix = sProp.getInitializer()?.getText().replace(/['"]/g, "");
+                  }
+                }
+
+                const sourceBucketName = varToBucketName[bucketVar] || bucketVar;
+                const targetQueueName = varToQueueName[targetQueueVar] || targetQueueVar;
+
+                // Ensure the source bucket has eventBridge enabled
+                const b = buckets.find((b) => b.name === sourceBucketName);
+                if (b) {
+                  b.eventBridge = true;
+                }
+
+                bindings.push({
+                  id: `${bucketVar}_${targetQueueVar}_${eventArg}`,
+                  sourceBucketName,
+                  event: eventArg,
+                  targetQueueName,
+                  prefix,
+                  suffix,
+                });
+              }
+            }
+          }
+        }
+      }
     }
 
     return {
@@ -404,6 +462,7 @@ export class Parser {
       buckets,
       queues,
       consumers,
+      bindings,
     };
   }
 

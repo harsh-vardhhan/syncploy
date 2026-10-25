@@ -467,6 +467,66 @@ export class Synthesizer {
       };
     }
 
+    // 8. EventBridge Rules & SQS Queue Policies (e.g. S3 -> EventBridge -> SQS)
+    for (const binding of graph.bindings) {
+      const cleanBucket = this.sanitizeName(binding.sourceBucketName);
+      const cleanQueue = this.sanitizeName(binding.targetQueueName);
+      const ruleKey = `EventRule${cleanBucket}To${cleanQueue}`;
+      const policyKey = `QueuePolicy${cleanQueue}EventBridge`;
+
+      const detailPattern: any = {
+        bucket: { name: [{ Ref: `Bucket${cleanBucket}` }] },
+      };
+
+      if (binding.prefix) {
+        detailPattern["object"] = { key: [{ prefix: binding.prefix }] };
+      }
+
+      resources[ruleKey] = {
+        Type: "AWS::Events::Rule",
+        Properties: {
+          Description: `Routes S3 events from ${binding.sourceBucketName} to ${binding.targetQueueName}`,
+          State: "ENABLED",
+          EventPattern: {
+            source: ["aws.s3"],
+            "detail-type": [
+              binding.event === "objectCreated" ? "Object Created" : "Object Removed",
+            ],
+            detail: detailPattern,
+          },
+          Targets: [
+            {
+              Arn: { "Fn::GetAtt": [`Queue${cleanQueue}`, "Arn"] },
+              Id: `${cleanQueue}Target`,
+            },
+          ],
+        },
+      };
+
+      resources[policyKey] = {
+        Type: "AWS::SQS::QueuePolicy",
+        Properties: {
+          Queues: [{ Ref: `Queue${cleanQueue}` }],
+          PolicyDocument: {
+            Version: "2012-10-17",
+            Statement: [
+              {
+                Effect: "Allow",
+                Principal: { Service: "events.amazonaws.com" },
+                Action: "sqs:SendMessage",
+                Resource: { "Fn::GetAtt": [`Queue${cleanQueue}`, "Arn"] },
+                Condition: {
+                  ArnEquals: {
+                    "aws:SourceArn": { "Fn::GetAtt": [ruleKey, "Arn"] },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      };
+    }
+
     const template = {
       AWSTemplateFormatVersion: "2010-09-09",
       Description: "Synthesized by Syncploy",

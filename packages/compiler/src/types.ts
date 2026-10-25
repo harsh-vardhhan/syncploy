@@ -74,12 +74,22 @@ export interface QueueConsumerIR {
   memory?: number;
 }
 
+export interface EventBindingIR {
+  id: string;
+  sourceBucketName: string;
+  event: "objectCreated" | "objectRemoved";
+  targetQueueName: string;
+  prefix?: string;
+  suffix?: string;
+}
+
 export interface ResourceGraph {
   apis: ApiRouteIR[];
   tables: TableIR[];
   buckets: BucketIR[];
   queues: QueueIR[];
   consumers: QueueConsumerIR[];
+  bindings: EventBindingIR[];
 }
 
 export interface BuildOutput {
