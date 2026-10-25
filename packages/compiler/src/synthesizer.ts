@@ -347,8 +347,15 @@ export class Synthesizer {
         };
       }
 
+      const tableDeletionPolicy =
+        table.deletionPolicy || (table.retain === false ? "Delete" : "Retain");
+      const tableUpdateReplacePolicy =
+        table.deletionPolicy || (table.retain === false ? "Delete" : "Retain");
+
       resources[resourceKey] = {
         Type: "AWS::DynamoDB::Table",
+        DeletionPolicy: tableDeletionPolicy,
+        UpdateReplacePolicy: tableUpdateReplacePolicy,
         Properties: tableProps,
       };
     }
@@ -411,8 +418,15 @@ export class Synthesizer {
         bucketProps["ObjectLockConfiguration"] = config;
       }
 
+      const bucketDeletionPolicy =
+        bucket.deletionPolicy || (bucket.retain === false ? "Delete" : "Retain");
+      const bucketUpdateReplacePolicy =
+        bucket.deletionPolicy || (bucket.retain === false ? "Delete" : "Retain");
+
       resources[resourceKey] = {
         Type: "AWS::S3::Bucket",
+        DeletionPolicy: bucketDeletionPolicy,
+        UpdateReplacePolicy: bucketUpdateReplacePolicy,
         Properties: bucketProps,
       };
     }

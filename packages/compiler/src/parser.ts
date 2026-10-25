@@ -324,11 +324,15 @@ export class Parser {
             const indexes: Record<string, TableIndexIR> = {};
             let logicalId: string | undefined;
             let customTableName: string | undefined;
+            let retain: boolean | undefined;
+            let deletionPolicy: "Retain" | "Delete" | "Snapshot" | undefined;
 
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
               const optionsObj = args[1] as ObjectLiteralExpression;
               logicalId = this.extractString(optionsObj.getProperty("logicalId"));
               customTableName = this.extractString(optionsObj.getProperty("tableName"));
+              retain = this.extractBoolean(optionsObj.getProperty("retain"));
+              deletionPolicy = this.extractString(optionsObj.getProperty("deletionPolicy")) as any;
 
               // Partition Key
               const pkProp = optionsObj.getProperty("partitionKey");
@@ -478,6 +482,8 @@ export class Parser {
               sourceFile: sourceFile.getFilePath(),
               logicalId,
               tableName: customTableName,
+              retain,
+              deletionPolicy,
             });
           } else if (className === "Bucket") {
             if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
@@ -495,11 +501,15 @@ export class Parser {
             let objectLock: BucketIR["objectLock"];
             let logicalId: string | undefined;
             let customBucketName: string | undefined;
+            let retain: boolean | undefined;
+            let deletionPolicy: "Retain" | "Delete" | "Snapshot" | undefined;
 
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
               const opts = args[1] as ObjectLiteralExpression;
               logicalId = this.extractString(opts.getProperty("logicalId"));
               customBucketName = this.extractString(opts.getProperty("bucketName"));
+              retain = this.extractBoolean(opts.getProperty("retain"));
+              deletionPolicy = this.extractString(opts.getProperty("deletionPolicy")) as any;
               const vProp = opts.getProperty("versioned");
               if (vProp && vProp.isKind(SyntaxKind.PropertyAssignment)) {
                 versioned = vProp.getInitializer()?.getText() === "true";
@@ -541,6 +551,8 @@ export class Parser {
               sourceFile: sourceFile.getFilePath(),
               logicalId,
               bucketName: customBucketName,
+              retain,
+              deletionPolicy,
             });
           } else if (className === "Queue") {
             if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
@@ -1027,6 +1039,18 @@ export class Parser {
       return process.env[varName] || fallback;
     }
     return rawText.replace(/['"]/g, "");
+  }
+
+  private extractBoolean(node: Node | undefined): boolean | undefined {
+    if (!node) return undefined;
+    let target = node;
+    if (node.isKind(SyntaxKind.PropertyAssignment)) {
+      target = (node as any).getInitializer() || node;
+    }
+    const text = target.getText().trim();
+    if (text === "true") return true;
+    if (text === "false") return false;
+    return undefined;
   }
 
   private extractStringArray(node: Node | undefined): string[] | undefined {

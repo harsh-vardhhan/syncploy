@@ -63,6 +63,8 @@ export interface TableIR {
   sourceFile: string;
   logicalId?: string | undefined;
   tableName?: string | undefined;
+  retain?: boolean | undefined;
+  deletionPolicy?: "Retain" | "Delete" | "Snapshot" | undefined;
 }
 
 export interface BucketIR {
@@ -83,6 +85,8 @@ export interface BucketIR {
   sourceFile: string;
   logicalId?: string | undefined;
   bucketName?: string | undefined;
+  retain?: boolean | undefined;
+  deletionPolicy?: "Retain" | "Delete" | "Snapshot" | undefined;
 }
 
 export interface QueueIR {

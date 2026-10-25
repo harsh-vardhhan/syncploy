@@ -22,6 +22,8 @@ export interface BucketOptions {
   accountScoped?: boolean;
   logicalId?: string;
   bucketName?: string;
+  retain?: boolean;
+  deletionPolicy?: "Retain" | "Delete" | "Snapshot";
 }
 
 export class Bucket {

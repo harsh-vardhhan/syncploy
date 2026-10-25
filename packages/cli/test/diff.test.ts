@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { diffTemplates, loadTemplate } from "../src/diff";
+import { diffTemplates, loadTemplate, findStatefulReplacements } from "../src/diff";
 
 describe("@syncploy/cli - diff engine", () => {
   it("detects new resources (+ [CREATE])", () => {
@@ -134,5 +134,36 @@ describe("@syncploy/cli - diff engine", () => {
     expect(diffs).toHaveLength(1);
     const diff = diffs[0]!;
     expect(diff.action).toBe("IN_SYNC");
+  });
+
+  it("findStatefulReplacements identifies dangerous data-loss operations on stateful resources", () => {
+    const diffs = [
+      {
+        logicalId: "EhrTable",
+        type: "AWS::DynamoDB::Table",
+        action: "REPLACE" as const,
+        replacement: "True" as const,
+      },
+      {
+        logicalId: "DocumentsBucket",
+        type: "AWS::S3::Bucket",
+        action: "REPLACE" as const,
+        replacement: "True" as const,
+      },
+      {
+        logicalId: "BackendFunction",
+        type: "AWS::Lambda::Function",
+        action: "UPDATE" as const,
+      },
+      {
+        logicalId: "TrafficAlarm",
+        type: "AWS::CloudWatch::Alarm",
+        action: "REPLACE" as const,
+      },
+    ];
+
+    const stateful = findStatefulReplacements(diffs);
+    expect(stateful).toHaveLength(2);
+    expect(stateful.map((s) => s.logicalId)).toEqual(["EhrTable", "DocumentsBucket"]);
   });
 });

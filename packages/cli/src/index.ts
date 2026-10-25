@@ -108,6 +108,8 @@ program
   .option("-a, --against <file>", "Existing template file to diff against (e.g. template.yaml, template.json)")
   .option("-s, --stack-name <name>", "AWS CloudFormation stack name for pre-flight live ChangeSet diff")
   .option("--region <region>", "AWS region for live ChangeSet diff")
+  .option("--check-replacement", "Block and exit with error if any stateful resource would be replaced")
+  .option("--allow-stateful-replacement", "Bypass stateful resource replacement block")
   .action(async (dir, opts) => {
     const projectRoot = path.resolve(process.cwd(), dir);
     const envPath = path.join(projectRoot, ".env");
@@ -124,9 +126,88 @@ program
         against: opts.against ? path.resolve(process.cwd(), opts.against) : undefined,
         stackName: opts.stackName,
         region: opts.region,
+        checkReplacement: !!opts.checkReplacement,
+        allowStatefulReplacement: !!opts.allowStatefulReplacement,
       });
     } catch (err: any) {
       console.error(pc.red(`\n✖ Diff failed: ${err.message}`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command("adopt")
+  .description("Automatically adopt an existing SAM or CloudFormation template into Syncploy TypeScript code")
+  .argument("<template>", "Path to SAM or CloudFormation template (e.g. template.yaml, template.json)")
+  .option("-c, --config <samconfig>", "Path to samconfig.toml to extract parameter overrides")
+  .option("-o, --out <file>", "Output TypeScript file path (e.g. src/infra.ts)")
+  .option("-p, --params <params...>", "Inline parameter overrides in Key=Value format")
+  .action(async (templatePath, opts) => {
+    try {
+      const { adoptTemplate } = await import("./adopt");
+      const inlineParams: Record<string, string> = {};
+      if (opts.params) {
+        for (const item of opts.params) {
+          const [k, v] = item.split("=");
+          if (k && v !== undefined) inlineParams[k] = v;
+        }
+      }
+
+      console.log(pc.cyan(`⚡ Adopting infrastructure from ${pc.bold(templatePath)}...`));
+      const result = adoptTemplate({
+        templatePath,
+        config: opts.config,
+        params: inlineParams,
+        out: opts.out,
+      });
+
+      const totalAdopted =
+        result.adoptedResources.tables.length +
+        result.adoptedResources.buckets.length +
+        result.adoptedResources.queues.length +
+        result.adoptedResources.topics.length +
+        result.adoptedResources.deliveryStreams.length +
+        result.adoptedResources.alarms.length +
+        result.adoptedResources.functions.length;
+
+      console.log(pc.green(pc.bold(`\n✔ Successfully adopted ${totalAdopted} resources:`)));
+      if (result.adoptedResources.tables.length > 0) {
+        console.log(`  ${pc.green("•")} ${pc.bold("Tables:")}          ${result.adoptedResources.tables.join(", ")}`);
+      }
+      if (result.adoptedResources.buckets.length > 0) {
+        console.log(`  ${pc.green("•")} ${pc.bold("Buckets:")}         ${result.adoptedResources.buckets.join(", ")}`);
+      }
+      if (result.adoptedResources.queues.length > 0) {
+        console.log(`  ${pc.green("•")} ${pc.bold("Queues:")}          ${result.adoptedResources.queues.join(", ")}`);
+      }
+      if (result.adoptedResources.topics.length > 0) {
+        console.log(`  ${pc.green("•")} ${pc.bold("Topics:")}          ${result.adoptedResources.topics.join(", ")}`);
+      }
+      if (result.adoptedResources.deliveryStreams.length > 0) {
+        console.log(`  ${pc.green("•")} ${pc.bold("DeliveryStreams:")}  ${result.adoptedResources.deliveryStreams.join(", ")}`);
+      }
+      if (result.adoptedResources.alarms.length > 0) {
+        console.log(`  ${pc.green("•")} ${pc.bold("Alarms:")}          ${result.adoptedResources.alarms.join(", ")}`);
+      }
+      if (result.adoptedResources.functions.length > 0) {
+        console.log(`  ${pc.green("•")} ${pc.bold("Functions:")}       ${result.adoptedResources.functions.join(", ")}`);
+      }
+
+      if (result.unmodeledResources.length > 0) {
+        console.log(pc.yellow(pc.bold(`\n⚠ Unmodeled CloudFormation resources:`)));
+        for (const unmodeled of result.unmodeledResources) {
+          console.log(`  ${pc.yellow("•")} ${unmodeled}`);
+        }
+      }
+
+      if (opts.out) {
+        console.log(pc.cyan(`\n📁 Generated TypeScript code written to: ${pc.bold(opts.out)}`));
+      } else {
+        console.log(pc.dim("\nGenerated TypeScript Code:\n"));
+        console.log(result.code);
+      }
+    } catch (err: any) {
+      console.error(pc.red(`\n✖ Adoption failed: ${err.message}`));
       process.exit(1);
     }
   });

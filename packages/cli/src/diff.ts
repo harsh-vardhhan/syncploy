@@ -15,6 +15,28 @@ export interface DiffOptions {
   against?: string | undefined;
   stackName?: string | undefined;
   region?: string | undefined;
+  checkReplacement?: boolean | undefined;
+  allowStatefulReplacement?: boolean | undefined;
+}
+
+export const STATEFUL_RESOURCE_TYPES = new Set([
+  "AWS::DynamoDB::Table",
+  "AWS::DynamoDB::GlobalTable",
+  "AWS::S3::Bucket",
+  "AWS::RDS::DBInstance",
+  "AWS::RDS::DBCluster",
+  "AWS::DocDB::DBCluster",
+  "AWS::OpenSearchService::Domain",
+  "AWS::Elasticsearch::Domain",
+  "AWS::Neptune::DBCluster",
+]);
+
+export function findStatefulReplacements(diffs: ResourceDiff[]): ResourceDiff[] {
+  return diffs.filter(
+    (d) =>
+      (d.action === "REPLACE" || d.replacement === "True") &&
+      STATEFUL_RESOURCE_TYPES.has(d.type)
+  );
 }
 
 export interface ResourceDiff {
@@ -351,6 +373,31 @@ export async function runDiff(options: DiffOptions): Promise<ResourceDiff[]> {
   const buildOutput = await compiler.build();
   const synthesizedTemplate = JSON.parse(fs.readFileSync(buildOutput.templatePath, "utf-8"));
 
+  const checkGatekeeper = (diffs: ResourceDiff[]) => {
+    if (options.checkReplacement) {
+      const dangerousReplacements = findStatefulReplacements(diffs);
+      if (dangerousReplacements.length > 0 && !options.allowStatefulReplacement) {
+        const resourceNames = dangerousReplacements
+          .map((r) => `${r.logicalId} (${r.type})`)
+          .join(", ");
+        console.error(
+          pc.red(
+            pc.bold(
+              `\n❌ DEPLOYMENT BLOCKED: Stateful resource replacement detected on: ${resourceNames}`
+            )
+          )
+        );
+        console.error(
+          pc.red(
+            `   Replacing stateful resources will cause DATA LOSS because the existing resource is destroyed.\n` +
+              `   To bypass this safety gatekeeper, pass: --allow-stateful-replacement`
+          )
+        );
+        throw new Error(`Deployment blocked: stateful resource replacement on ${resourceNames}`);
+      }
+    }
+  };
+
   if (options.stackName) {
     console.log(pc.cyan(`\n☁ Querying AWS CloudFormation ChangeSet for stack ${pc.bold(options.stackName)}...`));
     const diffs = await diffAgainstCloudFormation(
@@ -359,6 +406,7 @@ export async function runDiff(options: DiffOptions): Promise<ResourceDiff[]> {
       options.region
     );
     printDiffTable(diffs);
+    checkGatekeeper(diffs);
     return diffs;
   }
 
@@ -394,5 +442,6 @@ export async function runDiff(options: DiffOptions): Promise<ResourceDiff[]> {
   const oldTemplate = loadTemplate(againstFile);
   const diffs = diffTemplates(oldTemplate, synthesizedTemplate);
   printDiffTable(diffs);
+  checkGatekeeper(diffs);
   return diffs;
 }

@@ -58,6 +58,8 @@ export interface TableOptions {
   indexes?: Record<string, TableIndexDefinition>;
   logicalId?: string;
   tableName?: string;
+  retain?: boolean;
+  deletionPolicy?: "Retain" | "Delete" | "Snapshot";
 }
 
 export class Table {

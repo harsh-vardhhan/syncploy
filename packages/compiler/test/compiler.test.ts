@@ -1,7 +1,10 @@
-import { describe, expect, it, beforeAll, afterAll } from "bun:test";
+import { describe, expect, it, test, beforeAll, afterAll } from "bun:test";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
+import * as syncFs from "node:fs";
+import { tmpdir } from "node:os";
 import { Compiler } from "../src/index";
+import { Synthesizer } from "../src/synthesizer";
 
 const TEST_DIR = path.join(__dirname, ".tmp-test-app-configured");
 
@@ -813,5 +816,75 @@ export const killSwitchAlarm = new Alarm("ddos-kill-switch", {
     expect(res["Alarmddoskillswitch"]).toBeUndefined();
     expect(res["DdosKillSwitchAlarm"].Properties.AlarmName).toBe("my-custom-alarm");
     expect(res["DdosKillSwitchAlarm"].Properties.AlarmActions).toEqual([{ Ref: "DdosAlertTopic" }]);
+  });
+
+  test("Zero-Data-Loss Safety Rails (DeletionPolicy & UpdateReplacePolicy Retain defaults)", async () => {
+    const testDir = path.join(tmpdir(), `syncploy-retain-test-${Date.now()}`);
+    syncFs.mkdirSync(path.join(testDir, "src"), { recursive: true });
+
+    syncFs.writeFileSync(
+      path.join(testDir, "package.json"),
+      JSON.stringify({ name: "retain-test", type: "module" })
+    );
+
+    syncFs.writeFileSync(
+      path.join(testDir, "src/infra.ts"),
+      `
+import { Table, Bucket } from "@syncploy/sdk";
+
+// Default stateful resources (should automatically get Retain)
+export const defaultTable = new Table("default-tbl", {
+  partitionKey: { name: "PK", type: "string" },
+});
+
+export const defaultBucket = new Bucket("default-bkt");
+
+// Opt-out stateful resources (e.g. ephemeral test resources)
+export const ephemeralTable = new Table("ephemeral-tbl", {
+  partitionKey: { name: "id", type: "string" },
+  retain: false,
+});
+
+export const ephemeralBucket = new Bucket("ephemeral-bkt", {
+  deletionPolicy: "Delete",
+});
+`
+    );
+
+    const compiler = new Compiler(testDir);
+    const graph = await compiler.parse();
+
+    expect(graph.tables.find((t) => t.name === "default-tbl")?.retain).toBeUndefined();
+    expect(graph.tables.find((t) => t.name === "ephemeral-tbl")?.retain).toBe(false);
+    expect(graph.buckets.find((b) => b.name === "ephemeral-bkt")?.deletionPolicy).toBe("Delete");
+
+    const synthesizer = new Synthesizer(testDir);
+    const templatePath = await synthesizer.synthesize(graph, {});
+    const template = JSON.parse(syncFs.readFileSync(templatePath, "utf-8"));
+    const res = template.Resources;
+
+    // Default table: MUST have Retain
+    const tblKey = Object.keys(res).find((k) => res[k].Type === "AWS::DynamoDB::Table" && k.includes("default"));
+    expect(tblKey).toBeDefined();
+    expect(res[tblKey!].DeletionPolicy).toBe("Retain");
+    expect(res[tblKey!].UpdateReplacePolicy).toBe("Retain");
+
+    // Default bucket: MUST have Retain
+    const bktKey = Object.keys(res).find((k) => res[k].Type === "AWS::S3::Bucket" && k.includes("default"));
+    expect(bktKey).toBeDefined();
+    expect(res[bktKey!].DeletionPolicy).toBe("Retain");
+    expect(res[bktKey!].UpdateReplacePolicy).toBe("Retain");
+
+    // Ephemeral table (retain: false): MUST have Delete
+    const ephTblKey = Object.keys(res).find((k) => res[k].Type === "AWS::DynamoDB::Table" && k.includes("ephemeral"));
+    expect(ephTblKey).toBeDefined();
+    expect(res[ephTblKey!].DeletionPolicy).toBe("Delete");
+    expect(res[ephTblKey!].UpdateReplacePolicy).toBe("Delete");
+
+    // Ephemeral bucket (deletionPolicy: "Delete"): MUST have Delete
+    const ephBktKey = Object.keys(res).find((k) => res[k].Type === "AWS::S3::Bucket" && k.includes("ephemeral"));
+    expect(ephBktKey).toBeDefined();
+    expect(res[ephBktKey!].DeletionPolicy).toBe("Delete");
+    expect(res[ephBktKey!].UpdateReplacePolicy).toBe("Delete");
   });
 });
