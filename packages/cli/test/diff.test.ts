@@ -12,8 +12,9 @@ describe("@syncploy/cli - diff engine", () => {
 
     const diffs = diffTemplates(oldTpl, newTpl);
     expect(diffs).toHaveLength(1);
-    expect(diffs[0].logicalId).toBe("NewTable");
-    expect(diffs[0].action).toBe("CREATE");
+    const diff = diffs[0]!;
+    expect(diff.logicalId).toBe("NewTable");
+    expect(diff.action).toBe("CREATE");
   });
 
   it("detects deleted resources (- [DELETE])", () => {
@@ -26,8 +27,9 @@ describe("@syncploy/cli - diff engine", () => {
 
     const diffs = diffTemplates(oldTpl, newTpl);
     expect(diffs).toHaveLength(1);
-    expect(diffs[0].logicalId).toBe("LegacyQueue");
-    expect(diffs[0].action).toBe("DELETE");
+    const diff = diffs[0]!;
+    expect(diff.logicalId).toBe("LegacyQueue");
+    expect(diff.action).toBe("DELETE");
   });
 
   it("detects in-place updates (~ [UPDATE]) when properties change safely", () => {
@@ -50,11 +52,12 @@ describe("@syncploy/cli - diff engine", () => {
 
     const diffs = diffTemplates(oldTpl, newTpl);
     expect(diffs).toHaveLength(1);
-    expect(diffs[0].logicalId).toBe("ApiFunction");
-    expect(diffs[0].action).toBe("UPDATE");
-    expect(diffs[0].replacement).toBeUndefined();
-    expect(diffs[0].details).toContain("~ Timeout");
-    expect(diffs[0].details).toContain("~ MemorySize");
+    const diff = diffs[0]!;
+    expect(diff.logicalId).toBe("ApiFunction");
+    expect(diff.action).toBe("UPDATE");
+    expect(diff.replacement).toBeUndefined();
+    expect(diff.details).toContain("~ Timeout");
+    expect(diff.details).toContain("~ MemorySize");
   });
 
   it("flags high-risk replacements (! [REPLACE]) when critical properties change", () => {
@@ -77,10 +80,11 @@ describe("@syncploy/cli - diff engine", () => {
 
     const diffs = diffTemplates(oldTpl, newTpl);
     expect(diffs).toHaveLength(1);
-    expect(diffs[0].logicalId).toBe("EhrTable");
-    expect(diffs[0].action).toBe("REPLACE");
-    expect(diffs[0].replacement).toBe("True");
-    expect(diffs[0].details?.[0]).toContain("TableName changed");
+    const diff = diffs[0]!;
+    expect(diff.logicalId).toBe("EhrTable");
+    expect(diff.action).toBe("REPLACE");
+    expect(diff.replacement).toBe("True");
+    expect(diff.details?.[0]).toContain("TableName changed");
   });
 
   it("recognizes SAM AWS::Serverless::Function to AWS::Lambda::Function migration as an update", () => {
@@ -103,8 +107,9 @@ describe("@syncploy/cli - diff engine", () => {
 
     const diffs = diffTemplates(oldTpl, newTpl);
     expect(diffs).toHaveLength(1);
-    expect(diffs[0].logicalId).toBe("BackendFunction");
-    expect(diffs[0].action).toBe("UPDATE");
+    const diff = diffs[0]!;
+    expect(diff.logicalId).toBe("BackendFunction");
+    expect(diff.action).toBe("UPDATE");
   });
 
   it("marks identical resources as IN_SYNC", () => {
@@ -127,6 +132,7 @@ describe("@syncploy/cli - diff engine", () => {
 
     const diffs = diffTemplates(oldTpl, newTpl);
     expect(diffs).toHaveLength(1);
-    expect(diffs[0].action).toBe("IN_SYNC");
+    const diff = diffs[0]!;
+    expect(diff.action).toBe("IN_SYNC");
   });
 });
