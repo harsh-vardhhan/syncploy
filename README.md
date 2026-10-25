@@ -48,7 +48,8 @@ Syncploy targets services that **scale to zero**, require **zero VPC/server mana
 | **Direct Ingress (Streaming)** | **Lambda Function URLs** | `api({ ingress: "function-url" })` | `timeout` up to 15m, native response streaming, $0 cost |
 | **NoSQL Database** | **Amazon DynamoDB (On-Demand)** | `new Table("name", { ... })` | `partitionKey`, `sortKey`, `indexes` (GSIs), `stream`, `pointInTimeRecovery` |
 | **Database Streams** | **Amazon DynamoDB Streams** | `table.stream(...)` | `batchSize`, `startingPosition`, `enabled`, partial batch failure reporting |
-| **Object Storage** | **Amazon S3** | `new Bucket("name", { ... })` | `versioned`, `eventBridge`, `publicAccessBlock` |
+| **Object Storage** | **Amazon S3** | `new Bucket("name", { ... })` | `versioned`, `eventBridge`, `publicAccessBlock`, `objectLock` (COMPLIANCE/GOVERNANCE) |
+| **Data Streaming** | **Amazon Data Firehose** | `new DeliveryStream("name", { ... })` | `destination`, `bufferingInterval`, `bufferingSize`, `compression`, `prefix`, `errorPrefix` |
 | **Message Queues** | **Amazon SQS** | `new Queue("name", { ... })` | `visibilityTimeout`, `deadLetterQueue` (auto-DLQ generation), `fifo` |
 | **Pub/Sub Messaging** | **Amazon SNS** | `new Topic("name", { ... })`, `topic.subscribe(...)` | `fifo`, IAM subscriptions |
 | **Monitoring & Alarms** | **Amazon CloudWatch** | `new Alarm("name", { ... })` | `threshold`, `evaluationPeriods`, `comparison`, `actions` (SNS topics) |
@@ -139,27 +140,56 @@ export const processAnnotation = annotationQueue.consumer(
 
 ---
 
-## 🏗️ Compiler Architecture & Artifacts
+## 🏗️ Compiler Architecture & Workflow
 
-```
-TypeScript Source Code
-          │
-          ▼
-   [ AST Analysis ] (ts-morph / TypeScript Compiler API)
-          │  • Scans api(), Table, Bucket, Queue, Secret declarations
-          │  • Extracts in-code configs (timeout, concurrency, stream, etc.)
-          │
-          ▼
-   [ Intermediate Representation (IR) ] (Serverless Topology Graph)
-          │
-   ┌──────┴──────────────────────────────────────┐
-   ▼                                             ▼
-[ Lambda Bundler ] (esbuild)            [ Infrastructure Synthesizer ]
-   │  • Virtual entrypoint adapters                │  • API Gateway v2 & Function URLs
-   │  • Tree-shaken Node 20 ESM                    │  • DynamoDB Tables, Streams & GSIs
-   │  • Pre-installed @aws-sdk/* externals         │  • SQS Queues, DLQs & RedrivePolicy
-   ▼                                               ▼
-.syncploy/build/*/index.mjs             .syncploy/template.json (CloudFormation)
+```mermaid
+flowchart TD
+    subgraph Input["1. Input Source Code"]
+        TS["TypeScript Application Code<br/>(src/**/*.ts with @syncploy/sdk primitives)"]
+    end
+
+    subgraph Parser["2. Static AST Analysis (Parser)"]
+        AST["AST Engine (ts-morph)<br/>Scans APIs, Tables, Buckets, Queues, Topics, Streams, Firehose"]
+        EXT["Config & Wiring Extraction<br/>timeout, memory, concurrency, objectLock, DLQs, EventBridge"]
+        AST --> EXT
+    end
+
+    subgraph IR["3. Intermediate Representation (IR)"]
+        GRAPH["Resource Graph & Topology<br/>Pure in-memory serverless dependency graph"]
+    end
+
+    subgraph Pipeline["4. Dual Compilation Pipeline"]
+        subgraph BundlerPass["Code Bundling (Bundler)"]
+            GEN["Entrypoint Generator<br/>Virtual Lambda adapters & error wrappers"]
+            ESBUILD["esbuild Bundler<br/>Tree-shaken Node 20 ESM, @aws-sdk externalized"]
+            GEN --> ESBUILD
+        end
+
+        subgraph SynthPass["Infrastructure Synthesis (Synthesizer)"]
+            IAM["IAM Synthesizer<br/>Least-privilege execution role & trust policies"]
+            RESOLV["Binding & Reference Resolver<br/>Auto-injects Ref / Fn::GetAtt, eliminates circular dependencies"]
+            CFN["CloudFormation Emitter<br/>100% native AWS CloudFormation specification"]
+            IAM --> RESOLV --> CFN
+        end
+    end
+
+    subgraph Artifacts["5. Production Artifacts (.syncploy/)"]
+        BUNDLES["Standalone Lambda Bundles<br/>.syncploy/build/*/index.mjs"]
+        TEMPLATE["CloudFormation Template<br/>.syncploy/template.json"]
+    end
+
+    subgraph Deployment["6. Zero-Lock-In Deployment"]
+        DEPLOY["Standard AWS Deploy<br/>aws cloudformation deploy / SAM CLI"]
+    end
+
+    TS --> AST
+    EXT --> GRAPH
+    GRAPH --> GEN
+    GRAPH --> IAM
+    ESBUILD --> BUNDLES
+    CFN --> TEMPLATE
+    BUNDLES --> DEPLOY
+    TEMPLATE --> DEPLOY
 ```
 
 ### Final Output Layout
