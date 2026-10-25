@@ -41,21 +41,30 @@ Unlike traditional frameworks (or Encore), Syncploy is designed specifically for
 
 ```mermaid
 flowchart TD
+    subgraph Brownfield["Brownfield Adoption (Optional)"]
+        SAM["Legacy SAM / CloudFormation Template<br/>(template.yaml + samconfig.toml)"]
+        ADOPT["Brownfield Adoption Engine<br/>syncploy adopt"]
+        SAM --> ADOPT
+    end
+
     subgraph Input["1. Input Source Code"]
         TS["TypeScript Application Code<br/>(src/**/*.ts with @syncploy/sdk primitives)"]
     end
+    ADOPT -.->|Translates to| TS
 
-    subgraph Parser["2. Static AST Analysis & Validation"]
-        AST["AST Engine (ts-morph)<br/>Zero-execution static AST scanner for SDK primitives"]
-        VAL["Pre-Flight AWS Validator (&lt;1ms)<br/>Catches recursive loops, DoW, AWS limits & secret leaks"]
-        AST --> VAL
+    subgraph Parser["2. Static AST Analysis"]
+        AST["AST Parser Engine (ts-morph)<br/>Zero-execution static scanner for SDK primitives"]
     end
 
     subgraph IR["3. Intermediate Representation (IR)"]
-        GRAPH["Serverless Resource Graph & Topology<br/>Pure in-memory serverless dependency graph"]
+        GRAPH["Serverless Resource Graph & Topology<br/>In-memory dependency graph & mutation edges"]
     end
 
-    subgraph Pipeline["4. Dual Compilation Pipeline"]
+    subgraph Validation["4. Pre-Flight Safety & Platform Validator (&lt;1ms)"]
+        VAL["High-Speed Pre-Flight Engine<br/>• Infra Recursion & Event Cycle Detection<br/>• Denial of Wallet (DoW) & DDoS Concurrency Guards<br/>• Fatal AWS Limits, Logical IDs & Secret Leak Scanner"]
+    end
+
+    subgraph Pipeline["5. Dual Compilation Pipeline"]
         subgraph BundlerPass["Code Bundling (Bundler)"]
             GEN["Virtual Entrypoint Generator<br/>APIGW v2, Function URL, SQS batch, Stream adapters"]
             ESBUILD["esbuild Bundler & Packaging<br/>Tree-shaken Node 20 ESM & Docker container metadata"]
@@ -65,28 +74,34 @@ flowchart TD
         subgraph SynthPass["Infrastructure Synthesis (Synthesizer)"]
             IAM["IAM Policy Synthesizer<br/>Exact least-privilege execution roles & trust policies"]
             SAFETY["Zero-Data-Loss Safety Rails<br/>Automatic Retain policies on Tables & Buckets"]
-            CFN["CloudFormation Emitter<br/>Pure 100% native AWS CloudFormation template"]
+            CFN["CloudFormation Emitter<br/>Pure 100% native AWS CloudFormation JSON template"]
             IAM --> SAFETY --> CFN
         end
     end
 
-    subgraph Artifacts["5. Production Artifacts (.syncploy/)"]
+    subgraph Artifacts["6. Production Artifacts (.syncploy/)"]
         BUNDLES["Standalone Lambda Bundles<br/>.syncploy/build/*/index.mjs"]
         TEMPLATE["CloudFormation Template<br/>.syncploy/template.json"]
     end
 
-    subgraph Deployment["6. Zero-Lock-In Deployment"]
+    subgraph DiffEngine["7. ChangeSet & Diff Engine (syncploy diff)"]
+        DIFF["Diff & Safety Gatekeeper<br/>Compares against live stack / template<br/>--check-replacement aborts CI on data loss"]
+    end
+
+    subgraph Deployment["8. Zero-Lock-In Deployment"]
         DEPLOY["Deploy Without Vendor Lock-In<br/>aws cloudformation deploy / SAM CLI / CI/CD"]
     end
 
     TS --> AST
-    VAL --> GRAPH
-    GRAPH --> GEN
-    GRAPH --> IAM
+    AST --> GRAPH
+    GRAPH --> VAL
+    VAL -->|Valid Graph| GEN
+    VAL -->|Valid Graph| IAM
     ESBUILD --> BUNDLES
     CFN --> TEMPLATE
+    TEMPLATE --> DIFF
+    DIFF -.->|Verified Safe| DEPLOY
     BUNDLES --> DEPLOY
-    TEMPLATE --> DEPLOY
 ```
 
 ---
