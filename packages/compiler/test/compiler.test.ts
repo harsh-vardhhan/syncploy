@@ -12,7 +12,7 @@ describe("@syncploy/compiler - In-Code Configurations & Function URLs", () => {
     await fs.writeFile(
       path.join(TEST_DIR, "app.ts"),
       `
-import { api, Table, Bucket, Queue } from "@syncploy/sdk";
+import { api, Table, Bucket, Queue, Topic, Alarm } from "@syncploy/sdk";
 
 export const ehrTable = new Table("ehr", {
   partitionKey: { name: "PK", type: "string" },
@@ -36,6 +36,18 @@ export const annotationQueue = new Queue("annotations", {
   deadLetterQueue: {
     maxReceiveCount: 3,
   },
+});
+
+export const alertTopic = new Topic("alerts", {
+  fifo: false,
+});
+
+export const highTrafficAlarm = new Alarm("HighTrafficAlarm", {
+  threshold: 2000,
+  evaluationPeriods: 1,
+  comparison: "GreaterThanOrEqualToThreshold",
+  description: "Triggers alert topic on high traffic",
+  actions: [alertTopic],
 });
 
 documentsBucket.on("objectCreated", annotationQueue, { prefix: "documents/" });
@@ -79,6 +91,27 @@ export const processDoc = annotationQueue.consumer(
   },
   async (event) => {
     console.log("Processing", event);
+  }
+);
+
+export const auditStreamConsumer = ehrTable.stream(
+  {
+    batchSize: 100,
+    timeout: "60s",
+    startingPosition: "LATEST",
+  },
+  async (records) => {
+    console.log("Stream records", records);
+  }
+);
+
+export const alertSubscriber = alertTopic.subscribe(
+  {
+    timeout: "30s",
+    memory: "256MB",
+  },
+  async (message) => {
+    console.log("Alert message", message);
   }
 );
 `,
@@ -141,6 +174,28 @@ export const processDoc = annotationQueue.consumer(
     expect(graph.bindings[0]?.sourceBucketName).toBe("documents");
     expect(graph.bindings[0]?.targetQueueName).toBe("annotations");
     expect(graph.bindings[0]?.prefix).toBe("documents/");
+
+    // Verify Topic & Alarm
+    expect(graph.topics.length).toBe(1);
+    expect(graph.topics[0]?.name).toBe("alerts");
+    expect(graph.topics[0]?.fifo).toBe(false);
+
+    expect(graph.alarms.length).toBe(1);
+    expect(graph.alarms[0]?.name).toBe("HighTrafficAlarm");
+    expect(graph.alarms[0]?.threshold).toBe(2000);
+    expect(graph.alarms[0]?.actions).toContain("alerts");
+
+    // Verify Stream Consumer
+    expect(graph.tableStreams.length).toBe(1);
+    expect(graph.tableStreams[0]?.tableName).toBe("ehr");
+    expect(graph.tableStreams[0]?.batchSize).toBe(100);
+    expect(graph.tableStreams[0]?.startingPosition).toBe("LATEST");
+
+    // Verify Topic Subscriber
+    expect(graph.topicSubscribers.length).toBe(1);
+    expect(graph.topicSubscribers[0]?.topicName).toBe("alerts");
+    expect(graph.topicSubscribers[0]?.timeout).toBe(30);
+    expect(graph.topicSubscribers[0]?.memory).toBe(256);
   });
 
   it("synthesizes accurate CloudFormation properties for both API Gateway and Lambda Function URLs", async () => {
@@ -221,5 +276,45 @@ export const processDoc = annotationQueue.consumer(
     const policyRes = res["QueuePolicyannotationsEventBridge"];
     expect(policyRes).toBeDefined();
     expect(policyRes.Type).toBe("AWS::SQS::QueuePolicy");
+
+    // 8. SNS Topic & Alarm
+    const topicRes = res["Topicalerts"];
+    expect(topicRes).toBeDefined();
+    expect(topicRes.Type).toBe("AWS::SNS::Topic");
+    expect(topicRes.Properties.TopicName).toEqual({ "Fn::Sub": "${AWS::StackName}-alerts" });
+
+    const alarmRes = res["AlarmHighTrafficAlarm"];
+    expect(alarmRes).toBeDefined();
+    expect(alarmRes.Type).toBe("AWS::CloudWatch::Alarm");
+    expect(alarmRes.Properties.Threshold).toBe(2000);
+    expect(alarmRes.Properties.AlarmActions).toEqual([{ Ref: "Topicalerts" }]);
+
+    // 9. DynamoDB Stream Function & EventSourceMapping
+    const streamFunc = res["FunctionauditStreamConsumer"];
+    expect(streamFunc).toBeDefined();
+    expect(streamFunc.Properties.Timeout).toBe(60);
+
+    const streamMapping = res["EventSourceMappingauditStreamConsumer"];
+    expect(streamMapping).toBeDefined();
+    expect(streamMapping.Properties.BatchSize).toBe(100);
+    expect(streamMapping.Properties.StartingPosition).toBe("LATEST");
+    expect(streamMapping.Properties.EventSourceArn).toEqual({ "Fn::GetAtt": ["Tableehr", "StreamArn"] });
+
+    // 10. SNS Subscriber Function & Subscription
+    const subFunc = res["FunctionalertSubscriber"];
+    expect(subFunc).toBeDefined();
+    expect(subFunc.Properties.Timeout).toBe(30);
+    expect(subFunc.Properties.MemorySize).toBe(256);
+
+    const subRes = res["SubscriptionalertSubscriber"];
+    expect(subRes).toBeDefined();
+    expect(subRes.Type).toBe("AWS::SNS::Subscription");
+    expect(subRes.Properties.Protocol).toBe("lambda");
+    expect(subRes.Properties.TopicArn).toEqual({ Ref: "Topicalerts" });
+
+    const permRes = res["PermissionalertSubscriberSns"];
+    expect(permRes).toBeDefined();
+    expect(permRes.Type).toBe("AWS::Lambda::Permission");
+    expect(permRes.Properties.Principal).toBe("sns.amazonaws.com");
   });
 });

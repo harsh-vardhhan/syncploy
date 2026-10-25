@@ -5,6 +5,8 @@
 export * from "./table";
 export * from "./bucket";
 export * from "./queue";
+export * from "./topic";
+export * from "./alarm";
 
 export class HttpError extends Error {
   readonly statusCode: number;

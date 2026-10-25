@@ -4,9 +4,13 @@ import type {
   HttpMethod,
   ResourceGraph,
   TableIR,
+  TableStreamConsumerIR,
   BucketIR,
   QueueIR,
   QueueConsumerIR,
+  TopicIR,
+  TopicSubscriberIR,
+  AlarmIR,
   TableIndexIR,
   CorsConfig,
   PolicyStatementIR,
@@ -31,14 +35,20 @@ export class Parser {
 
     const apis: ApiRouteIR[] = [];
     const tables: TableIR[] = [];
+    const tableStreams: TableStreamConsumerIR[] = [];
     const buckets: BucketIR[] = [];
     const queues: QueueIR[] = [];
     const consumers: QueueConsumerIR[] = [];
+    const topics: TopicIR[] = [];
+    const topicSubscribers: TopicSubscriberIR[] = [];
+    const alarms: AlarmIR[] = [];
     const bindings: EventBindingIR[] = [];
 
     // Maps to track variable names to resource names
+    const varToTableName: Record<string, string> = {};
     const varToQueueName: Record<string, string> = {};
     const varToBucketName: Record<string, string> = {};
+    const varToTopicName: Record<string, string> = {};
 
     for (const sourceFile of this.project.getSourceFiles()) {
       for (const decl of sourceFile.getVariableDeclarations()) {
@@ -171,6 +181,83 @@ export class Parser {
                 environment,
               });
             }
+
+            // DynamoDB stream consumer: table.stream(...)
+            if (propName === "stream") {
+              const targetTableVar = expr.getExpression().getText();
+              const args = init.getArguments();
+              let batchSize = 100;
+              let startingPosition: "LATEST" | "TRIM_HORIZON" = "LATEST";
+              let enabled: boolean | undefined;
+              let timeout: number | undefined;
+              let concurrency: number | undefined;
+              let memory: number | undefined;
+              let policies: PolicyStatementIR[] | undefined;
+              let environment: Record<string, string> | undefined;
+
+              if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                const streamOpts = args[0] as ObjectLiteralExpression;
+                batchSize = this.extractNumber(streamOpts.getProperty("batchSize")) ?? 100;
+                const posStr = this.extractString(streamOpts.getProperty("startingPosition"));
+                if (posStr === "TRIM_HORIZON") startingPosition = "TRIM_HORIZON";
+                const enProp = streamOpts.getProperty("enabled");
+                if (enProp && enProp.isKind(SyntaxKind.PropertyAssignment)) {
+                  enabled = enProp.getInitializer()?.getText() !== "false";
+                }
+                timeout = this.extractDuration(streamOpts.getProperty("timeout"));
+                concurrency = this.extractNumber(streamOpts.getProperty("concurrency"));
+                memory = this.extractMemory(streamOpts.getProperty("memory"));
+                policies = this.extractPolicies(streamOpts.getProperty("policies"));
+                environment = this.extractEnvironment(streamOpts.getProperty("environment"));
+              }
+
+              tableStreams.push({
+                id: varName,
+                tableName: varToTableName[targetTableVar] || targetTableVar,
+                exportName: varName,
+                sourceFile: sourceFile.getFilePath(),
+                batchSize,
+                startingPosition,
+                enabled,
+                timeout,
+                concurrency,
+                memory,
+                policies,
+                environment,
+              });
+            }
+
+            // Topic subscriber: topic.subscribe(...)
+            if (propName === "subscribe") {
+              const targetTopicVar = expr.getExpression().getText();
+              const args = init.getArguments();
+              let timeout: number | undefined;
+              let concurrency: number | undefined;
+              let memory: number | undefined;
+              let policies: PolicyStatementIR[] | undefined;
+              let environment: Record<string, string> | undefined;
+
+              if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                const subOpts = args[0] as ObjectLiteralExpression;
+                timeout = this.extractDuration(subOpts.getProperty("timeout"));
+                concurrency = this.extractNumber(subOpts.getProperty("concurrency"));
+                memory = this.extractMemory(subOpts.getProperty("memory"));
+                policies = this.extractPolicies(subOpts.getProperty("policies"));
+                environment = this.extractEnvironment(subOpts.getProperty("environment"));
+              }
+
+              topicSubscribers.push({
+                id: varName,
+                topicName: varToTopicName[targetTopicVar] || targetTopicVar,
+                exportName: varName,
+                sourceFile: sourceFile.getFilePath(),
+                timeout,
+                concurrency,
+                memory,
+                policies,
+                environment,
+              });
+            }
           }
         }
 
@@ -187,6 +274,7 @@ export class Parser {
               );
             }
             const tableName = args[0].getLiteralValue();
+            varToTableName[varName] = tableName;
 
             let partitionKey = { name: "id", type: "string" as const };
             let sortKey: { name: string; type: "string" | "number" | "binary" } | undefined;
@@ -423,6 +511,70 @@ export class Parser {
               fifo,
               sourceFile: sourceFile.getFilePath(),
             });
+          } else if (className === "Topic") {
+            if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
+              throw new Error(
+                `Topic '${varName}' in ${sourceFile.getFilePath()} must have a string literal name as first argument.`
+              );
+            }
+            const topicName = args[0].getLiteralValue();
+            varToTopicName[varName] = topicName;
+
+            let fifo = false;
+            if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+              const opts = args[1] as ObjectLiteralExpression;
+              fifo = opts.getProperty("fifo")?.getText() === "true";
+            }
+
+            topics.push({
+              id: varName,
+              name: topicName,
+              fifo,
+              sourceFile: sourceFile.getFilePath(),
+            });
+          } else if (className === "Alarm") {
+            if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
+              throw new Error(
+                `Alarm '${varName}' in ${sourceFile.getFilePath()} must have a string literal name as first argument.`
+              );
+            }
+            const alarmName = args[0].getLiteralValue();
+            let threshold = 0;
+            let evaluationPeriods = 1;
+            let comparison = "GreaterThanOrEqualToThreshold";
+            let description: string | undefined;
+            const actions: string[] = [];
+
+            if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+              const opts = args[1] as ObjectLiteralExpression;
+              threshold = this.extractNumber(opts.getProperty("threshold")) ?? 0;
+              evaluationPeriods = this.extractNumber(opts.getProperty("evaluationPeriods")) ?? 1;
+              comparison = this.extractString(opts.getProperty("comparison")) || "GreaterThanOrEqualToThreshold";
+              description = this.extractString(opts.getProperty("description"));
+
+              const actionsProp = opts.getProperty("actions");
+              if (actionsProp && actionsProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const arr = actionsProp.getInitializer();
+                if (arr && arr.isKind(SyntaxKind.ArrayLiteralExpression)) {
+                  for (const el of arr.getElements()) {
+                    const rawAction = el.getText();
+                    const cleanAction = varToTopicName[rawAction] || rawAction.replace(/['"]/g, "");
+                    actions.push(cleanAction);
+                  }
+                }
+              }
+            }
+
+            alarms.push({
+              id: varName,
+              name: alarmName,
+              threshold,
+              evaluationPeriods,
+              comparison,
+              description,
+              actions,
+              sourceFile: sourceFile.getFilePath(),
+            });
           }
         }
       }
@@ -486,9 +638,13 @@ export class Parser {
     return {
       apis,
       tables,
+      tableStreams,
       buckets,
       queues,
       consumers,
+      topics,
+      topicSubscribers,
+      alarms,
       bindings,
     };
   }

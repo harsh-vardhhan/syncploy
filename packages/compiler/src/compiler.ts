@@ -44,6 +44,20 @@ export class Compiler {
       lambdaArtifactDirs[consumer.id] = path.dirname(bundlePath);
     }
 
+    for (const streamConsumer of graph.tableStreams) {
+      const entrypointPath = await this.entrypointGen.generateTableStream(streamConsumer);
+      const bundlePath = await this.bundler.bundle(streamConsumer.id, entrypointPath);
+      lambdaBundles[streamConsumer.id] = bundlePath;
+      lambdaArtifactDirs[streamConsumer.id] = path.dirname(bundlePath);
+    }
+
+    for (const subscriber of graph.topicSubscribers) {
+      const entrypointPath = await this.entrypointGen.generateTopicSubscriber(subscriber);
+      const bundlePath = await this.bundler.bundle(subscriber.id, entrypointPath);
+      lambdaBundles[subscriber.id] = bundlePath;
+      lambdaArtifactDirs[subscriber.id] = path.dirname(bundlePath);
+    }
+
     // 3. Synthesize CloudFormation template
     const templatePath = await this.synthesizer.synthesize(graph, lambdaArtifactDirs);
 

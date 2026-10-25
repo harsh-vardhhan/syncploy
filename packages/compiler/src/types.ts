@@ -84,6 +84,75 @@ export interface QueueConsumerIR {
   environment?: Record<string, string>;
 }
 
+export interface TableStreamConsumerIR {
+  id: string;
+  tableName: string;
+  exportName: string;
+  sourceFile: string;
+  batchSize?: number;
+  startingPosition?: "LATEST" | "TRIM_HORIZON";
+  enabled?: boolean;
+  timeout?: number;
+  concurrency?: number;
+  memory?: number;
+  policies?: PolicyStatementIR[];
+  environment?: Record<string, string>;
+}
+
+export interface TopicIR {
+  id: string;
+  name: string;
+  fifo?: boolean;
+  sourceFile: string;
+}
+
+export interface TopicSubscriberIR {
+  id: string;
+  topicName: string;
+  exportName: string;
+  sourceFile: string;
+  timeout?: number;
+  concurrency?: number;
+  memory?: number;
+  policies?: PolicyStatementIR[];
+  environment?: Record<string, string>;
+}
+
+export interface AlarmMetricQueryIR {
+  id: string;
+  expression?: string;
+  label?: string;
+  returnData?: boolean;
+  metricStat?: {
+    metric: {
+      namespace: string;
+      metricName: string;
+      dimensions?: { name: string; value: string }[];
+    };
+    period: number;
+    stat: string;
+  };
+}
+
+export interface AlarmIR {
+  id: string;
+  name: string;
+  description?: string;
+  threshold: number;
+  evaluationPeriods?: number;
+  comparison?: string;
+  metric?: {
+    namespace?: string;
+    metricName: string;
+    dimensions?: Record<string, string>;
+    period?: number;
+    stat?: string;
+  };
+  metrics?: AlarmMetricQueryIR[];
+  actions?: string[];
+  sourceFile: string;
+}
+
 export interface EventBindingIR {
   id: string;
   sourceBucketName: string;
@@ -96,9 +165,13 @@ export interface EventBindingIR {
 export interface ResourceGraph {
   apis: ApiRouteIR[];
   tables: TableIR[];
+  tableStreams: TableStreamConsumerIR[];
   buckets: BucketIR[];
   queues: QueueIR[];
   consumers: QueueConsumerIR[];
+  topics: TopicIR[];
+  topicSubscribers: TopicSubscriberIR[];
+  alarms: AlarmIR[];
   bindings: EventBindingIR[];
 }
 

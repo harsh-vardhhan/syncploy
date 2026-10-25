@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from "bun:test";
-import { api, HttpError, Table, Bucket, Queue, Secret } from "../src/index";
+import { api, HttpError, Table, Bucket, Queue, Secret, Topic, Alarm } from "../src/index";
 
 describe("@syncploy/sdk", () => {
   it("creates an API endpoint definition", () => {
@@ -47,6 +47,20 @@ describe("@syncploy/sdk", () => {
       expect(typeof table.delete).toBe("function");
       expect(typeof table.query).toBe("function");
       expect(typeof table.scan).toBe("function");
+      expect(typeof table.stream).toBe("function");
+    });
+
+    it("creates stream consumer definition", () => {
+      const table = new Table("users", {
+        partitionKey: { name: "id", type: "string" },
+        stream: "NEW_IMAGE",
+      });
+      const consumer = table.stream({ batchSize: 50 }, async (record) => {
+        console.log(record);
+      });
+      expect(consumer._kind).toBe("table_stream");
+      expect(consumer.options.batchSize).toBe(50);
+      expect(typeof consumer.handler).toBe("function");
     });
   });
 
@@ -105,6 +119,56 @@ describe("@syncploy/sdk", () => {
       process.env.MY_SECRET = "supersecret";
       const secret = new Secret("MY_SECRET");
       expect(secret.get()).toBe("supersecret");
+    });
+  });
+
+  describe("Topic Runtime Client", () => {
+    beforeEach(() => {
+      delete process.env.SYNCPLOY_TOPIC_NOTIFICATIONS;
+    });
+
+    it("resolves topic ARN from environment variable or fallback", () => {
+      const topic = new Topic("notifications");
+      expect(topic.topicArn).toBe("notifications");
+
+      process.env.SYNCPLOY_TOPIC_NOTIFICATIONS = "arn:aws:sns:us-east-1:123456789012:notifications";
+      expect(topic.topicArn).toBe("arn:aws:sns:us-east-1:123456789012:notifications");
+    });
+
+    it("creates subscriber definition", () => {
+      const topic = new Topic("notifications");
+      expect(typeof topic.publish).toBe("function");
+      expect(typeof topic.subscribe).toBe("function");
+
+      const subscriber = topic.subscribe({ timeout: "30s" }, async (msg) => {
+        console.log(msg);
+      });
+      expect(subscriber._kind).toBe("topic_subscriber");
+      expect(subscriber.options.timeout).toBe("30s");
+      expect(typeof subscriber.handler).toBe("function");
+    });
+  });
+
+  describe("Alarm Definition", () => {
+    it("creates an alarm definition with metric and actions", () => {
+      const topic = new Topic("alerts");
+      const alarm = new Alarm("HighErrors", {
+        threshold: 100,
+        evaluationPeriods: 1,
+        comparison: "GreaterThanOrEqualToThreshold",
+        metric: {
+          metricName: "Errors",
+          namespace: "AWS/Lambda",
+          period: "60s",
+          stat: "Sum",
+        },
+        actions: [topic],
+      });
+
+      expect(alarm._kind).toBe("alarm");
+      expect(alarm.name).toBe("HighErrors");
+      expect(alarm.options.threshold).toBe(100);
+      expect(alarm.options.actions?.[0]).toBe(topic);
     });
   });
 });

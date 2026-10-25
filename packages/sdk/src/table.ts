@@ -18,6 +18,33 @@ export interface TableIndexDefinition {
   projection?: "ALL" | "KEYS_ONLY";
 }
 
+export type Duration = `${number}s` | `${number}m` | `${number}h` | number;
+export type MemorySize = `${number}MB` | `${number}GB` | number;
+
+export interface PolicyStatement {
+  effect?: "Allow" | "Deny";
+  actions: string[];
+  resources: string[];
+}
+
+export interface TableStreamOptions {
+  batchSize?: number;
+  startingPosition?: "LATEST" | "TRIM_HORIZON";
+  enabled?: boolean;
+  timeout?: Duration;
+  concurrency?: number;
+  memory?: MemorySize;
+  policies?: PolicyStatement[];
+  environment?: Record<string, string>;
+}
+
+export interface TableStreamConsumer<T = any> {
+  readonly _kind: "table_stream";
+  readonly table: Table;
+  readonly options: TableStreamOptions;
+  readonly handler: (record: T, ctx: any) => Promise<void> | void;
+}
+
 export interface TableOptions {
   partitionKey: { name: string; type: "string" | "number" | "binary" };
   sortKey?: { name: string; type: "string" | "number" | "binary" };
@@ -111,5 +138,21 @@ export class Table {
       })
     );
     return (res.Items as T[]) ?? [];
+  }
+
+  stream<T = any>(
+    optionsOrHandler: TableStreamOptions | ((record: T, ctx: any) => Promise<void> | void),
+    maybeHandler?: (record: T, ctx: any) => Promise<void> | void
+  ): TableStreamConsumer<T> {
+    const options: TableStreamOptions =
+      typeof optionsOrHandler === "function" ? {} : optionsOrHandler;
+    const handler = typeof optionsOrHandler === "function" ? optionsOrHandler : maybeHandler!;
+
+    return {
+      _kind: "table_stream",
+      table: this,
+      options,
+      handler,
+    };
   }
 }

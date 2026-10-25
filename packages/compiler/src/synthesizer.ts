@@ -120,10 +120,39 @@ export class Synthesizer {
       });
     }
 
-    // Add custom policy statements declared on APIs or Consumers
+    // Add DynamoDB Stream permissions if stream consumers exist
+    if (graph.tableStreams && graph.tableStreams.length > 0) {
+      roleStatements.push({
+        Effect: "Allow",
+        Action: [
+          "dynamodb:GetRecords",
+          "dynamodb:GetShardIterator",
+          "dynamodb:DescribeStream",
+          "dynamodb:ListStreams",
+        ],
+        Resource: graph.tableStreams.map((s) => ({
+          "Fn::GetAtt": [`Table${this.sanitizeName(s.tableName)}`, "StreamArn"],
+        })),
+      });
+    }
+
+    // Add SNS publish permissions if topics exist
+    if (graph.topics && graph.topics.length > 0) {
+      roleStatements.push({
+        Effect: "Allow",
+        Action: ["sns:Publish"],
+        Resource: graph.topics.map((t) => ({
+          Ref: `Topic${this.sanitizeName(t.name)}`,
+        })),
+      });
+    }
+
+    // Add custom policy statements declared on APIs, Consumers, Streams, or Subscribers
     const customStatements = [
       ...graph.apis.flatMap((a) => a.policies || []),
       ...graph.consumers.flatMap((c) => c.policies || []),
+      ...(graph.tableStreams || []).flatMap((s) => s.policies || []),
+      ...(graph.topicSubscribers || []).flatMap((sub) => sub.policies || []),
     ];
     for (const stmt of customStatements) {
       roleStatements.push({
@@ -220,8 +249,11 @@ export class Synthesizer {
         tableProps["GlobalSecondaryIndexes"] = gsiList;
       }
 
-      if (table.stream) {
-        tableProps["StreamSpecification"] = { StreamViewType: table.stream };
+      const hasStreamConsumer = (graph.tableStreams || []).some(
+        (s) => this.sanitizeName(s.tableName) === this.sanitizeName(table.name)
+      );
+      if (table.stream || hasStreamConsumer) {
+        tableProps["StreamSpecification"] = { StreamViewType: table.stream || "NEW_IMAGE" };
       }
 
       if (table.pointInTimeRecovery) {
@@ -326,6 +358,15 @@ export class Synthesizer {
       envVars[`QUEUE_${upperName}_URL`] = { Ref: `Queue${cleanName}` };
       envVars[`${upperName}_QUEUE_URL`] = { Ref: `Queue${cleanName}` };
       envVars[queue.name] = { Ref: `Queue${cleanName}` };
+    }
+
+    for (const topic of graph.topics || []) {
+      const cleanName = this.sanitizeName(topic.name);
+      const upperName = topic.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+      envVars[`SYNCPLOY_TOPIC_${upperName}`] = { Ref: `Topic${cleanName}` };
+      envVars[`TOPIC_${upperName}_ARN`] = { Ref: `Topic${cleanName}` };
+      envVars[`${upperName}_TOPIC_ARN`] = { Ref: `Topic${cleanName}` };
+      envVars[topic.name] = { Ref: `Topic${cleanName}` };
     }
 
     // 7. Lambdas and API Gateway Routes
@@ -493,7 +534,181 @@ export class Synthesizer {
       };
     }
 
-    // 8. EventBridge Rules & SQS Queue Policies (e.g. S3 -> EventBridge -> SQS)
+    // 8. SNS Topics
+    for (const topic of graph.topics || []) {
+      const logicalId = this.sanitizeName(topic.name);
+      const resourceKey = `Topic${logicalId}`;
+      const topicProps: any = {
+        TopicName: { "Fn::Sub": `\${AWS::StackName}-${topic.name}` },
+      };
+      if (topic.fifo) {
+        topicProps["FifoTopic"] = true;
+      }
+      resources[resourceKey] = {
+        Type: "AWS::SNS::Topic",
+        Properties: topicProps,
+      };
+
+      outputs[`${logicalId}TopicArn`] = {
+        Description: `ARN of SNS Topic ${topic.name}`,
+        Value: { Ref: resourceKey },
+      };
+    }
+
+    // 9. DynamoDB Stream Consumers
+    for (const consumer of graph.tableStreams || []) {
+      const logicalId = this.sanitizeName(consumer.id);
+      const funcKey = `Function${logicalId}`;
+      const mappingKey = `EventSourceMapping${logicalId}`;
+      const tableKey = `Table${this.sanitizeName(consumer.tableName)}`;
+
+      const artifactDir = lambdaArtifactDirs[consumer.id];
+      const relArtifactDir = path.relative(this.workDir, artifactDir || "");
+
+      const funcProps: any = {
+        FunctionName: { "Fn::Sub": `\${AWS::StackName}-${consumer.id}` },
+        Runtime: "nodejs20.x",
+        Handler: "index.handler",
+        Code: relArtifactDir,
+        Timeout: consumer.timeout ?? 60,
+        MemorySize: consumer.memory ?? 256,
+        Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
+      };
+
+      const consumerEnv = {
+        ...envVars,
+        ...(consumer.environment || {}),
+      };
+      if (Object.keys(consumerEnv).length > 0) {
+        funcProps["Environment"] = { Variables: consumerEnv };
+      }
+
+      if (consumer.concurrency !== undefined) {
+        funcProps["ReservedConcurrentExecutions"] = consumer.concurrency;
+      }
+
+      resources[funcKey] = {
+        Type: "AWS::Lambda::Function",
+        Properties: funcProps,
+      };
+
+      const mappingProps: any = {
+        EventSourceArn: { "Fn::GetAtt": [tableKey, "StreamArn"] },
+        FunctionName: { Ref: funcKey },
+        StartingPosition: consumer.startingPosition || "LATEST",
+        BatchSize: consumer.batchSize ?? 100,
+        FunctionResponseTypes: ["ReportBatchItemFailures"],
+      };
+
+      if (consumer.enabled !== undefined) {
+        mappingProps.Enabled = consumer.enabled;
+      }
+
+      resources[mappingKey] = {
+        Type: "AWS::Lambda::EventSourceMapping",
+        Properties: mappingProps,
+      };
+    }
+
+    // 10. SNS Topic Subscribers
+    for (const subscriber of graph.topicSubscribers || []) {
+      const logicalId = this.sanitizeName(subscriber.id);
+      const funcKey = `Function${logicalId}`;
+      const permKey = `Permission${logicalId}Sns`;
+      const subKey = `Subscription${logicalId}`;
+      const topicKey = `Topic${this.sanitizeName(subscriber.topicName)}`;
+
+      const artifactDir = lambdaArtifactDirs[subscriber.id];
+      const relArtifactDir = path.relative(this.workDir, artifactDir || "");
+
+      const funcProps: any = {
+        FunctionName: { "Fn::Sub": `\${AWS::StackName}-${subscriber.id}` },
+        Runtime: "nodejs20.x",
+        Handler: "index.handler",
+        Code: relArtifactDir,
+        Timeout: subscriber.timeout ?? 30,
+        MemorySize: subscriber.memory ?? 256,
+        Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
+      };
+
+      const subEnv = {
+        ...envVars,
+        ...(subscriber.environment || {}),
+      };
+      if (Object.keys(subEnv).length > 0) {
+        funcProps["Environment"] = { Variables: subEnv };
+      }
+
+      if (subscriber.concurrency !== undefined) {
+        funcProps["ReservedConcurrentExecutions"] = subscriber.concurrency;
+      }
+
+      resources[funcKey] = {
+        Type: "AWS::Lambda::Function",
+        Properties: funcProps,
+      };
+
+      resources[permKey] = {
+        Type: "AWS::Lambda::Permission",
+        Properties: {
+          FunctionName: { Ref: funcKey },
+          Action: "lambda:InvokeFunction",
+          Principal: "sns.amazonaws.com",
+          SourceArn: { Ref: topicKey },
+        },
+      };
+
+      resources[subKey] = {
+        Type: "AWS::SNS::Subscription",
+        Properties: {
+          TopicArn: { Ref: topicKey },
+          Protocol: "lambda",
+          Endpoint: { "Fn::GetAtt": [funcKey, "Arn"] },
+        },
+      };
+    }
+
+    // 11. CloudWatch Alarms
+    for (const alarm of graph.alarms || []) {
+      const logicalId = this.sanitizeName(alarm.name);
+      const resourceKey = `Alarm${logicalId}`;
+
+      const alarmActions = (alarm.actions || []).map((act) => {
+        const matchingTopic = (graph.topics || []).find((t) => t.name === act || t.id === act);
+        if (matchingTopic) {
+          return { Ref: `Topic${this.sanitizeName(matchingTopic.name)}` };
+        }
+        return act;
+      });
+
+      const alarmProps: any = {
+        AlarmDescription: alarm.description || `Alarm ${alarm.name}`,
+        EvaluationPeriods: alarm.evaluationPeriods || 1,
+        Threshold: alarm.threshold,
+        ComparisonOperator: alarm.comparison || "GreaterThanOrEqualToThreshold",
+        AlarmActions: alarmActions,
+      };
+
+      if (alarm.metric) {
+        alarmProps["MetricName"] = alarm.metric.metricName;
+        alarmProps["Namespace"] = alarm.metric.namespace || "AWS/Lambda";
+        alarmProps["Period"] = alarm.metric.period || 60;
+        alarmProps["Statistic"] = alarm.metric.stat || "Sum";
+        if (alarm.metric.dimensions) {
+          alarmProps["Dimensions"] = Object.entries(alarm.metric.dimensions).map(([k, v]) => ({
+            Name: k,
+            Value: v,
+          }));
+        }
+      }
+
+      resources[resourceKey] = {
+        Type: "AWS::CloudWatch::Alarm",
+        Properties: alarmProps,
+      };
+    }
+
+    // 12. EventBridge Rules & SQS Queue Policies (e.g. S3 -> EventBridge -> SQS)
     for (const binding of graph.bindings) {
       const cleanBucket = this.sanitizeName(binding.sourceBucketName);
       const cleanQueue = this.sanitizeName(binding.targetQueueName);
