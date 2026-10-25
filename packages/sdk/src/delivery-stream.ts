@@ -1,7 +1,5 @@
 import type { Bucket } from "./bucket";
-
-export type Duration = `${number}s` | `${number}m` | `${number}h` | number;
-export type MemorySize = `${number}MB` | `${number}GB` | number;
+import type { Duration, MemorySize } from "./types";
 
 export interface DeliveryStreamOptions {
   destination: Bucket | string;

@@ -1,6 +1,5 @@
 import type { Topic } from "./topic";
-
-export type Duration = `${number}s` | `${number}m` | `${number}h` | number;
+import type { Duration } from "./types";
 
 export interface AlarmMetricStat {
   namespace?: string;

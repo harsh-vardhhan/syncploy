@@ -9,7 +9,9 @@ export * from "./topic";
 export * from "./alarm";
 export * from "./delivery-stream";
 export * from "./container";
+export * from "./types";
 import type { ContainerOptions } from "./container";
+import type { Duration, MemorySize, CorsOptions, PolicyStatement } from "./types";
 
 export class HttpError extends Error {
   readonly statusCode: number;
@@ -37,23 +39,7 @@ export interface RequestContext {
   rawEvent?: unknown;
 }
 
-export type Duration = `${number}s` | `${number}m` | `${number}h` | number;
-export type MemorySize = `${number}MB` | `${number}GB` | number;
-
-export interface CorsOptions {
-  allowOrigins?: string[];
-  allowHeaders?: string[];
-  allowMethods?: string[];
-  maxAge?: Duration;
-}
-
 export type IngressType = "api-gateway" | "function-url";
-
-export interface PolicyStatement {
-  effect?: "Allow" | "Deny";
-  actions: string[];
-  resources: string[];
-}
 
 export interface ApiOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";

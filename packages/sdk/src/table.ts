@@ -1,5 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import type { ContainerOptions } from "./container";
+import type { Duration, MemorySize, PolicyStatement } from "./types";
 import {
   DynamoDBDocumentClient,
   GetCommand,
@@ -17,15 +18,6 @@ export interface TableIndexDefinition {
   partitionKey: KeyDefinition;
   sortKey?: KeyDefinition;
   projection?: "ALL" | "KEYS_ONLY";
-}
-
-export type Duration = `${number}s` | `${number}m` | `${number}h` | number;
-export type MemorySize = `${number}MB` | `${number}GB` | number;
-
-export interface PolicyStatement {
-  effect?: "Allow" | "Deny";
-  actions: string[];
-  resources: string[];
 }
 
 export interface TableStreamOptions {

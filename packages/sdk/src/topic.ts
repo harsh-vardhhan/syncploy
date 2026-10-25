@@ -1,17 +1,11 @@
 import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
 import type { ContainerOptions } from "./container";
+import type { Duration, MemorySize, PolicyStatement } from "./types";
 
-export type Duration = `${number}s` | `${number}m` | `${number}h` | number;
-export type MemorySize = `${number}MB` | `${number}GB` | number;
-
-export interface PolicyStatement {
-  effect?: "Allow" | "Deny";
-  actions: string[];
-  resources: string[];
-}
+export type TopicProtocol = "email" | "email-json" | "sms" | "sqs" | "lambda" | "https" | "http" | "firehose";
 
 export interface TopicSubscription {
-  protocol: "email" | "sms" | "sqs" | "lambda";
+  protocol: TopicProtocol;
   endpoint: string;
 }
 

@@ -1,8 +1,6 @@
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import type { ContainerOptions } from "./container";
-
-export type Duration = `${number}s` | `${number}m` | `${number}h` | number;
-export type MemorySize = `${number}MB` | `${number}GB` | number;
+import type { Duration, MemorySize, PolicyStatement } from "./types";
 
 export interface DeadLetterQueueOptions {
   maxReceiveCount: number;
@@ -16,12 +14,6 @@ export interface QueueOptions {
   fifo?: boolean;
   logicalId?: string;
   queueName?: string;
-}
-
-export interface PolicyStatement {
-  effect?: "Allow" | "Deny";
-  actions: string[];
-  resources: string[];
 }
 
 export interface ConsumerOptions {

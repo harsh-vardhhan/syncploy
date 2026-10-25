@@ -3,6 +3,7 @@ import { Parser } from "./parser";
 import { EntrypointGenerator } from "./entrypoint";
 import { Bundler } from "./bundler";
 import { Synthesizer } from "./synthesizer";
+import { GraphValidator, formatDiagnostics } from "./validator";
 import type { BuildOutput, ResourceGraph } from "./types";
 
 export class Compiler {
@@ -26,7 +27,21 @@ export class Compiler {
     // 1. Parse AST
     const graph = await this.parse();
 
-    // 2. Generate entrypoints and bundle Lambdas
+    // 2. Pre-flight static validation of AWS platform constraints
+    const validator = new GraphValidator();
+    const validation = validator.validate(graph);
+
+    if (validation.warnings.length > 0) {
+      console.warn(formatDiagnostics({ valid: true, errors: [], warnings: validation.warnings }));
+    }
+
+    if (!validation.valid) {
+      const formattedErrors = formatDiagnostics(validation);
+      console.error(formattedErrors);
+      throw new Error(`Pre-flight validation failed with ${validation.errors.length} error(s).`);
+    }
+
+    // 3. Generate entrypoints and bundle Lambdas
     const lambdaBundles: Record<string, string> = {};
     const lambdaArtifactDirs: Record<string, string> = {};
 
