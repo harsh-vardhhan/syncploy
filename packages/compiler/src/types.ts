@@ -23,51 +23,51 @@ export interface ApiRouteIR {
   sourceFile: string;
   method: HttpMethod;
   path: string;
-  auth?: boolean;
-  ingress?: IngressType;
-  timeout?: number; // in seconds
-  memory?: number; // in MB
-  concurrency?: number; // ReservedConcurrentExecutions
-  cors?: CorsConfig | boolean;
-  policies?: PolicyStatementIR[];
-  environment?: Record<string, string>;
+  auth?: boolean | undefined;
+  ingress?: IngressType | undefined;
+  timeout?: number | undefined; // in seconds
+  memory?: number | undefined; // in MB
+  concurrency?: number | undefined; // ReservedConcurrentExecutions
+  cors?: CorsConfig | boolean | undefined;
+  policies?: PolicyStatementIR[] | undefined;
+  environment?: Record<string, string> | undefined;
 }
 
 export interface TableIndexIR {
   partitionKey: string;
-  sortKey?: string;
-  projection?: "ALL" | "KEYS_ONLY";
+  sortKey?: string | undefined;
+  projection?: "ALL" | "KEYS_ONLY" | undefined;
 }
 
 export interface TableIR {
   id: string;
   name: string;
   partitionKey: { name: string; type: "string" | "number" | "binary" };
-  sortKey?: { name: string; type: "string" | "number" | "binary" };
-  billingMode?: "PAY_PER_REQUEST" | "PROVISIONED";
-  stream?: "NEW_IMAGE" | "OLD_IMAGE" | "NEW_AND_OLD_IMAGES" | "KEYS_ONLY";
-  pointInTimeRecovery?: boolean;
-  indexes?: Record<string, TableIndexIR>;
+  sortKey?: { name: string; type: "string" | "number" | "binary" } | undefined;
+  billingMode?: "PAY_PER_REQUEST" | "PROVISIONED" | undefined;
+  stream?: "NEW_IMAGE" | "OLD_IMAGE" | "NEW_AND_OLD_IMAGES" | "KEYS_ONLY" | undefined;
+  pointInTimeRecovery?: boolean | undefined;
+  indexes?: Record<string, TableIndexIR> | undefined;
   sourceFile: string;
 }
 
 export interface BucketIR {
   id: string;
   name: string;
-  versioned?: boolean;
-  eventBridge?: boolean;
-  publicAccessBlock?: boolean;
+  versioned?: boolean | undefined;
+  eventBridge?: boolean | undefined;
+  publicAccessBlock?: boolean | undefined;
   sourceFile: string;
 }
 
 export interface QueueIR {
   id: string;
   name: string;
-  visibilityTimeout?: number; // in seconds
+  visibilityTimeout?: number | undefined; // in seconds
   deadLetterQueue?: {
     maxReceiveCount: number;
-  };
-  fifo?: boolean;
+  } | undefined;
+  fifo?: boolean | undefined;
   sourceFile: string;
 }
 
@@ -76,12 +76,12 @@ export interface QueueConsumerIR {
   queueName: string;
   exportName: string;
   sourceFile: string;
-  batchSize?: number;
-  timeout?: number;
-  concurrency?: number;
-  memory?: number;
-  policies?: PolicyStatementIR[];
-  environment?: Record<string, string>;
+  batchSize?: number | undefined;
+  timeout?: number | undefined;
+  concurrency?: number | undefined;
+  memory?: number | undefined;
+  policies?: PolicyStatementIR[] | undefined;
+  environment?: Record<string, string> | undefined;
 }
 
 export interface TableStreamConsumerIR {
@@ -89,20 +89,20 @@ export interface TableStreamConsumerIR {
   tableName: string;
   exportName: string;
   sourceFile: string;
-  batchSize?: number;
-  startingPosition?: "LATEST" | "TRIM_HORIZON";
-  enabled?: boolean;
-  timeout?: number;
-  concurrency?: number;
-  memory?: number;
-  policies?: PolicyStatementIR[];
-  environment?: Record<string, string>;
+  batchSize?: number | undefined;
+  startingPosition?: "LATEST" | "TRIM_HORIZON" | undefined;
+  enabled?: boolean | undefined;
+  timeout?: number | undefined;
+  concurrency?: number | undefined;
+  memory?: number | undefined;
+  policies?: PolicyStatementIR[] | undefined;
+  environment?: Record<string, string> | undefined;
 }
 
 export interface TopicIR {
   id: string;
   name: string;
-  fifo?: boolean;
+  fifo?: boolean | undefined;
   sourceFile: string;
 }
 
@@ -111,45 +111,45 @@ export interface TopicSubscriberIR {
   topicName: string;
   exportName: string;
   sourceFile: string;
-  timeout?: number;
-  concurrency?: number;
-  memory?: number;
-  policies?: PolicyStatementIR[];
-  environment?: Record<string, string>;
+  timeout?: number | undefined;
+  concurrency?: number | undefined;
+  memory?: number | undefined;
+  policies?: PolicyStatementIR[] | undefined;
+  environment?: Record<string, string> | undefined;
 }
 
 export interface AlarmMetricQueryIR {
   id: string;
-  expression?: string;
-  label?: string;
-  returnData?: boolean;
+  expression?: string | undefined;
+  label?: string | undefined;
+  returnData?: boolean | undefined;
   metricStat?: {
     metric: {
       namespace: string;
       metricName: string;
-      dimensions?: { name: string; value: string }[];
+      dimensions?: { name: string; value: string }[] | undefined;
     };
     period: number;
     stat: string;
-  };
+  } | undefined;
 }
 
 export interface AlarmIR {
   id: string;
   name: string;
-  description?: string;
+  description?: string | undefined;
   threshold: number;
-  evaluationPeriods?: number;
-  comparison?: string;
+  evaluationPeriods?: number | undefined;
+  comparison?: string | undefined;
   metric?: {
-    namespace?: string;
+    namespace?: string | undefined;
     metricName: string;
-    dimensions?: Record<string, string>;
-    period?: number;
-    stat?: string;
-  };
-  metrics?: AlarmMetricQueryIR[];
-  actions?: string[];
+    dimensions?: Record<string, string> | undefined;
+    period?: number | undefined;
+    stat?: string | undefined;
+  } | undefined;
+  metrics?: AlarmMetricQueryIR[] | undefined;
+  actions?: string[] | undefined;
   sourceFile: string;
 }
 
@@ -158,8 +158,8 @@ export interface EventBindingIR {
   sourceBucketName: string;
   event: "objectCreated" | "objectRemoved";
   targetQueueName: string;
-  prefix?: string;
-  suffix?: string;
+  prefix?: string | undefined;
+  suffix?: string | undefined;
 }
 
 export interface ResourceGraph {

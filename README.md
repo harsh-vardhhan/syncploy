@@ -3,6 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/@syncploy/sdk.svg?color=blue)](https://www.npmjs.com/package/@syncploy/sdk)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![package](https://img.shields.io/badge/npm-%40syncploy%2Fsdk-red.svg)](https://www.npmjs.com/package/@syncploy/sdk)
+[![CI](https://github.com/harsh-vardhhan/syncploy/actions/workflows/ci.yml/badge.svg)](https://github.com/harsh-vardhhan/syncploy/actions/workflows/ci.yml)
 
 > **Infrastructure-from-Code (IfC) Compiler for Pure AWS Serverless.**  
 > Write idiomatic TypeScript. Deploy to AWS without writing YAML, Terraform, or manual IAM policies.

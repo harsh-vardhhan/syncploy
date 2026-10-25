@@ -2,6 +2,7 @@ import { Project, SyntaxKind, type Node, type ObjectLiteralExpression } from "ts
 import type {
   ApiRouteIR,
   HttpMethod,
+  IngressType,
   ResourceGraph,
   TableIR,
   TableStreamConsumerIR,
@@ -14,6 +15,7 @@ import type {
   TableIndexIR,
   CorsConfig,
   PolicyStatementIR,
+  EventBindingIR,
 } from "./types";
 
 export class Parser {
