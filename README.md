@@ -26,12 +26,15 @@ Syncploy targets services that **scale to zero**, require **zero VPC/server mana
 
 | Service Category | AWS Service | Syncploy SDK Primitive | In-Code Configurability |
 | :--- | :--- | :--- | :--- |
-| **Compute** | **AWS Lambda** (Node 20 ESM) | `api(...)`, `queue.consumer(...)` | `memory`, `timeout`, `concurrency` (ReservedConcurrentExecutions) |
+| **Compute** | **AWS Lambda** (Node 20 ESM) | `api(...)`, `queue.consumer(...)`, `table.stream(...)`, `topic.subscribe(...)` | `memory`, `timeout`, `concurrency` (ReservedConcurrentExecutions) |
 | **HTTP Ingress (Unified)** | **API Gateway (HTTP API v2)** | `api({ ingress: "api-gateway" })` | `path`, `method`, `auth`, `cors` |
 | **Direct Ingress (Streaming)** | **Lambda Function URLs** | `api({ ingress: "function-url" })` | `timeout` up to 15m, native response streaming, $0 cost |
 | **NoSQL Database** | **Amazon DynamoDB (On-Demand)** | `new Table("name", { ... })` | `partitionKey`, `sortKey`, `indexes` (GSIs), `stream`, `pointInTimeRecovery` |
+| **Database Streams** | **Amazon DynamoDB Streams** | `table.stream(...)` | `batchSize`, `startingPosition`, `enabled`, partial batch failure reporting |
 | **Object Storage** | **Amazon S3** | `new Bucket("name", { ... })` | `versioned`, `eventBridge`, `publicAccessBlock` |
 | **Message Queues** | **Amazon SQS** | `new Queue("name", { ... })` | `visibilityTimeout`, `deadLetterQueue` (auto-DLQ generation), `fifo` |
+| **Pub/Sub Messaging** | **Amazon SNS** | `new Topic("name", { ... })`, `topic.subscribe(...)` | `fifo`, IAM subscriptions |
+| **Monitoring & Alarms** | **Amazon CloudWatch** | `new Alarm("name", { ... })` | `threshold`, `evaluationPeriods`, `comparison`, `actions` (SNS topics) |
 | **Event Routing** | **Amazon EventBridge** | `bucket.on("objectCreated", queue)` | Event pattern filters, S3 prefix/suffix routing |
 | **Secrets & Config** | **AWS Secrets Manager / SSM** | `new Secret("KEY")` | Type-safe environment injection |
 | **Access Control** | **AWS IAM** | *Automatic* | Static inference generates exact least-privilege policies |
@@ -160,26 +163,32 @@ my-app/
 
 ---
 
-## 🚀 CLI Commands
+## 🚀 Compiler CLI
 
-Install and run within any Bun/Node project:
+Syncploy is **strictly a compiler**. It does not manage deployments, execute cloud resources, or attempt brittle local cloud simulations. It parses your TypeScript application and outputs pure, standard CloudFormation templates and tree-shaken Lambda bundles.
 
-### 1. Build & Synthesize
-Compiles TypeScript, bundles Lambdas, and emits the CloudFormation template:
+### Compile a Project
+
+Run within any project root:
 ```bash
-syncploy build
+bunx syncploy
+# or
+npx syncploy build
 ```
 
-### 2. Local Development Simulator
-Starts an in-memory HTTP server that routes incoming requests directly to your bundled Lambda handlers locally, giving you instant hot reload without deploying:
-```bash
-syncploy dev --port 4000
-```
+### Deploying the Compiled Artifacts
 
-### 3. Deploy to AWS
-Deploys the synthesized CloudFormation stack directly to AWS:
+Because Syncploy emits standard AWS CloudFormation and standalone Lambda bundles into `.syncploy/`, you deploy using standard AWS CLI, SAM, or CI/CD without vendor lock-in:
+
 ```bash
-syncploy deploy --stage dev
+# Using standard AWS CLI
+aws cloudformation deploy \
+  --template-file .syncploy/template.json \
+  --stack-name my-serverless-app \
+  --capabilities CAPABILITY_IAM
+
+# Or using AWS SAM
+sam deploy --template-file .syncploy/template.json
 ```
 
 ---
@@ -191,9 +200,9 @@ Managed with [Bun](https://bun.sh):
 ```
 syncploy/
 ├── packages/
-│   ├── sdk/         # @syncploy/sdk: Typed runtime & AST marker primitives (api, Table, Bucket, Queue, Secret)
+│   ├── sdk/         # @syncploy/sdk: Typed runtime & AST marker primitives (api, Table, Bucket, Queue, Topic, Alarm, Secret)
 │   ├── compiler/    # @syncploy/compiler: AST parser, IR builder, IAM synthesizer, esbuild bundler
-│   └── cli/         # syncploy CLI (build, dev, deploy)
+│   └── cli/         # syncploy CLI compiler (syncploy build)
 ├── examples/
 │   └── basic-app/   # Working reference serverless app
 └── README.md
@@ -206,11 +215,11 @@ syncploy/
 Integration tests and build pipeline run in sub-second times:
 * **AST Parsing & Extraction**: ~10ms
 * **Lambda Bundling & CloudFormation Synthesis**: ~15–25ms
-* **Total Build Time**: `< 100ms`
+* **Total Compilation Time**: `< 100ms`
 
 ```bash
 $ bun test
- 4 pass | 0 fail | 42 expect() calls [133.00ms]
+ 15 pass | 0 fail | 147 expect() calls [487.00ms]
 ```
 
 ---
@@ -218,16 +227,15 @@ $ bun test
 ## 🗺️ Roadmap
 
 - [x] **Monorepo setup & Bun workspaces**
-- [x] **AST Parser**: `ts-morph` scanner for `api()`, `Table`, `Bucket`, `Queue`
-- [x] **In-Code Configurability**: Lambda memory/timeout/concurrency, DynamoDB streams/GSIs, SQS DLQs
-- [x] **Virtual Entrypoint Generator**: AWS `APIGatewayProxyEventV2` & SQS batch adapter
+- [x] **AST Parser**: `ts-morph` scanner for `api()`, `Table`, `Bucket`, `Queue`, `Topic`, `Alarm`
+- [x] **In-Code Configurability**: Lambda memory/timeout/concurrency, DynamoDB streams/GSIs, SQS DLQs, SNS topics, CloudWatch alarms
+- [x] **Virtual Entrypoint Generator**: AWS `APIGatewayProxyEventV2`, SQS batch, DynamoDB Stream partial batch failure, and SNS message adapters
 - [x] **Lambda Bundler**: Parallel tree-shaken Node 20 ESM packaging via `esbuild`
-- [x] **CloudFormation Synthesizer**: Generates valid AWS CloudFormation JSON
-- [x] **Local Dev Simulator**: `syncploy dev` local HTTP server
+- [x] **CloudFormation Synthesizer**: Generates valid AWS CloudFormation JSON with scoped IAM roles
 - [x] **Lambda Function URL Synthesizer**: Dedicated `AWS::Lambda::Url` emission
-- [x] **Runtime SDK Clients**: Embedded `@aws-sdk` clients for `table.get()`, `bucket.getText()`, `queue.send()`
-- [ ] **S3 EventBridge Pipeline**: Auto-synthesizing S3 `objectCreated` rules targeting SQS
-- [ ] **EHR-backend Migration**: Port full `EHR-backend` application to Syncploy
+- [x] **Runtime SDK Clients**: Embedded `@aws-sdk` clients for `table`, `bucket`, `queue`, `topic`
+- [x] **S3 EventBridge Pipeline**: Auto-synthesizing S3 `objectCreated` rules targeting SQS
+- [x] **EHR-backend Migration**: Converted full EHR application infrastructure to Syncploy with 1:1 CloudFormation parity
 
 ---
 
