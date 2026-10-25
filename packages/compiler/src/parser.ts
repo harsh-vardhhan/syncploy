@@ -545,6 +545,7 @@ export class Parser {
             let evaluationPeriods = 1;
             let comparison = "GreaterThanOrEqualToThreshold";
             let description: string | undefined;
+            let metric: AlarmIR["metric"] | undefined;
             const actions: string[] = [];
 
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
@@ -553,6 +554,33 @@ export class Parser {
               evaluationPeriods = this.extractNumber(opts.getProperty("evaluationPeriods")) ?? 1;
               comparison = this.extractString(opts.getProperty("comparison")) || "GreaterThanOrEqualToThreshold";
               description = this.extractString(opts.getProperty("description"));
+
+              const metricProp = opts.getProperty("metric");
+              if (metricProp && metricProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const mObj = metricProp.getInitializer();
+                if (mObj && mObj.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                  const metricName = this.extractString(mObj.getProperty("metricName")) || "Invocations";
+                  const namespace = this.extractString(mObj.getProperty("namespace")) || "AWS/Lambda";
+                  const period = this.extractNumber(mObj.getProperty("period")) || 60;
+                  const stat = this.extractString(mObj.getProperty("stat")) || "Sum";
+                  const dims: Record<string, string> = {};
+                  const dimsProp = mObj.getProperty("dimensions");
+                  if (dimsProp && dimsProp.isKind(SyntaxKind.PropertyAssignment)) {
+                    const dObj = dimsProp.getInitializer();
+                    if (dObj && dObj.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                      for (const p of dObj.getProperties()) {
+                        if (p.isKind(SyntaxKind.PropertyAssignment)) {
+                          const dVal = p.getInitializer();
+                          if (dVal && dVal.isKind(SyntaxKind.StringLiteral)) {
+                            dims[p.getName()] = dVal.getLiteralValue();
+                          }
+                        }
+                      }
+                    }
+                  }
+                  metric = { metricName, namespace, period, stat, dimensions: dims };
+                }
+              }
 
               const actionsProp = opts.getProperty("actions");
               if (actionsProp && actionsProp.isKind(SyntaxKind.PropertyAssignment)) {
@@ -574,6 +602,7 @@ export class Parser {
               evaluationPeriods,
               comparison,
               description,
+              metric,
               actions,
               sourceFile: sourceFile.getFilePath(),
             });

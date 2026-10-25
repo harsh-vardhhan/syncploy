@@ -369,6 +369,18 @@ export class Synthesizer {
       envVars[topic.name] = { Ref: `Topic${cleanName}` };
     }
 
+    for (const api of graph.apis) {
+      const logicalId = this.sanitizeName(api.id);
+      const upperName = api.id.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+      envVars[`SYNCPLOY_FUNCTION_${upperName}`] = { Ref: `Function${logicalId}` };
+      envVars[`FUNCTION_${upperName}_NAME`] = { Ref: `Function${logicalId}` };
+      envVars[`${upperName}_FUNCTION_NAME`] = { Ref: `Function${logicalId}` };
+      envVars[api.id] = { Ref: `Function${logicalId}` };
+      if (api.id.toLowerCase().includes("backend")) {
+        envVars["BACKEND_FUNCTION_NAME"] = { Ref: `Function${logicalId}` };
+      }
+    }
+
     // 7. Lambdas and API Gateway Routes
     for (const api of graph.apis) {
       const logicalId = this.sanitizeName(api.id);
@@ -689,17 +701,26 @@ export class Synthesizer {
         AlarmActions: alarmActions,
       };
 
-      if (alarm.metric) {
-        alarmProps["MetricName"] = alarm.metric.metricName;
-        alarmProps["Namespace"] = alarm.metric.namespace || "AWS/Lambda";
-        alarmProps["Period"] = alarm.metric.period || 60;
-        alarmProps["Statistic"] = alarm.metric.stat || "Sum";
-        if (alarm.metric.dimensions) {
-          alarmProps["Dimensions"] = Object.entries(alarm.metric.dimensions).map(([k, v]) => ({
+      const metric = alarm.metric || {
+        metricName: "Invocations",
+        namespace: "AWS/Lambda",
+        period: 60,
+        stat: "Sum",
+      };
+
+      alarmProps["MetricName"] = metric.metricName;
+      alarmProps["Namespace"] = metric.namespace || "AWS/Lambda";
+      alarmProps["Period"] = metric.period || 60;
+      alarmProps["Statistic"] = metric.stat || "Sum";
+
+      if (metric.dimensions && Object.keys(metric.dimensions).length > 0) {
+        alarmProps["Dimensions"] = Object.entries(metric.dimensions).map(([k, v]) => {
+          const matchingApi = graph.apis.find((a) => a.id === v || a.exportName === v);
+          return {
             Name: k,
-            Value: v,
-          }));
-        }
+            Value: matchingApi ? { Ref: `Function${this.sanitizeName(matchingApi.id)}` } : v,
+          };
+        });
       }
 
       resources[resourceKey] = {

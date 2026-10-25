@@ -153,7 +153,14 @@ export async function handler(event: any) {
         body = JSON.parse(record.body);
       } catch {}
 
-      await consumer.handler(body, { record, event });
+      const res = await consumer.handler(body, { record, event });
+      if (res && typeof res === "object" && Array.isArray(res.batchItemFailures)) {
+        for (const failure of res.batchItemFailures) {
+          if (failure?.itemIdentifier) {
+            batchItemFailures.push({ itemIdentifier: failure.itemIdentifier });
+          }
+        }
+      }
     } catch (err) {
       console.error("[Syncploy Queue Consumer Error]:", err);
       batchItemFailures.push({ itemIdentifier: record.messageId });
