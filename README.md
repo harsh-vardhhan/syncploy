@@ -1,7 +1,23 @@
 # ⚡ Syncploy
 
+[![npm version](https://img.shields.io/npm/v/@syncploy/sdk.svg?color=blue)](https://www.npmjs.com/package/@syncploy/sdk)
+[![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![package](https://img.shields.io/badge/npm-%40syncploy%2Fsdk-red.svg)](https://www.npmjs.com/package/@syncploy/sdk)
+
 > **Infrastructure-from-Code (IfC) Compiler for Pure AWS Serverless.**  
 > Write idiomatic TypeScript. Deploy to AWS without writing YAML, Terraform, or manual IAM policies.
+
+---
+
+## 📦 Installation
+
+Install the runtime SDK in your application:
+
+```bash
+bun add @syncploy/sdk
+# or
+npm install @syncploy/sdk
+```
 
 ---
 
@@ -200,7 +216,7 @@ Managed with [Bun](https://bun.sh):
 ```
 syncploy/
 ├── packages/
-│   ├── sdk/         # @syncploy/sdk: Typed runtime & AST marker primitives (api, Table, Bucket, Queue, Topic, Alarm, Secret)
+│   ├── sdk/         # [@syncploy/sdk](https://www.npmjs.com/package/@syncploy/sdk): Typed runtime & AST marker primitives (api, Table, Bucket, Queue, Topic, Alarm, Secret)
 │   ├── compiler/    # @syncploy/compiler: AST parser, IR builder, IAM synthesizer, esbuild bundler
 │   └── cli/         # syncploy CLI compiler (syncploy build)
 ├── examples/
