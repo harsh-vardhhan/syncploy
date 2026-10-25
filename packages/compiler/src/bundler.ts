@@ -20,6 +20,63 @@ export class Bundler {
     const outFile = path.join(outDir, "index.mjs");
     const sdkIndexPath = path.resolve(__dirname, "../../sdk/src/index.ts");
 
+    // Auto-discover workspace packages and node_modules
+    const aliases: Record<string, string> = {
+      "@syncploy/sdk": sdkIndexPath,
+    };
+    const nodePaths: string[] = [path.join(this.workDir, "node_modules")];
+
+    try {
+      const rootPkgPath = path.join(this.workDir, "package.json");
+      const rootPkg = JSON.parse(await fs.readFile(rootPkgPath, "utf-8"));
+      const workspaces: string[] = rootPkg.workspaces || [];
+
+      for (const ws of workspaces) {
+        const cleanWs = ws.replace(/\/\*$/, "");
+        const wsPath = path.resolve(this.workDir, cleanWs);
+        const nmPath = path.join(wsPath, "node_modules");
+        try {
+          await fs.access(nmPath);
+          nodePaths.push(nmPath);
+        } catch {}
+
+        try {
+          const stat = await fs.stat(wsPath);
+          if (stat.isDirectory()) {
+            // Check if wsPath itself has a package.json
+            try {
+              const subPkg = JSON.parse(await fs.readFile(path.join(wsPath, "package.json"), "utf-8"));
+              if (subPkg.name) {
+                aliases[subPkg.name] = path.resolve(wsPath, subPkg.main || "src/index.ts");
+              }
+            } catch {}
+
+            // Also check subdirectories if it's a glob like packages/*
+            if (ws.endsWith("/*")) {
+              const entries = await fs.readdir(wsPath, { withFileTypes: true });
+              for (const entry of entries) {
+                if (entry.isDirectory()) {
+                  const dirPath = path.join(wsPath, entry.name);
+                  const subNmPath = path.join(dirPath, "node_modules");
+                  try {
+                    await fs.access(subNmPath);
+                    nodePaths.push(subNmPath);
+                  } catch {}
+
+                  try {
+                    const subPkg = JSON.parse(await fs.readFile(path.join(dirPath, "package.json"), "utf-8"));
+                    if (subPkg.name) {
+                      aliases[subPkg.name] = path.resolve(dirPath, subPkg.main || "src/index.ts");
+                    }
+                  } catch {}
+                }
+              }
+            }
+          }
+        } catch {}
+      }
+    } catch {}
+
     await esbuild.build({
       entryPoints: [entrypointPath],
       bundle: true,
@@ -30,9 +87,8 @@ export class Bundler {
       sourcemap: true,
       outfile: outFile,
       external: ["@aws-sdk/*"],
-      alias: {
-        "@syncploy/sdk": sdkIndexPath,
-      },
+      nodePaths,
+      alias: aliases,
       banner: {
         js: `import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);`,
       },
