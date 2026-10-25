@@ -47,7 +47,7 @@ flowchart TD
 
     subgraph Parser["2. Static AST Analysis & Validation"]
         AST["AST Engine (ts-morph)<br/>Zero-execution static AST scanner for SDK primitives"]
-        VAL["Pre-Flight AWS Platform Validator (&lt;1ms)<br/>Enforces AWS limits, naming, FIFO, IAM syntax & secret scanner"]
+        VAL["Pre-Flight AWS Validator (&lt;1ms)<br/>Catches recursive loops, DoW, AWS limits & secret leaks"]
         AST --> VAL
     end
 
@@ -205,8 +205,14 @@ export const processAnnotation = annotationQueue.consumer(
 
 ## 🛡️ Pre-Flight AWS Platform Validator (<1ms)
 
-Syncploy includes a high-speed static validator that catches fatal AWS platform constraints during compilation in **< 1 millisecond**—long before CloudFormation is ever invoked:
+Syncploy includes a high-speed static validator that catches fatal AWS platform constraints, recursive infrastructure loops, and Denial-of-Wallet (DoW) risks during compilation in **< 1 millisecond**—long before CloudFormation is ever invoked:
 
+* **Infra Recursion & Cycle Detection (Fatal)**: Traces directed event and mutation graphs using DFS cycle detection to catch infinite self-amplifying loops (`Table -> Stream -> Table.put`, `Queue -> Consumer -> Queue.send`, `Bucket -> EventBridge -> Queue -> Consumer -> Bucket.upload`) that cause exponential invocations.
+* **Denial of Wallet (DoW) & DDoS Guards**:
+  * **SQS Timeout Mismatch**: Enforces that queue `visibilityTimeout` is greater than consumer `timeout`. Catches runaway duplicate concurrent executions caused by SQS redelivering in-flight messages prematurely.
+  * **Missing DLQ / Retry Storms**: Warns when active queue consumers lack a `deadLetterQueue`, preventing poison pill messages from retrying continuously for up to 14 days.
+  * **Uncapped Public Concurrency**: Warns when public endpoints or Function URLs lack `concurrency` caps, preventing DDoS attacks from horizontally scaling Lambdas to account limits (1,000+ parallel instances).
+  * **DynamoDB Shard Surge Guard**: Warns on unthrottled stream consumers without `concurrency` limits to prevent shard-split cost spikes.
 * **CloudFormation Logical IDs**: Strictly alphanumeric (`^[A-Za-z0-9]+$`). Catches fatal syntax errors like `logicalId: "ehr-table"`.
 * **Lambda Limits**: Validates memory (128 MB to 10,240 MB integer) and timeout limits (1s to 900s / 15m). Catches illegal sizes like `64MB` or `20m`.
 * **S3 Bucket Naming**: Enforces strict RFC 1123 DNS compliance (lowercase only, no underscores, no consecutive dots, 3–63 chars).

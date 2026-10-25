@@ -2,7 +2,7 @@ const red = (s: string) => `\x1b[31m${s}\x1b[0m`;
 const yellow = (s: string) => `\x1b[33m${s}\x1b[0m`;
 const bold = (s: string) => `\x1b[1m${s}\x1b[22m`;
 const dim = (s: string) => `\x1b[2m${s}\x1b[22m`;
-import type { ResourceGraph } from "./types";
+import type { ResourceGraph, FunctionMutationsIR } from "./types";
 
 export interface Diagnostic {
   code: string;
@@ -58,6 +58,8 @@ export class GraphValidator {
     this.validateTopics(graph);
     this.validateDeliveryStreams(graph);
     this.validateAlarms(graph);
+    this.validateInfraRecursion(graph);
+    this.validateDenialOfWallet(graph);
 
     const errors = this.diagnostics.filter((d) => d.severity === "error");
     const warnings = this.diagnostics.filter((d) => d.severity === "warning");
@@ -583,6 +585,271 @@ export class GraphValidator {
             );
           }
         }
+      }
+    }
+  }
+
+  // 15. Infrastructure Recursion & Cycle Detection (Event Dependency Graph)
+  private validateInfraRecursion(graph: ResourceGraph): void {
+    interface GraphEdge {
+      target: string;
+      constructId: string;
+      sourceFile?: string | undefined;
+    }
+
+    const adj = new Map<string, GraphEdge[]>();
+
+    const addEdge = (from: string, target: string, constructId: string, sourceFile?: string) => {
+      if (!adj.has(from)) adj.set(from, []);
+      adj.get(from)!.push({ target, constructId, sourceFile });
+    };
+
+    // A. Trigger Edges:
+    for (const s of graph.tableStreams) {
+      addEdge(`Table '${s.tableName}'`, `Stream Consumer '${s.id}'`, s.id, s.sourceFile);
+    }
+
+    for (const c of graph.consumers) {
+      addEdge(`Queue '${c.queueName}'`, `Queue Consumer '${c.id}'`, c.id, c.sourceFile);
+    }
+
+    for (const sub of graph.topicSubscribers) {
+      addEdge(`Topic '${sub.topicName}'`, `Topic Subscriber '${sub.id}'`, sub.id, sub.sourceFile);
+    }
+
+    for (const b of graph.bindings || []) {
+      addEdge(`Bucket '${b.sourceBucketName}'`, `Queue '${b.targetQueueName}'`, b.id);
+    }
+
+    // B. Mutation / Write Edges:
+    const allFunctions: {
+      id: string;
+      nodeName: string;
+      mutations?: FunctionMutationsIR | undefined;
+      policies?: any[] | undefined;
+      sourceFile?: string | undefined;
+    }[] = [
+      ...graph.tableStreams.map((s) => ({
+        id: s.id,
+        nodeName: `Stream Consumer '${s.id}'`,
+        mutations: s.mutations,
+        policies: s.policies,
+        sourceFile: s.sourceFile,
+      })),
+      ...graph.consumers.map((c) => ({
+        id: c.id,
+        nodeName: `Queue Consumer '${c.id}'`,
+        mutations: c.mutations,
+        policies: c.policies,
+        sourceFile: c.sourceFile,
+      })),
+      ...graph.topicSubscribers.map((sub) => ({
+        id: sub.id,
+        nodeName: `Topic Subscriber '${sub.id}'`,
+        mutations: sub.mutations,
+        policies: sub.policies,
+        sourceFile: sub.sourceFile,
+      })),
+      ...graph.apis.map((api) => ({
+        id: api.id,
+        nodeName: `API '${api.id}'`,
+        mutations: api.mutations,
+        policies: api.policies,
+        sourceFile: api.sourceFile,
+      })),
+    ];
+
+    for (const fn of allFunctions) {
+      for (const tbl of fn.mutations?.tablesWritten || []) {
+        addEdge(fn.nodeName, `Table '${tbl}'`, fn.id, fn.sourceFile);
+      }
+      for (const bkt of fn.mutations?.bucketsWritten || []) {
+        addEdge(fn.nodeName, `Bucket '${bkt}'`, fn.id, fn.sourceFile);
+      }
+      for (const q of fn.mutations?.queuesSent || []) {
+        addEdge(fn.nodeName, `Queue '${q}'`, fn.id, fn.sourceFile);
+      }
+      for (const top of fn.mutations?.topicsPublished || []) {
+        addEdge(fn.nodeName, `Topic '${top}'`, fn.id, fn.sourceFile);
+      }
+
+      if (fn.policies) {
+        for (const stmt of fn.policies) {
+          const acts: string[] = stmt.actions || [];
+          const res: string[] = stmt.resources || [];
+
+          if (
+            acts.some(
+              (a) =>
+                a.startsWith("dynamodb:Put") ||
+                a.startsWith("dynamodb:Update") ||
+                a.startsWith("dynamodb:Delete") ||
+                a.startsWith("dynamodb:BatchWrite")
+            )
+          ) {
+            for (const t of graph.tables) {
+              if (res.includes("*") || res.some((r) => r.includes(t.name) || (t.tableName && r.includes(t.tableName)))) {
+                addEdge(fn.nodeName, `Table '${t.name}'`, fn.id, fn.sourceFile);
+              }
+            }
+          }
+
+          if (acts.some((a) => a === "sqs:SendMessage" || a === "sqs:SendMessageBatch")) {
+            for (const q of graph.queues) {
+              if (res.includes("*") || res.some((r) => r.includes(q.name) || (q.queueName && r.includes(q.queueName)))) {
+                addEdge(fn.nodeName, `Queue '${q.name}'`, fn.id, fn.sourceFile);
+              }
+            }
+          }
+
+          if (acts.some((a) => a === "s3:PutObject" || a === "s3:PutObjectAcl")) {
+            for (const b of graph.buckets) {
+              if (res.includes("*") || res.some((r) => r.includes(b.name) || (b.bucketName && r.includes(b.bucketName)))) {
+                addEdge(fn.nodeName, `Bucket '${b.name}'`, fn.id, fn.sourceFile);
+              }
+            }
+          }
+
+          if (acts.some((a) => a === "sns:Publish")) {
+            for (const top of graph.topics || []) {
+              if (res.includes("*") || res.some((r) => r.includes(top.name) || (top.topicName && r.includes(top.topicName)))) {
+                addEdge(fn.nodeName, `Topic '${top.name}'`, fn.id, fn.sourceFile);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const visited = new Set<string>();
+    const recStack = new Set<string>();
+    const path: { node: string; constructId: string; sourceFile?: string }[] = [];
+    const seenCycles = new Set<string>();
+
+    const normalizeCycle = (nodes: string[]): string => {
+      const cycleNodes = nodes.slice(0, -1);
+      let minIdx = 0;
+      for (let i = 1; i < cycleNodes.length; i++) {
+        if (cycleNodes[i]! < cycleNodes[minIdx]!) {
+          minIdx = i;
+        }
+      }
+      const rotated = [...cycleNodes.slice(minIdx), ...cycleNodes.slice(0, minIdx)];
+      return rotated.join(" -> ");
+    };
+
+    const dfs = (node: string, currentConstructId: string, currentSourceFile?: string) => {
+      visited.add(node);
+      recStack.add(node);
+      path.push({ node, constructId: currentConstructId, sourceFile: currentSourceFile });
+
+      const neighbors = adj.get(node) || [];
+      for (const edge of neighbors) {
+        if (!visited.has(edge.target)) {
+          dfs(edge.target, edge.constructId, edge.sourceFile);
+        } else if (recStack.has(edge.target)) {
+          const startIndex = path.findIndex((p) => p.node === edge.target);
+          if (startIndex !== -1) {
+            const cycleSegment = path.slice(startIndex).map((p) => p.node).concat(edge.target);
+            const normalized = normalizeCycle(cycleSegment);
+            if (!seenCycles.has(normalized)) {
+              seenCycles.add(normalized);
+              const cycleStr = cycleSegment.join(" -> ");
+              this.addError(
+                "ERR_RECURSIVE_LOOP",
+                edge.constructId,
+                `Infinite recursion loop detected: ${cycleStr}. This event-driven cycle causes continuous self-amplifying Lambda invocations and exponential Denial-of-Wallet.`,
+                edge.sourceFile
+              );
+            }
+          }
+        }
+      }
+
+      path.pop();
+      recStack.delete(node);
+    };
+
+    for (const startNode of adj.keys()) {
+      if (!visited.has(startNode)) {
+        dfs(startNode, startNode);
+      }
+    }
+  }
+
+  // 16. Denial of Wallet (DoW) & DDoS Safety Rails
+  private validateDenialOfWallet(graph: ResourceGraph): void {
+    // A. SQS Queue Visibility Timeout vs Consumer Timeout & DLQ
+    for (const q of graph.queues) {
+      const activeConsumers = graph.consumers.filter((c) => c.queueName === q.name);
+
+      if (activeConsumers.length > 0 && !q.deadLetterQueue) {
+        this.addWarning(
+          "WARN_DOW_MISSING_DLQ",
+          q.id,
+          `Queue '${q.name}' has active consumer(s) (${activeConsumers.map((c) => `'${c.id}'`).join(", ")}) but no 'deadLetterQueue' configured. Unhandled errors or poison pill messages will retry continuously for up to 14 days, draining your AWS budget. Configure 'deadLetterQueue: { maxReceiveCount: 3 }'.`,
+          q.sourceFile
+        );
+      }
+
+      for (const c of activeConsumers) {
+        if (q.visibilityTimeout !== undefined && c.timeout !== undefined) {
+          if (q.visibilityTimeout < c.timeout) {
+            this.addError(
+              "ERR_SQS_TIMEOUT_MISMATCH",
+              c.id,
+              `Queue '${q.name}' visibilityTimeout (${q.visibilityTimeout}s) is shorter than consumer '${c.id}' timeout (${c.timeout}s). SQS will redeliver in-flight messages before handler completes, causing cascading duplicate executions and runaway costs. Set queue visibilityTimeout to at least ${c.timeout}s (recommended: ${c.timeout * 6}s).`,
+              c.sourceFile
+            );
+          } else if (q.visibilityTimeout < c.timeout * 2) {
+            this.addWarning(
+              "WARN_SQS_VISIBILITY_TIMEOUT_SHORT",
+              c.id,
+              `Queue '${q.name}' visibilityTimeout (${q.visibilityTimeout}s) is close to consumer '${c.id}' timeout (${c.timeout}s). AWS recommends queue visibilityTimeout be at least 6x consumer timeout to prevent duplicate executions under processing delays.`,
+              c.sourceFile
+            );
+          }
+        }
+      }
+    }
+
+    // B. Public Routes & Function URLs Concurrency Guards
+    for (const api of graph.apis) {
+      if (api.ingress === "function-url" && api.auth !== true && api.concurrency === undefined) {
+        this.addWarning(
+          "WARN_DOW_UNRESERVED_CONCURRENCY",
+          api.id,
+          `Public Function URL '${api.id}' (${api.method} ${api.path}) has no 'concurrency' limit. Under a DDoS attack or traffic surge, Lambda will scale to account limits (1,000+ executions) causing severe Denial-of-Wallet. Consider configuring 'concurrency: <number>'.`,
+          api.sourceFile
+        );
+      }
+
+      if (
+        api.concurrency === undefined &&
+        api.cors &&
+        typeof api.cors === "object" &&
+        Array.isArray(api.cors.allowOrigins) &&
+        api.cors.allowOrigins.includes("*") &&
+        ((api.memory !== undefined && api.memory >= 512) || (api.timeout !== undefined && api.timeout >= 30))
+      ) {
+        this.addWarning(
+          "WARN_DOW_PUBLIC_API_BURST",
+          api.id,
+          `Public endpoint '${api.id}' (${api.method} ${api.path}) with allowOrigins: ['*'] has high resource allocation (${api.memory || 128}MB, ${api.timeout || 30}s) and no 'concurrency' cap. Consider adding 'concurrency: <number>' to guard against DDoS cost amplification.`,
+          api.sourceFile
+        );
+      }
+    }
+
+    // C. DynamoDB Stream Unbounded Concurrency
+    for (const s of graph.tableStreams) {
+      if (s.concurrency === undefined) {
+        this.addWarning(
+          "WARN_DOW_STREAM_UNBOUNDED",
+          s.id,
+          `DynamoDB stream consumer '${s.id}' for table '${s.tableName}' has no 'concurrency' cap. Heavy table write bursts can split shards and spawn uncontrolled parallel Lambda instances. Consider configuring 'concurrency: <number>'.`,
+          s.sourceFile
+        );
       }
     }
   }

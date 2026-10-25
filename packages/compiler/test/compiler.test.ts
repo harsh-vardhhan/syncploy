@@ -887,4 +887,34 @@ export const ephemeralBucket = new Bucket("ephemeral-bkt", {
     expect(res[ephBktKey!].DeletionPolicy).toBe("Delete");
     expect(res[ephBktKey!].UpdateReplacePolicy).toBe("Delete");
   });
+
+  describe("End-to-End Infra Recursion Prevention", () => {
+    const testDir = path.join(__dirname, ".tmp-test-app-recursion");
+
+    beforeAll(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+      const code = `
+import { Table } from "@syncploy/sdk";
+
+export const recursiveTable = new Table("recursion-test-tbl", {
+  stream: "NEW_IMAGE",
+});
+
+export const badConsumer = recursiveTable.stream(async (event) => {
+  // Direct recursion!
+  await recursiveTable.put({ PK: "TEST", SK: "1" });
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+    });
+
+    afterAll(async () => {
+      await fs.rm(testDir, { recursive: true, force: true });
+    });
+
+    it("statically detects recursive stream loop from AST and aborts build", async () => {
+      const compiler = new Compiler(testDir);
+      await expect(compiler.build()).rejects.toThrow("Pre-flight validation failed with 1 error(s).");
+    });
+  });
 });

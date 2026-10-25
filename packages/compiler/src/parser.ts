@@ -1,4 +1,4 @@
-import { Project, SyntaxKind, type Node, type ObjectLiteralExpression } from "ts-morph";
+import { Project, SyntaxKind, type Node, type ObjectLiteralExpression, type SourceFile } from "ts-morph";
 import type {
   ApiRouteIR,
   HttpMethod,
@@ -19,6 +19,7 @@ import type {
   PolicyStatementIR,
   EventBindingIR,
   ContainerIR,
+  FunctionMutationsIR,
 } from "./types";
 
 export class Parser {
@@ -56,6 +57,30 @@ export class Parser {
     const varToBucketName: Record<string, string> = {};
     const varToTopicName: Record<string, string> = {};
     const varToDeliveryStreamName: Record<string, string> = {};
+
+    // Pass 1: Pre-populate variable-to-resource-name mappings across all project files
+    for (const sourceFile of this.project.getSourceFiles()) {
+      for (const decl of sourceFile.getVariableDeclarations()) {
+        const init = decl.getInitializer();
+        if (!init || !init.isKind(SyntaxKind.NewExpression)) continue;
+        const expr = init.getExpression();
+        const className = expr.getText();
+        const args = init.getArguments();
+        const varName = decl.getName();
+
+        if (className === "Table" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
+          varToTableName[varName] = args[0].getLiteralValue();
+        } else if (className === "Bucket" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
+          varToBucketName[varName] = args[0].getLiteralValue();
+        } else if (className === "Queue" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
+          varToQueueName[varName] = args[0].getLiteralValue();
+        } else if (className === "Topic" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
+          varToTopicName[varName] = args[0].getLiteralValue();
+        } else if (className === "DeliveryStream" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
+          varToDeliveryStreamName[varName] = args[0].getLiteralValue();
+        }
+      }
+    }
 
     for (const sourceFile of this.project.getSourceFiles()) {
       for (const decl of sourceFile.getVariableDeclarations()) {
@@ -138,6 +163,16 @@ export class Parser {
             const logicalId = this.extractString(optionsObj.getProperty("logicalId"));
             const functionName = this.extractString(optionsObj.getProperty("functionName"));
 
+            const handlerNode = args.length > 1 ? args[1] : undefined;
+            const mutations = this.extractMutationsFromNode(
+              handlerNode,
+              sourceFile,
+              varToTableName,
+              varToBucketName,
+              varToQueueName,
+              varToTopicName
+            );
+
             apis.push({
               id: varName,
               exportName: varName,
@@ -155,6 +190,7 @@ export class Parser {
               container,
               logicalId,
               functionName,
+              mutations,
             });
           }
 
@@ -187,6 +223,21 @@ export class Parser {
                 functionName = this.extractString(consumerOpts.getProperty("functionName"));
               }
 
+              const handlerNode =
+                args.length > 1
+                  ? args[1]
+                  : args.length === 1 && !args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)
+                    ? args[0]
+                    : undefined;
+              const mutations = this.extractMutationsFromNode(
+                handlerNode,
+                sourceFile,
+                varToTableName,
+                varToBucketName,
+                varToQueueName,
+                varToTopicName
+              );
+
               consumers.push({
                 id: varName,
                 queueName: varToQueueName[targetQueueVar] || targetQueueVar,
@@ -201,6 +252,7 @@ export class Parser {
                 container,
                 logicalId,
                 functionName,
+                mutations,
               });
             }
 
@@ -239,6 +291,21 @@ export class Parser {
                 functionName = this.extractString(streamOpts.getProperty("functionName"));
               }
 
+              const handlerNode =
+                args.length > 1
+                  ? args[1]
+                  : args.length === 1 && !args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)
+                    ? args[0]
+                    : undefined;
+              const mutations = this.extractMutationsFromNode(
+                handlerNode,
+                sourceFile,
+                varToTableName,
+                varToBucketName,
+                varToQueueName,
+                varToTopicName
+              );
+
               tableStreams.push({
                 id: varName,
                 tableName: varToTableName[targetTableVar] || targetTableVar,
@@ -255,6 +322,7 @@ export class Parser {
                 container,
                 logicalId,
                 functionName,
+                mutations,
               });
             }
 
@@ -283,6 +351,21 @@ export class Parser {
                 functionName = this.extractString(subOpts.getProperty("functionName"));
               }
 
+              const handlerNode =
+                args.length > 1
+                  ? args[1]
+                  : args.length === 1 && !args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)
+                    ? args[0]
+                    : undefined;
+              const mutations = this.extractMutationsFromNode(
+                handlerNode,
+                sourceFile,
+                varToTableName,
+                varToBucketName,
+                varToQueueName,
+                varToTopicName
+              );
+
               topicSubscribers.push({
                 id: varName,
                 topicName: varToTopicName[targetTopicVar] || targetTopicVar,
@@ -296,6 +379,7 @@ export class Parser {
                 container,
                 logicalId,
                 functionName,
+                mutations,
               });
             }
           }
@@ -1147,6 +1231,94 @@ export class Parser {
       cmd,
       entrypoint,
       workingDirectory,
+    };
+  }
+
+  private extractMutationsFromNode(
+    handlerNode: Node | undefined,
+    sourceFile: SourceFile,
+    varToTableName: Record<string, string>,
+    varToBucketName: Record<string, string>,
+    varToQueueName: Record<string, string>,
+    varToTopicName: Record<string, string>
+  ): FunctionMutationsIR | undefined {
+    if (!handlerNode) return undefined;
+
+    let targetNode: Node = handlerNode;
+
+    if (handlerNode.isKind(SyntaxKind.Identifier)) {
+      const identName = handlerNode.getText();
+      const varDecl = sourceFile.getVariableDeclaration(identName);
+      if (varDecl && varDecl.getInitializer()) {
+        targetNode = varDecl.getInitializer()!;
+      } else {
+        const funcDecl = sourceFile.getFunction(identName);
+        if (funcDecl) {
+          targetNode = funcDecl;
+        }
+      }
+    }
+
+    const tablesWritten: string[] = [];
+    const bucketsWritten: string[] = [];
+    const queuesSent: string[] = [];
+    const topicsPublished: string[] = [];
+
+    const callExprs = targetNode.getDescendantsOfKind(SyntaxKind.CallExpression);
+    for (const call of callExprs) {
+      const expr = call.getExpression();
+      if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+        const callerText = expr.getExpression().getText();
+        const methodName = expr.getName();
+
+        // Check Table writes
+        const tblName = varToTableName[callerText];
+        if (tblName && ["put", "delete", "update", "batchWrite"].includes(methodName)) {
+          if (!tablesWritten.includes(tblName)) {
+            tablesWritten.push(tblName);
+          }
+        }
+
+        // Check Bucket writes
+        const bktName = varToBucketName[callerText];
+        if (bktName && ["put", "putText", "putBuffer", "upload", "delete"].includes(methodName)) {
+          if (!bucketsWritten.includes(bktName)) {
+            bucketsWritten.push(bktName);
+          }
+        }
+
+        // Check Queue sends
+        const qName = varToQueueName[callerText];
+        if (qName && ["send", "sendMessage"].includes(methodName)) {
+          if (!queuesSent.includes(qName)) {
+            queuesSent.push(qName);
+          }
+        }
+
+        // Check Topic publishes
+        const topName = varToTopicName[callerText];
+        if (topName && ["publish", "send"].includes(methodName)) {
+          if (!topicsPublished.includes(topName)) {
+            topicsPublished.push(topName);
+          }
+        }
+      }
+    }
+
+    if (
+      tablesWritten.length === 0 &&
+      bucketsWritten.length === 0 &&
+      queuesSent.length === 0 &&
+      topicsPublished.length === 0
+    ) {
+      return undefined;
+    }
+
+    return {
+      tablesWritten: tablesWritten.length > 0 ? tablesWritten : undefined,
+      bucketsWritten: bucketsWritten.length > 0 ? bucketsWritten : undefined,
+      queuesSent: queuesSent.length > 0 ? queuesSent : undefined,
+      topicsPublished: topicsPublished.length > 0 ? topicsPublished : undefined,
     };
   }
 }

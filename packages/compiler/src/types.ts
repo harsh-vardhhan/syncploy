@@ -26,6 +26,13 @@ export interface ContainerIR {
   workingDirectory?: string | undefined;
 }
 
+export interface FunctionMutationsIR {
+  tablesWritten?: string[] | undefined;
+  bucketsWritten?: string[] | undefined;
+  queuesSent?: string[] | undefined;
+  topicsPublished?: string[] | undefined;
+}
+
 export interface ApiRouteIR {
   id: string;
   exportName: string;
@@ -43,6 +50,7 @@ export interface ApiRouteIR {
   container?: ContainerIR | undefined;
   logicalId?: string | undefined;
   functionName?: string | undefined;
+  mutations?: FunctionMutationsIR | undefined;
 }
 
 export interface TableIndexIR {
@@ -118,6 +126,7 @@ export interface QueueConsumerIR {
   container?: ContainerIR | undefined;
   logicalId?: string | undefined;
   functionName?: string | undefined;
+  mutations?: FunctionMutationsIR | undefined;
 }
 
 export interface TableStreamConsumerIR {
@@ -136,6 +145,7 @@ export interface TableStreamConsumerIR {
   container?: ContainerIR | undefined;
   logicalId?: string | undefined;
   functionName?: string | undefined;
+  mutations?: FunctionMutationsIR | undefined;
 }
 
 export interface TopicIR {
@@ -161,6 +171,7 @@ export interface TopicSubscriberIR {
   container?: ContainerIR | undefined;
   logicalId?: string | undefined;
   functionName?: string | undefined;
+  mutations?: FunctionMutationsIR | undefined;
 }
 
 export interface AlarmMetricQueryIR {

@@ -293,4 +293,282 @@ describe("@syncploy/compiler - Pre-Flight AWS Platform Validator", () => {
     expect(result.valid).toBe(true);
     expect(result.errors).toHaveLength(0);
   });
+
+  describe("Infrastructure Recursion & Event Cycle Detection", () => {
+    it("detects direct DynamoDB Stream recursion (Table -> Stream Consumer -> Table.put)", () => {
+      const graph = createEmptyGraph();
+      graph.tables.push({
+        id: "ehrTable",
+        name: "ehr",
+        partitionKey: { name: "PK", type: "string" },
+        sourceFile: "src/infra.ts",
+      });
+      graph.tableStreams.push({
+        id: "streamWorker",
+        tableName: "ehr",
+        exportName: "streamWorker",
+        sourceFile: "src/infra.ts",
+        mutations: {
+          tablesWritten: ["ehr"], // Writes back to the table that triggers it!
+        },
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.valid).toBe(false);
+      const loopErr = result.errors.find((e) => e.code === "ERR_RECURSIVE_LOOP");
+      expect(loopErr).toBeDefined();
+      expect(loopErr?.message).toContain("Table 'ehr'");
+      expect(loopErr?.message).toContain("Stream Consumer 'streamWorker'");
+    });
+
+    it("detects direct SQS Queue recursion (Queue -> Consumer -> Queue.send)", () => {
+      const graph = createEmptyGraph();
+      graph.queues.push({
+        id: "jobsQueue",
+        name: "jobs",
+        sourceFile: "src/infra.ts",
+      });
+      graph.consumers.push({
+        id: "jobWorker",
+        queueName: "jobs",
+        exportName: "jobWorker",
+        sourceFile: "src/infra.ts",
+        mutations: {
+          queuesSent: ["jobs"], // Produces back to the same queue!
+        },
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.valid).toBe(false);
+      const loopErr = result.errors.find((e) => e.code === "ERR_RECURSIVE_LOOP");
+      expect(loopErr).toBeDefined();
+      expect(loopErr?.message).toContain("Queue 'jobs'");
+      expect(loopErr?.message).toContain("Queue Consumer 'jobWorker'");
+    });
+
+    it("detects multi-hop event cycle (Bucket -> Queue -> Consumer -> Bucket.upload)", () => {
+      const graph = createEmptyGraph();
+      graph.buckets.push({
+        id: "docsBucket",
+        name: "docs",
+        sourceFile: "src/infra.ts",
+      });
+      graph.queues.push({
+        id: "procQueue",
+        name: "proc",
+        sourceFile: "src/infra.ts",
+      });
+      graph.bindings.push({
+        id: "docs_proc_objectCreated",
+        sourceBucketName: "docs",
+        event: "objectCreated",
+        targetQueueName: "proc",
+      });
+      graph.consumers.push({
+        id: "docWorker",
+        queueName: "proc",
+        exportName: "docWorker",
+        sourceFile: "src/infra.ts",
+        mutations: {
+          bucketsWritten: ["docs"], // Consumer uploads back to the source bucket!
+        },
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.valid).toBe(false);
+      const loopErr = result.errors.find((e) => e.code === "ERR_RECURSIVE_LOOP");
+      expect(loopErr).toBeDefined();
+      expect(loopErr?.message).toContain("Bucket 'docs'");
+      expect(loopErr?.message).toContain("Queue 'proc'");
+      expect(loopErr?.message).toContain("Queue Consumer 'docWorker'");
+    });
+
+    it("detects cross-service multi-hop cycle (Queue A -> Worker A -> Topic B -> Sub B -> Queue A)", () => {
+      const graph = createEmptyGraph();
+      graph.queues.push({ id: "qA", name: "queueA", sourceFile: "src/infra.ts" });
+      graph.topics.push({ id: "tB", name: "topicB", sourceFile: "src/infra.ts" });
+
+      graph.consumers.push({
+        id: "workerA",
+        queueName: "queueA",
+        exportName: "workerA",
+        sourceFile: "src/infra.ts",
+        mutations: { topicsPublished: ["topicB"] },
+      });
+
+      graph.topicSubscribers.push({
+        id: "subB",
+        topicName: "topicB",
+        exportName: "subB",
+        sourceFile: "src/infra.ts",
+        mutations: { queuesSent: ["queueA"] },
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.valid).toBe(false);
+      const loopErr = result.errors.find((e) => e.code === "ERR_RECURSIVE_LOOP");
+      expect(loopErr).toBeDefined();
+      expect(loopErr?.message).toContain("Queue 'queueA'");
+      expect(loopErr?.message).toContain("Topic 'topicB'");
+    });
+
+    it("allows non-cyclic forward pipelines (Table A -> Stream Worker -> Table B)", () => {
+      const graph = createEmptyGraph();
+      graph.tables.push({
+        id: "tableA",
+        name: "sourceTable",
+        partitionKey: { name: "PK", type: "string" },
+        sourceFile: "src/infra.ts",
+      });
+      graph.tables.push({
+        id: "tableB",
+        name: "analyticsTable",
+        partitionKey: { name: "PK", type: "string" },
+        sourceFile: "src/infra.ts",
+      });
+      graph.tableStreams.push({
+        id: "pipelineWorker",
+        tableName: "sourceTable",
+        exportName: "pipelineWorker",
+        sourceFile: "src/infra.ts",
+        concurrency: 5,
+        mutations: {
+          tablesWritten: ["analyticsTable"], // Writes to a different table!
+        },
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+    });
+  });
+
+  describe("Denial of Wallet (DoW) & DDoS Safety Rails", () => {
+    it("flags SQS visibilityTimeout shorter than consumer timeout as fatal error", () => {
+      const graph = createEmptyGraph();
+      graph.queues.push({
+        id: "ordersQueue",
+        name: "orders",
+        visibilityTimeout: 30, // 30s
+        sourceFile: "src/infra.ts",
+      });
+      graph.consumers.push({
+        id: "orderWorker",
+        queueName: "orders",
+        exportName: "orderWorker",
+        timeout: 60, // 60s > 30s!
+        sourceFile: "src/infra.ts",
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.valid).toBe(false);
+      const mismatchErr = result.errors.find((e) => e.code === "ERR_SQS_TIMEOUT_MISMATCH");
+      expect(mismatchErr).toBeDefined();
+      expect(mismatchErr?.message).toContain("is shorter than consumer 'orderWorker' timeout");
+    });
+
+    it("warns when an active queue has no deadLetterQueue configured", () => {
+      const graph = createEmptyGraph();
+      graph.queues.push({
+        id: "notifsQueue",
+        name: "notifications",
+        sourceFile: "src/infra.ts",
+      });
+      graph.consumers.push({
+        id: "notifWorker",
+        queueName: "notifications",
+        exportName: "notifWorker",
+        sourceFile: "src/infra.ts",
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_MISSING_DLQ")).toBe(true);
+    });
+
+    it("does not warn about missing DLQ if queue has deadLetterQueue configured", () => {
+      const graph = createEmptyGraph();
+      graph.queues.push({
+        id: "safeQueue",
+        name: "safe-queue",
+        deadLetterQueue: { maxReceiveCount: 3 },
+        sourceFile: "src/infra.ts",
+      });
+      graph.consumers.push({
+        id: "safeWorker",
+        queueName: "safe-queue",
+        exportName: "safeWorker",
+        sourceFile: "src/infra.ts",
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_MISSING_DLQ")).toBe(false);
+    });
+
+    it("warns when public Function URL has no concurrency limit", () => {
+      const graph = createEmptyGraph();
+      graph.apis.push({
+        id: "publicLlm",
+        exportName: "publicLlm",
+        sourceFile: "src/api.ts",
+        method: "POST",
+        path: "/generate",
+        ingress: "function-url",
+        auth: false,
+        timeout: 300,
+        memory: 1024,
+        // concurrency: undefined
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_UNRESERVED_CONCURRENCY")).toBe(true);
+    });
+
+    it("does not warn when public Function URL has explicit concurrency cap", () => {
+      const graph = createEmptyGraph();
+      graph.apis.push({
+        id: "cappedLlm",
+        exportName: "cappedLlm",
+        sourceFile: "src/api.ts",
+        method: "POST",
+        path: "/generate",
+        ingress: "function-url",
+        auth: false,
+        concurrency: 20, // Capped!
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_UNRESERVED_CONCURRENCY")).toBe(false);
+    });
+
+    it("warns when DynamoDB stream consumer has unbounded concurrency", () => {
+      const graph = createEmptyGraph();
+      graph.tables.push({
+        id: "t1",
+        name: "records",
+        partitionKey: { name: "PK", type: "string" },
+        sourceFile: "src/infra.ts",
+      });
+      graph.tableStreams.push({
+        id: "unboundedStream",
+        tableName: "records",
+        exportName: "unboundedStream",
+        sourceFile: "src/infra.ts",
+        // concurrency: undefined
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_STREAM_UNBOUNDED")).toBe(true);
+    });
+  });
 });
