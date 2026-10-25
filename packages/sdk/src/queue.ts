@@ -1,4 +1,5 @@
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import type { ContainerOptions } from "./container";
 
 export type Duration = `${number}s` | `${number}m` | `${number}h` | number;
 export type MemorySize = `${number}MB` | `${number}GB` | number;
@@ -26,6 +27,7 @@ export interface ConsumerOptions {
   memory?: MemorySize;
   policies?: PolicyStatement[];
   environment?: Record<string, string>;
+  container?: ContainerOptions | boolean;
 }
 
 export interface QueueConsumer<T = any> {

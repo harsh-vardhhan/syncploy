@@ -1,4 +1,5 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import type { ContainerOptions } from "./container";
 import {
   DynamoDBDocumentClient,
   GetCommand,
@@ -36,6 +37,7 @@ export interface TableStreamOptions {
   memory?: MemorySize;
   policies?: PolicyStatement[];
   environment?: Record<string, string>;
+  container?: ContainerOptions | boolean;
 }
 
 export interface TableStreamConsumer<T = any> {

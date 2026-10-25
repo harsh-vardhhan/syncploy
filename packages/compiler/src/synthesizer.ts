@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
-import type { ResourceGraph } from "./types";
+import type { ResourceGraph, ContainerIR } from "./types";
 
 export class Synthesizer {
   constructor(public readonly workDir: string) {}
@@ -493,6 +493,7 @@ export class Synthesizer {
         Type: "AWS::Lambda::Function",
         Properties: funcProps,
       };
+      this.applyContainerConfig(funcProps, api.container, api.id, resources, funcKey);
 
       if (api.ingress === "function-url") {
         const urlKey = `FunctionUrl${logicalId}`;
@@ -616,6 +617,7 @@ export class Synthesizer {
         Type: "AWS::Lambda::Function",
         Properties: funcProps,
       };
+      this.applyContainerConfig(funcProps, consumer.container, consumer.id, resources, funcKey);
 
       resources[mappingKey] = {
         Type: "AWS::Lambda::EventSourceMapping",
@@ -699,6 +701,7 @@ export class Synthesizer {
         Type: "AWS::Lambda::Function",
         Properties: funcProps,
       };
+      this.applyContainerConfig(funcProps, consumer.container, consumer.id, resources, funcKey);
 
       const mappingProps: any = {
         EventSourceArn: { "Fn::GetAtt": [tableKey, "StreamArn"] },
@@ -761,6 +764,7 @@ export class Synthesizer {
         Type: "AWS::Lambda::Function",
         Properties: funcProps,
       };
+      this.applyContainerConfig(funcProps, subscriber.container, subscriber.id, resources, funcKey);
 
       resources[permKey] = {
         Type: "AWS::Lambda::Permission",
@@ -1058,6 +1062,47 @@ export class Synthesizer {
         return "N";
       case "binary":
         return "B";
+    }
+  }
+
+  private applyContainerConfig(
+    funcProps: any,
+    container: ContainerIR | undefined,
+    fallbackId: string,
+    resources: Record<string, any>,
+    funcKey: string
+  ): void {
+    if (!container) return;
+
+    funcProps.PackageType = "Image";
+    delete funcProps.Runtime;
+    delete funcProps.Handler;
+
+    if (container.imageUri) {
+      funcProps.Code = { ImageUri: container.imageUri };
+    } else {
+      funcProps.Code = {
+        ImageUri: {
+          "Fn::Sub": `\${AWS::AccountId}.dkr.ecr.\${AWS::Region}.amazonaws.com/\${AWS::StackName}-${fallbackId}:latest`,
+        },
+      };
+    }
+
+    if (container.cmd || container.entrypoint || container.workingDirectory) {
+      const imageConfig: any = {};
+      if (container.cmd && container.cmd.length > 0) imageConfig.Command = container.cmd;
+      if (container.entrypoint && container.entrypoint.length > 0) imageConfig.EntryPoint = container.entrypoint;
+      if (container.workingDirectory) imageConfig.WorkingDirectory = container.workingDirectory;
+      funcProps.ImageConfig = imageConfig;
+    }
+
+    if (container.dockerfile || container.context || !container.imageUri) {
+      if (!resources[funcKey].Metadata) {
+        resources[funcKey].Metadata = {};
+      }
+      resources[funcKey].Metadata.Dockerfile = container.dockerfile || "Dockerfile";
+      resources[funcKey].Metadata.DockerContext = container.context || ".";
+      resources[funcKey].Metadata.DockerTag = "latest";
     }
   }
 

@@ -43,7 +43,7 @@ Syncploy targets services that **scale to zero**, require **zero VPC/server mana
 
 | Service Category | AWS Service | Syncploy SDK Primitive | In-Code Configurability |
 | :--- | :--- | :--- | :--- |
-| **Compute** | **AWS Lambda** (Node 20 ESM) | `api(...)`, `queue.consumer(...)`, `table.stream(...)`, `topic.subscribe(...)` | `memory`, `timeout`, `concurrency` (ReservedConcurrentExecutions) |
+| **Compute** | **AWS Lambda** (Node 20 ESM & Docker Containers) | `api(...)`, `queue.consumer(...)`, `table.stream(...)`, `topic.subscribe(...)` | `memory`, `timeout`, `concurrency`, `container` (`dockerfile`, `context`, `imageUri`, `cmd`, `entrypoint`) |
 | **HTTP Ingress (Unified)** | **API Gateway (HTTP API v2)** | `api({ ingress: "api-gateway" })` | `path`, `method`, `auth`, `cors` |
 | **Direct Ingress (Streaming)** | **Lambda Function URLs** | `api({ ingress: "function-url" })` | `timeout` up to 15m, native response streaming, $0 cost |
 | **NoSQL Database** | **Amazon DynamoDB (On-Demand)** | `new Table("name", { ... })` | `partitionKey`, `sortKey`, `indexes` (GSIs), `stream`, `pointInTimeRecovery` |
@@ -282,6 +282,7 @@ $ bun test
 - [x] **Lambda Function URL Synthesizer**: Dedicated `AWS::Lambda::Url` emission
 - [x] **Runtime SDK Clients**: Embedded `@aws-sdk` clients for `table`, `bucket`, `queue`, `topic`
 - [x] **S3 EventBridge Pipeline**: Auto-synthesizing S3 `objectCreated` rules targeting SQS
+- [x] **Container Packaging**: First-class Docker container packaging (`PackageType: Image`, `imageUri`, `ImageConfig`, and `Dockerfile`/`Context` build metadata)
 - [x] **EHR-backend Migration**: Converted full EHR application infrastructure to Syncploy with 1:1 CloudFormation parity
 
 ---

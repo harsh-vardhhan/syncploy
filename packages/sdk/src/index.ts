@@ -8,6 +8,8 @@ export * from "./queue";
 export * from "./topic";
 export * from "./alarm";
 export * from "./delivery-stream";
+export * from "./container";
+import type { ContainerOptions } from "./container";
 
 export class HttpError extends Error {
   readonly statusCode: number;
@@ -64,6 +66,7 @@ export interface ApiOptions {
   cors?: CorsOptions | boolean;
   policies?: PolicyStatement[];
   environment?: Record<string, string>;
+  container?: ContainerOptions | boolean;
 }
 
 export type ApiHandler<TReq = any, TRes = any> = (

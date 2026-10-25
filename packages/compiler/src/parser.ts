@@ -18,6 +18,7 @@ import type {
   CorsConfig,
   PolicyStatementIR,
   EventBindingIR,
+  ContainerIR,
 } from "./types";
 
 export class Parser {
@@ -126,13 +127,14 @@ export class Parser {
               }
             }
 
-            // In-code configuration: timeout, memory, concurrency, cors, policies, environment
+            // In-code configuration: timeout, memory, concurrency, cors, policies, environment, container
             const timeout = this.extractDuration(optionsObj.getProperty("timeout"));
             const memory = this.extractMemory(optionsObj.getProperty("memory"));
             const concurrency = this.extractNumber(optionsObj.getProperty("concurrency"));
             const cors = this.extractCors(optionsObj.getProperty("cors"));
             const policies = this.extractPolicies(optionsObj.getProperty("policies"));
             const environment = this.extractEnvironment(optionsObj.getProperty("environment"));
+            const container = this.extractContainer(optionsObj.getProperty("container"));
 
             apis.push({
               id: varName,
@@ -148,6 +150,7 @@ export class Parser {
               cors,
               policies,
               environment,
+              container,
             });
           }
 
@@ -163,6 +166,7 @@ export class Parser {
               let memory: number | undefined;
               let policies: PolicyStatementIR[] | undefined;
               let environment: Record<string, string> | undefined;
+              let container: ContainerIR | undefined;
 
               if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
                 const consumerOpts = args[0] as ObjectLiteralExpression;
@@ -172,6 +176,7 @@ export class Parser {
                 memory = this.extractMemory(consumerOpts.getProperty("memory"));
                 policies = this.extractPolicies(consumerOpts.getProperty("policies"));
                 environment = this.extractEnvironment(consumerOpts.getProperty("environment"));
+                container = this.extractContainer(consumerOpts.getProperty("container"));
               }
 
               consumers.push({
@@ -185,6 +190,7 @@ export class Parser {
                 memory,
                 policies,
                 environment,
+                container,
               });
             }
 
@@ -200,6 +206,7 @@ export class Parser {
               let memory: number | undefined;
               let policies: PolicyStatementIR[] | undefined;
               let environment: Record<string, string> | undefined;
+              let container: ContainerIR | undefined;
 
               if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
                 const streamOpts = args[0] as ObjectLiteralExpression;
@@ -215,6 +222,7 @@ export class Parser {
                 memory = this.extractMemory(streamOpts.getProperty("memory"));
                 policies = this.extractPolicies(streamOpts.getProperty("policies"));
                 environment = this.extractEnvironment(streamOpts.getProperty("environment"));
+                container = this.extractContainer(streamOpts.getProperty("container"));
               }
 
               tableStreams.push({
@@ -230,6 +238,7 @@ export class Parser {
                 memory,
                 policies,
                 environment,
+                container,
               });
             }
 
@@ -242,6 +251,7 @@ export class Parser {
               let memory: number | undefined;
               let policies: PolicyStatementIR[] | undefined;
               let environment: Record<string, string> | undefined;
+              let container: ContainerIR | undefined;
 
               if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
                 const subOpts = args[0] as ObjectLiteralExpression;
@@ -250,6 +260,7 @@ export class Parser {
                 memory = this.extractMemory(subOpts.getProperty("memory"));
                 policies = this.extractPolicies(subOpts.getProperty("policies"));
                 environment = this.extractEnvironment(subOpts.getProperty("environment"));
+                container = this.extractContainer(subOpts.getProperty("container"));
               }
 
               topicSubscribers.push({
@@ -262,6 +273,7 @@ export class Parser {
                 memory,
                 policies,
                 environment,
+                container,
               });
             }
           }
@@ -1019,5 +1031,37 @@ export class Parser {
       }
     }
     return statements.length > 0 ? statements : undefined;
+  }
+
+  private extractContainer(node: Node | undefined): ContainerIR | undefined {
+    if (!node) return undefined;
+    let target = node;
+    if (node.isKind(SyntaxKind.PropertyAssignment)) {
+      target = (node as any).getInitializer() || node;
+    }
+    if (target.isKind(SyntaxKind.TrueKeyword) || target.getText().trim() === "true") {
+      return {
+        dockerfile: "Dockerfile",
+        context: ".",
+      };
+    }
+    if (!target.isKind(SyntaxKind.ObjectLiteralExpression)) return undefined;
+
+    const obj = target as ObjectLiteralExpression;
+    const dockerfile = this.extractString(obj.getProperty("dockerfile"));
+    const context = this.extractString(obj.getProperty("context"));
+    const imageUri = this.extractString(obj.getProperty("imageUri"));
+    const cmd = this.extractStringArray(obj.getProperty("cmd"));
+    const entrypoint = this.extractStringArray(obj.getProperty("entrypoint"));
+    const workingDirectory = this.extractString(obj.getProperty("workingDirectory"));
+
+    return {
+      dockerfile: dockerfile || (!imageUri ? "Dockerfile" : undefined),
+      context: context || (!imageUri ? "." : undefined),
+      imageUri,
+      cmd,
+      entrypoint,
+      workingDirectory,
+    };
   }
 }

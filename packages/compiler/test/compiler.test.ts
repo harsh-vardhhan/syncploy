@@ -436,3 +436,147 @@ export const alertSubscriber = alertTopic.subscribe(
     expect(getUserFunc.Properties.Environment.Variables.OMOP_DELIVERY_STREAM_NAME).toEqual({ Ref: "DeliveryStreamomopstream" });
   });
 });
+
+const CONTAINER_TEST_DIR = path.join(__dirname, ".tmp-test-container-app");
+
+describe("@syncploy/compiler - Container Packaging (PackageType: Image)", () => {
+  beforeAll(async () => {
+    await fs.mkdir(CONTAINER_TEST_DIR, { recursive: true });
+
+    await fs.writeFile(
+      path.join(CONTAINER_TEST_DIR, "app.ts"),
+      `
+import { api, Queue } from "@syncploy/sdk";
+
+export const workQueue = new Queue("work-queue");
+
+// 1. Container with default Dockerfile (container: true)
+export const containerApiDefault = api(
+  {
+    method: "POST",
+    path: "/docker-default",
+    ingress: "function-url",
+    container: true,
+  },
+  async () => {
+    return { ok: true };
+  }
+);
+
+// 2. Container with custom Dockerfile & context
+export const containerApiCustom = api(
+  {
+    method: "GET",
+    path: "/docker-custom",
+    container: {
+      dockerfile: "./docker/Dockerfile.api",
+      context: "./services",
+    },
+  },
+  async () => {
+    return { custom: true };
+  }
+);
+
+// 3. Container with pre-built imageUri & ImageConfig
+export const containerWorker = workQueue.consumer(
+  {
+    batchSize: 5,
+    container: {
+      imageUri: "123456789012.dkr.ecr.us-east-1.amazonaws.com/worker:v1",
+      cmd: ["app.handler"],
+      entrypoint: ["/entrypoint.sh"],
+      workingDirectory: "/var/task",
+    },
+  },
+  async (event) => {
+    console.log(event);
+  }
+);
+`,
+      "utf-8"
+    );
+  });
+
+  afterAll(async () => {
+    await fs.rm(CONTAINER_TEST_DIR, { recursive: true, force: true });
+  });
+
+  it("extracts container configurations in IR", async () => {
+    const compiler = new Compiler(CONTAINER_TEST_DIR);
+    const graph = await compiler.parse();
+
+    const apiDefault = graph.apis.find((a) => a.id === "containerApiDefault");
+    expect(apiDefault).toBeDefined();
+    expect(apiDefault?.container).toEqual({
+      dockerfile: "Dockerfile",
+      context: ".",
+      imageUri: undefined,
+      cmd: undefined,
+      entrypoint: undefined,
+      workingDirectory: undefined,
+    });
+
+    const apiCustom = graph.apis.find((a) => a.id === "containerApiCustom");
+    expect(apiCustom).toBeDefined();
+    expect(apiCustom?.container?.dockerfile).toBe("./docker/Dockerfile.api");
+    expect(apiCustom?.container?.context).toBe("./services");
+
+    const worker = graph.consumers.find((c) => c.id === "containerWorker");
+    expect(worker).toBeDefined();
+    expect(worker?.container?.imageUri).toBe("123456789012.dkr.ecr.us-east-1.amazonaws.com/worker:v1");
+    expect(worker?.container?.cmd).toEqual(["app.handler"]);
+    expect(worker?.container?.entrypoint).toEqual(["/entrypoint.sh"]);
+    expect(worker?.container?.workingDirectory).toBe("/var/task");
+  });
+
+  it("synthesizes PackageType: Image and proper CloudFormation properties & metadata", async () => {
+    const compiler = new Compiler(CONTAINER_TEST_DIR);
+    const buildOutput = await compiler.build();
+    const template = JSON.parse(await fs.readFile(buildOutput.templatePath, "utf-8"));
+    const res = template.Resources;
+
+    // 1. containerApiDefault (container: true)
+    const funcDefault = res["FunctioncontainerApiDefault"];
+    expect(funcDefault).toBeDefined();
+    expect(funcDefault.Properties.PackageType).toBe("Image");
+    expect(funcDefault.Properties.Runtime).toBeUndefined();
+    expect(funcDefault.Properties.Handler).toBeUndefined();
+    expect(funcDefault.Properties.Code).toEqual({
+      ImageUri: { "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AWS::StackName}-containerApiDefault:latest" },
+    });
+    expect(funcDefault.Metadata).toEqual({
+      Dockerfile: "Dockerfile",
+      DockerContext: ".",
+      DockerTag: "latest",
+    });
+
+    // 2. containerApiCustom
+    const funcCustom = res["FunctioncontainerApiCustom"];
+    expect(funcCustom).toBeDefined();
+    expect(funcCustom.Properties.PackageType).toBe("Image");
+    expect(funcCustom.Properties.Runtime).toBeUndefined();
+    expect(funcCustom.Properties.Handler).toBeUndefined();
+    expect(funcCustom.Metadata).toEqual({
+      Dockerfile: "./docker/Dockerfile.api",
+      DockerContext: "./services",
+      DockerTag: "latest",
+    });
+
+    // 3. containerWorker (pre-built imageUri with ImageConfig)
+    const funcWorker = res["FunctioncontainerWorker"];
+    expect(funcWorker).toBeDefined();
+    expect(funcWorker.Properties.PackageType).toBe("Image");
+    expect(funcWorker.Properties.Runtime).toBeUndefined();
+    expect(funcWorker.Properties.Handler).toBeUndefined();
+    expect(funcWorker.Properties.Code).toEqual({
+      ImageUri: "123456789012.dkr.ecr.us-east-1.amazonaws.com/worker:v1",
+    });
+    expect(funcWorker.Properties.ImageConfig).toEqual({
+      Command: ["app.handler"],
+      EntryPoint: ["/entrypoint.sh"],
+      WorkingDirectory: "/var/task",
+    });
+    expect(funcWorker.Metadata).toBeUndefined();
+  });
+});

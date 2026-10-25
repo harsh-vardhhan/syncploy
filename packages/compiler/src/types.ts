@@ -17,6 +17,15 @@ export interface PolicyStatementIR {
   resources: string[];
 }
 
+export interface ContainerIR {
+  dockerfile?: string | undefined;
+  context?: string | undefined;
+  imageUri?: string | undefined;
+  cmd?: string[] | undefined;
+  entrypoint?: string[] | undefined;
+  workingDirectory?: string | undefined;
+}
+
 export interface ApiRouteIR {
   id: string;
   exportName: string;
@@ -31,6 +40,7 @@ export interface ApiRouteIR {
   cors?: CorsConfig | boolean | undefined;
   policies?: PolicyStatementIR[] | undefined;
   environment?: Record<string, string> | undefined;
+  container?: ContainerIR | undefined;
 }
 
 export interface TableIndexIR {
@@ -91,6 +101,7 @@ export interface QueueConsumerIR {
   memory?: number | undefined;
   policies?: PolicyStatementIR[] | undefined;
   environment?: Record<string, string> | undefined;
+  container?: ContainerIR | undefined;
 }
 
 export interface TableStreamConsumerIR {
@@ -106,6 +117,7 @@ export interface TableStreamConsumerIR {
   memory?: number | undefined;
   policies?: PolicyStatementIR[] | undefined;
   environment?: Record<string, string> | undefined;
+  container?: ContainerIR | undefined;
 }
 
 export interface TopicIR {
@@ -126,6 +138,7 @@ export interface TopicSubscriberIR {
   memory?: number | undefined;
   policies?: PolicyStatementIR[] | undefined;
   environment?: Record<string, string> | undefined;
+  container?: ContainerIR | undefined;
 }
 
 export interface AlarmMetricQueryIR {
