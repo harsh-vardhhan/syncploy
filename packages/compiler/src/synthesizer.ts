@@ -120,6 +120,19 @@ export class Synthesizer {
       });
     }
 
+    // Add custom policy statements declared on APIs or Consumers
+    const customStatements = [
+      ...graph.apis.flatMap((a) => a.policies || []),
+      ...graph.consumers.flatMap((c) => c.policies || []),
+    ];
+    for (const stmt of customStatements) {
+      roleStatements.push({
+        Effect: stmt.effect || "Allow",
+        Action: stmt.actions,
+        Resource: stmt.resources,
+      });
+    }
+
     resources["LambdaExecutionRole"] = {
       Type: "AWS::IAM::Role",
       Properties: {
@@ -290,25 +303,28 @@ export class Synthesizer {
 
     for (const table of graph.tables) {
       const cleanName = this.sanitizeName(table.name);
-      envVars[`SYNCPLOY_TABLE_${table.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`] = {
-        Ref: `Table${cleanName}`,
-      };
+      const upperName = table.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+      envVars[`SYNCPLOY_TABLE_${upperName}`] = { Ref: `Table${cleanName}` };
+      envVars[`TABLE_${upperName}_NAME`] = { Ref: `Table${cleanName}` };
+      envVars[`${upperName}_TABLE_NAME`] = { Ref: `Table${cleanName}` };
       envVars[table.name] = { Ref: `Table${cleanName}` };
     }
 
     for (const bucket of graph.buckets) {
       const cleanName = this.sanitizeName(bucket.name);
-      envVars[`SYNCPLOY_BUCKET_${bucket.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`] = {
-        Ref: `Bucket${cleanName}`,
-      };
+      const upperName = bucket.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+      envVars[`SYNCPLOY_BUCKET_${upperName}`] = { Ref: `Bucket${cleanName}` };
+      envVars[`BUCKET_${upperName}_NAME`] = { Ref: `Bucket${cleanName}` };
+      envVars[`${upperName}_BUCKET_NAME`] = { Ref: `Bucket${cleanName}` };
       envVars[bucket.name] = { Ref: `Bucket${cleanName}` };
     }
 
     for (const queue of graph.queues) {
       const cleanName = this.sanitizeName(queue.name);
-      envVars[`SYNCPLOY_QUEUE_${queue.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`] = {
-        Ref: `Queue${cleanName}`,
-      };
+      const upperName = queue.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+      envVars[`SYNCPLOY_QUEUE_${upperName}`] = { Ref: `Queue${cleanName}` };
+      envVars[`QUEUE_${upperName}_URL`] = { Ref: `Queue${cleanName}` };
+      envVars[`${upperName}_QUEUE_URL`] = { Ref: `Queue${cleanName}` };
       envVars[queue.name] = { Ref: `Queue${cleanName}` };
     }
 
@@ -334,8 +350,13 @@ export class Synthesizer {
         Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
       };
 
-      if (Object.keys(envVars).length > 0) {
-        funcProps["Environment"] = { Variables: envVars };
+      const functionEnv = {
+        ...envVars,
+        ...(api.environment || {}),
+      };
+
+      if (Object.keys(functionEnv).length > 0) {
+        funcProps["Environment"] = { Variables: functionEnv };
       }
 
       if (api.concurrency !== undefined) {
@@ -443,8 +464,13 @@ export class Synthesizer {
         Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
       };
 
-      if (Object.keys(envVars).length > 0) {
-        funcProps["Environment"] = { Variables: envVars };
+      const consumerEnv = {
+        ...envVars,
+        ...(consumer.environment || {}),
+      };
+
+      if (Object.keys(consumerEnv).length > 0) {
+        funcProps["Environment"] = { Variables: consumerEnv };
       }
 
       if (consumer.concurrency !== undefined) {

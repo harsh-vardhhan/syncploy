@@ -38,6 +38,12 @@ export interface CorsOptions {
 
 export type IngressType = "api-gateway" | "function-url";
 
+export interface PolicyStatement {
+  effect?: "Allow" | "Deny";
+  actions: string[];
+  resources: string[];
+}
+
 export interface ApiOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
   path: string;
@@ -47,6 +53,8 @@ export interface ApiOptions {
   memory?: MemorySize;
   concurrency?: number;
   cors?: CorsOptions | boolean;
+  policies?: PolicyStatement[];
+  environment?: Record<string, string>;
 }
 
 export type ApiHandler<TReq = any, TRes = any> = (

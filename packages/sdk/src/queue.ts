@@ -13,11 +13,19 @@ export interface QueueOptions {
   fifo?: boolean;
 }
 
+export interface PolicyStatement {
+  effect?: "Allow" | "Deny";
+  actions: string[];
+  resources: string[];
+}
+
 export interface ConsumerOptions {
   batchSize?: number;
   timeout?: Duration;
   concurrency?: number;
   memory?: MemorySize;
+  policies?: PolicyStatement[];
+  environment?: Record<string, string>;
 }
 
 export interface QueueConsumer<T = any> {

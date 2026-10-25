@@ -9,6 +9,7 @@ import type {
   QueueConsumerIR,
   TableIndexIR,
   CorsConfig,
+  PolicyStatementIR,
 } from "./types";
 
 export class Parser {
@@ -109,11 +110,13 @@ export class Parser {
               }
             }
 
-            // In-code configuration: timeout, memory, concurrency, cors
+            // In-code configuration: timeout, memory, concurrency, cors, policies, environment
             const timeout = this.extractDuration(optionsObj.getProperty("timeout"));
             const memory = this.extractMemory(optionsObj.getProperty("memory"));
             const concurrency = this.extractNumber(optionsObj.getProperty("concurrency"));
             const cors = this.extractCors(optionsObj.getProperty("cors"));
+            const policies = this.extractPolicies(optionsObj.getProperty("policies"));
+            const environment = this.extractEnvironment(optionsObj.getProperty("environment"));
 
             apis.push({
               id: varName,
@@ -127,6 +130,8 @@ export class Parser {
               memory,
               concurrency,
               cors,
+              policies,
+              environment,
             });
           }
 
@@ -140,6 +145,8 @@ export class Parser {
               let timeout: number | undefined;
               let concurrency: number | undefined;
               let memory: number | undefined;
+              let policies: PolicyStatementIR[] | undefined;
+              let environment: Record<string, string> | undefined;
 
               if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
                 const consumerOpts = args[0] as ObjectLiteralExpression;
@@ -147,6 +154,8 @@ export class Parser {
                 timeout = this.extractDuration(consumerOpts.getProperty("timeout"));
                 concurrency = this.extractNumber(consumerOpts.getProperty("concurrency"));
                 memory = this.extractMemory(consumerOpts.getProperty("memory"));
+                policies = this.extractPolicies(consumerOpts.getProperty("policies"));
+                environment = this.extractEnvironment(consumerOpts.getProperty("environment"));
               }
 
               consumers.push({
@@ -158,6 +167,8 @@ export class Parser {
                 timeout,
                 concurrency,
                 memory,
+                policies,
+                environment,
               });
             }
           }
@@ -556,5 +567,70 @@ export class Parser {
       return config;
     }
     return undefined;
+  }
+
+  private extractString(node: Node | undefined): string | undefined {
+    if (!node) return undefined;
+    let target = node;
+    if (node.isKind(SyntaxKind.PropertyAssignment)) {
+      target = (node as any).getInitializer() || node;
+    }
+    if (target.isKind(SyntaxKind.StringLiteral)) {
+      return (target as any).getLiteralValue();
+    }
+    return target.getText().replace(/['"]/g, "");
+  }
+
+  private extractStringArray(node: Node | undefined): string[] | undefined {
+    if (!node) return undefined;
+    let target = node;
+    if (node.isKind(SyntaxKind.PropertyAssignment)) {
+      target = (node as any).getInitializer() || node;
+    }
+    if (target.isKind(SyntaxKind.ArrayLiteralExpression)) {
+      return (target as any).getElements().map((e: any) => this.extractString(e)).filter((s: any): s is string => typeof s === "string");
+    }
+    return undefined;
+  }
+
+  private extractEnvironment(node: Node | undefined): Record<string, string> | undefined {
+    if (!node || !node.isKind(SyntaxKind.PropertyAssignment)) return undefined;
+    const init = (node as any).getInitializer();
+    if (!init || !init.isKind(SyntaxKind.ObjectLiteralExpression)) return undefined;
+    const env: Record<string, string> = {};
+    for (const prop of (init as any).getProperties()) {
+      if (prop.isKind(SyntaxKind.PropertyAssignment)) {
+        const key = prop.getName();
+        const propInit = prop.getInitializer();
+        if (propInit) {
+          env[key] = propInit.getText().replace(/['"]/g, "");
+        }
+      }
+    }
+    return Object.keys(env).length > 0 ? env : undefined;
+  }
+
+  private extractPolicies(node: Node | undefined): PolicyStatementIR[] | undefined {
+    if (!node || !node.isKind(SyntaxKind.PropertyAssignment)) return undefined;
+    const init = (node as any).getInitializer();
+    if (!init || !init.isKind(SyntaxKind.ArrayLiteralExpression)) return undefined;
+    const statements: PolicyStatementIR[] = [];
+    for (const el of (init as any).getElements()) {
+      if (el.isKind(SyntaxKind.ObjectLiteralExpression)) {
+        const obj = el as ObjectLiteralExpression;
+        const effectProp = obj.getProperty("effect");
+        const actionsProp = obj.getProperty("actions");
+        const resourcesProp = obj.getProperty("resources");
+
+        const effect = (this.extractString(effectProp) as "Allow" | "Deny") || "Allow";
+        const actions = this.extractStringArray(actionsProp) || [];
+        const resources = this.extractStringArray(resourcesProp) || [];
+
+        if (actions.length > 0 && resources.length > 0) {
+          statements.push({ effect, actions, resources });
+        }
+      }
+    }
+    return statements.length > 0 ? statements : undefined;
   }
 }

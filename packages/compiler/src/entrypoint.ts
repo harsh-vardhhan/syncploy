@@ -39,14 +39,61 @@ export async function handler(event: any) {
       ...(typeof body === "object" && body !== null ? body : { body }),
     };
 
+    const rawPath = event.rawPath || event.path || "/";
+    const rawQueryString = event.rawQueryString || "";
+    const method = event.requestContext?.http?.method || event.httpMethod || "GET";
+    const host = headers.host || "localhost";
+    const protocol = headers["x-forwarded-proto"] || "https";
+    const fullUrl = protocol + "://" + host + rawPath + (rawQueryString ? "?" + rawQueryString : "");
+
+    let webRequest: any;
+    try {
+      webRequest = new Request(fullUrl, {
+        method,
+        headers: new Headers(headers as Record<string, string>),
+        body: ["GET", "HEAD"].includes(method)
+          ? undefined
+          : event.isBase64Encoded
+            ? Buffer.from(event.body || "", "base64")
+            : event.body,
+      });
+    } catch {
+      webRequest = undefined;
+    }
+
     const ctx = {
       headers,
       pathParameters: pathParams,
       queryStringParameters: queryParams,
+      rawPath,
+      rawQueryString,
+      method,
+      request: webRequest,
       rawEvent: event,
     };
 
     const result = await endpoint.handler(req, ctx);
+
+    // If result is a Web standard Response object (e.g. Elysia or fetch)
+    if (result && typeof result === "object" && typeof result.text === "function" && typeof result.status === "number") {
+      const responseBody = await result.text();
+      const responseHeaders: Record<string, string> = {};
+      if (result.headers && typeof result.headers.forEach === "function") {
+        result.headers.forEach((val: string, key: string) => {
+          responseHeaders[key] = val;
+        });
+      }
+      return {
+        statusCode: result.status,
+        headers: responseHeaders,
+        body: responseBody,
+      };
+    }
+
+    // If result is already a Lambda response object with statusCode
+    if (result && typeof result === "object" && typeof result.statusCode === "number") {
+      return result;
+    }
 
     return {
       statusCode: 200,
@@ -101,7 +148,7 @@ export async function handler(event: any) {
         body = JSON.parse(record.body);
       } catch {}
 
-      await consumer.handler(body);
+      await consumer.handler(body, { record, event });
     } catch (err) {
       console.error("[Syncploy Queue Consumer Error]:", err);
       batchItemFailures.push({ itemIdentifier: record.messageId });

@@ -11,6 +11,12 @@ export interface CorsConfig {
   allowMethods?: string[];
 }
 
+export interface PolicyStatementIR {
+  effect?: "Allow" | "Deny";
+  actions: string[];
+  resources: string[];
+}
+
 export interface ApiRouteIR {
   id: string;
   exportName: string;
@@ -23,6 +29,8 @@ export interface ApiRouteIR {
   memory?: number; // in MB
   concurrency?: number; // ReservedConcurrentExecutions
   cors?: CorsConfig | boolean;
+  policies?: PolicyStatementIR[];
+  environment?: Record<string, string>;
 }
 
 export interface TableIndexIR {
@@ -72,6 +80,8 @@ export interface QueueConsumerIR {
   timeout?: number;
   concurrency?: number;
   memory?: number;
+  policies?: PolicyStatementIR[];
+  environment?: Record<string, string>;
 }
 
 export interface EventBindingIR {
