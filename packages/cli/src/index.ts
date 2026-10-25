@@ -3,6 +3,7 @@ import { Command } from "commander";
 import pc from "picocolors";
 import * as path from "node:path";
 import * as http from "node:http";
+import * as fs from "node:fs";
 import { Compiler } from "@syncploy/compiler";
 
 const program = new Command();
@@ -18,6 +19,12 @@ program
   .argument("[dir]", "Project root directory", ".")
   .action(async (dir) => {
     const projectRoot = path.resolve(process.cwd(), dir);
+    const envPath = path.join(projectRoot, ".env");
+    if (fs.existsSync(envPath) && typeof process.loadEnvFile === "function") {
+      try {
+        process.loadEnvFile(envPath);
+      } catch {}
+    }
     console.log(pc.cyan(`⚡ Compiling project at ${pc.bold(projectRoot)}...`));
 
     try {
@@ -72,6 +79,12 @@ program
   .option("-p, --port <number>", "Port to listen on", "4000")
   .action(async (dir, opts) => {
     const projectRoot = path.resolve(process.cwd(), dir);
+    const envPath = path.join(projectRoot, ".env");
+    if (fs.existsSync(envPath) && typeof process.loadEnvFile === "function") {
+      try {
+        process.loadEnvFile(envPath);
+      } catch {}
+    }
     const port = parseInt(opts.port, 10);
     console.log(pc.green(`🚀 Starting Syncploy local development server...`));
 

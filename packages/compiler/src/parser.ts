@@ -289,12 +289,28 @@ export class Parser {
                           const pkVal = pkP.getInitializer();
                           if (pkVal && pkVal.isKind(SyntaxKind.StringLiteral)) {
                             idxPk = pkVal.getLiteralValue();
+                          } else if (pkVal && pkVal.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                            const nProp = (pkVal as ObjectLiteralExpression).getProperty("name");
+                            if (nProp && nProp.isKind(SyntaxKind.PropertyAssignment)) {
+                              const nInit = nProp.getInitializer();
+                              if (nInit && nInit.isKind(SyntaxKind.StringLiteral)) {
+                                idxPk = nInit.getLiteralValue();
+                              }
+                            }
                           }
                         }
                         if (skP && skP.isKind(SyntaxKind.PropertyAssignment)) {
                           const skVal = skP.getInitializer();
                           if (skVal && skVal.isKind(SyntaxKind.StringLiteral)) {
                             idxSk = skVal.getLiteralValue();
+                          } else if (skVal && skVal.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                            const nProp = (skVal as ObjectLiteralExpression).getProperty("name");
+                            if (nProp && nProp.isKind(SyntaxKind.PropertyAssignment)) {
+                              const nInit = nProp.getInitializer();
+                              if (nInit && nInit.isKind(SyntaxKind.StringLiteral)) {
+                                idxSk = nInit.getLiteralValue();
+                              }
+                            }
                           }
                         }
                         if (projP && projP.isKind(SyntaxKind.PropertyAssignment)) {
@@ -603,7 +619,19 @@ export class Parser {
         const key = prop.getName();
         const propInit = prop.getInitializer();
         if (propInit) {
-          env[key] = propInit.getText().replace(/['"]/g, "");
+          if (propInit.isKind(SyntaxKind.StringLiteral)) {
+            env[key] = propInit.getLiteralValue();
+          } else {
+            const rawText = propInit.getText().trim();
+            const match = rawText.match(/^process\.env\.([a-zA-Z0-9_]+)(?:\s*\|\|\s*['"](.*)['"])?$/);
+            if (match) {
+              const varName = match[1];
+              const fallback = match[2] ?? "";
+              env[key] = process.env[varName] || fallback;
+            } else {
+              env[key] = rawText.replace(/['"]/g, "");
+            }
+          }
         }
       }
     }
