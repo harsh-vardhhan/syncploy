@@ -224,8 +224,9 @@ $ bun test
 - [x] **Lambda Bundler**: Parallel tree-shaken Node 20 ESM packaging via `esbuild`
 - [x] **CloudFormation Synthesizer**: Generates valid AWS CloudFormation JSON
 - [x] **Local Dev Simulator**: `syncploy dev` local HTTP server
-- [ ] **Lambda Function URL Synthesizer**: Dedicated `AWS::Lambda::Url` emission
-- [ ] **Runtime SDK Clients**: Embedded `@aws-sdk` clients for `table.get()`, `bucket.getText()`
+- [x] **Lambda Function URL Synthesizer**: Dedicated `AWS::Lambda::Url` emission
+- [x] **Runtime SDK Clients**: Embedded `@aws-sdk` clients for `table.get()`, `bucket.getText()`, `queue.send()`
+- [ ] **S3 EventBridge Pipeline**: Auto-synthesizing S3 `objectCreated` rules targeting SQS
 - [ ] **EHR-backend Migration**: Port full `EHR-backend` application to Syncploy
 
 ---

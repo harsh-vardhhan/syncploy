@@ -285,7 +285,34 @@ export class Synthesizer {
       };
     }
 
-    // 6. Lambdas and API Gateway Routes
+    // 6. Common Environment Variables (Tables, Buckets, Queues)
+    const envVars: Record<string, any> = {};
+
+    for (const table of graph.tables) {
+      const cleanName = this.sanitizeName(table.name);
+      envVars[`SYNCPLOY_TABLE_${table.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`] = {
+        Ref: `Table${cleanName}`,
+      };
+      envVars[table.name] = { Ref: `Table${cleanName}` };
+    }
+
+    for (const bucket of graph.buckets) {
+      const cleanName = this.sanitizeName(bucket.name);
+      envVars[`SYNCPLOY_BUCKET_${bucket.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`] = {
+        Ref: `Bucket${cleanName}`,
+      };
+      envVars[bucket.name] = { Ref: `Bucket${cleanName}` };
+    }
+
+    for (const queue of graph.queues) {
+      const cleanName = this.sanitizeName(queue.name);
+      envVars[`SYNCPLOY_QUEUE_${queue.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`] = {
+        Ref: `Queue${cleanName}`,
+      };
+      envVars[queue.name] = { Ref: `Queue${cleanName}` };
+    }
+
+    // 7. Lambdas and API Gateway Routes
     for (const api of graph.apis) {
       const logicalId = this.sanitizeName(api.id);
       const funcKey = `Function${logicalId}`;
@@ -306,6 +333,10 @@ export class Synthesizer {
         MemorySize: api.memory ?? 256,
         Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
       };
+
+      if (Object.keys(envVars).length > 0) {
+        funcProps["Environment"] = { Variables: envVars };
+      }
 
       if (api.concurrency !== undefined) {
         funcProps["ReservedConcurrentExecutions"] = api.concurrency;
@@ -411,6 +442,10 @@ export class Synthesizer {
         MemorySize: consumer.memory ?? 256,
         Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
       };
+
+      if (Object.keys(envVars).length > 0) {
+        funcProps["Environment"] = { Variables: envVars };
+      }
 
       if (consumer.concurrency !== undefined) {
         funcProps["ReservedConcurrentExecutions"] = consumer.concurrency;

@@ -161,11 +161,14 @@ export const processDoc = annotationQueue.consumer(
     expect(res["QueueannotationsDLQ"]).toBeDefined();
     expect(queueRes.Properties.RedrivePolicy.maxReceiveCount).toBe(3);
 
-    // 4. API Gateway Route
+    // 4. API Gateway Route with Injected Environment Variables
     const getUserFunc = res["FunctiongetUser"];
     expect(getUserFunc.Properties.Timeout).toBe(30);
     expect(getUserFunc.Properties.MemorySize).toBe(512);
     expect(getUserFunc.Properties.ReservedConcurrentExecutions).toBe(2);
+    expect(getUserFunc.Properties.Environment.Variables.SYNCPLOY_TABLE_EHR).toEqual({ Ref: "Tableehr" });
+    expect(getUserFunc.Properties.Environment.Variables.SYNCPLOY_BUCKET_DOCUMENTS).toEqual({ Ref: "Bucketdocuments" });
+    expect(getUserFunc.Properties.Environment.Variables.SYNCPLOY_QUEUE_ANNOTATIONS).toEqual({ Ref: "Queueannotations" });
     expect(res["RoutegetUser"]).toBeDefined();
     expect(res["IntegrationgetUser"]).toBeDefined();
 

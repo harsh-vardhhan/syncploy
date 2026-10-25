@@ -2,6 +2,10 @@
 // Syncploy SDK Core Primitives
 // ==========================================
 
+export * from "./table";
+export * from "./bucket";
+export * from "./queue";
+
 export class HttpError extends Error {
   constructor(public readonly statusCode: number, message: string) {
     super(message);
@@ -74,116 +78,6 @@ export function api<TReq = any, TRes = any>(
     },
     handler,
   };
-}
-
-// Table (DynamoDB)
-export interface TableIndexDefinition {
-  partitionKey: string;
-  sortKey?: string;
-  projection?: "ALL" | "KEYS_ONLY";
-}
-
-export interface TableOptions {
-  partitionKey: { name: string; type: "string" | "number" | "binary" };
-  sortKey?: { name: string; type: "string" | "number" | "binary" };
-  billingMode?: "PAY_PER_REQUEST" | "PROVISIONED";
-  stream?: "NEW_IMAGE" | "OLD_IMAGE" | "NEW_AND_OLD_IMAGES" | "KEYS_ONLY";
-  pointInTimeRecovery?: boolean;
-  indexes?: Record<string, TableIndexDefinition>;
-}
-
-export class Table {
-  readonly _kind = "table" as const;
-  constructor(public readonly name: string, public readonly options: TableOptions) {}
-
-  async get<T = any>(key: Record<string, any>): Promise<T | null> {
-    // Runtime execution connects to DynamoDB (or DynamoDB local)
-    return null;
-  }
-
-  async put(item: Record<string, any>): Promise<void> {
-    // Runtime execution
-  }
-
-  async query<T = any>(params: Record<string, any>): Promise<T[]> {
-    // Runtime execution
-    return [];
-  }
-}
-
-// Bucket (S3)
-export interface BucketOptions {
-  versioned?: boolean;
-  public?: boolean;
-  eventBridge?: boolean;
-  publicAccessBlock?: boolean;
-}
-
-export class Bucket {
-  readonly _kind = "bucket" as const;
-  constructor(public readonly name: string, public readonly options: BucketOptions = {}) {}
-
-  async getText(key: string): Promise<string> {
-    return "";
-  }
-
-  async putText(key: string, content: string): Promise<void> {
-    // Runtime execution
-  }
-
-  on(
-    event: "objectCreated" | "objectRemoved",
-    target: Queue,
-    options?: { prefix?: string; suffix?: string }
-  ): void {
-    // Compile-time event binding marker
-  }
-}
-
-// Queue (SQS)
-export interface DeadLetterQueueOptions {
-  maxReceiveCount: number;
-}
-
-export interface QueueOptions {
-  visibilityTimeout?: Duration;
-  deadLetterQueue?: DeadLetterQueueOptions;
-  fifo?: boolean;
-}
-
-export interface ConsumerOptions {
-  batchSize?: number;
-  timeout?: Duration;
-  concurrency?: number;
-  memory?: MemorySize;
-}
-
-export interface QueueConsumer<T = any> {
-  readonly _kind: "queue_consumer";
-  readonly queue: Queue;
-  readonly options: ConsumerOptions;
-  readonly handler: (event: T) => Promise<void> | void;
-}
-
-export class Queue {
-  readonly _kind = "queue" as const;
-  constructor(public readonly name: string, public readonly options: QueueOptions = {}) {}
-
-  async send(message: Record<string, any>): Promise<void> {
-    // Runtime execution
-  }
-
-  consumer<T = any>(
-    options: ConsumerOptions,
-    handler: (event: T) => Promise<void> | void
-  ): QueueConsumer<T> {
-    return {
-      _kind: "queue_consumer",
-      queue: this,
-      options,
-      handler,
-    };
-  }
 }
 
 // Secret (AWS Secrets Manager / SSM)
