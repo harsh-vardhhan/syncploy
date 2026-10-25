@@ -13,6 +13,11 @@
     "declarationMap": true,
     "sourceMap": true,
     "esModuleInterop": true,
-    "types": ["bun-types"]
+    "types": ["bun-types"],
+    "baseUrl": ".",
+    "paths": {
+      "@syncploy/sdk": ["packages/sdk/src/index.ts"],
+      "@syncploy/compiler": ["packages/compiler/src/index.ts"]
+    }
   }
 }

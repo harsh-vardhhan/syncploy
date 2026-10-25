@@ -22,11 +22,11 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
-      - name: Typecheck
-        run: bun run typecheck
-
       - name: Build SDK
         run: bun run build
+
+      - name: Typecheck
+        run: bun run typecheck
 
       - name: Run Test Suite
         run: bun test
