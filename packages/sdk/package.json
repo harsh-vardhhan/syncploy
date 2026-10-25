@@ -1,6 +1,7 @@
 {
   "name": "@syncploy/sdk",
   "version": "0.1.4",
+  "description": "Infrastructure-from-Code (IfC) Runtime SDK for Pure AWS Serverless",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -13,7 +14,32 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md"
+  ],
+  "license": "MIT",
+  "author": "Harsh Vardhan <harsh.vardhan.611@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harsh-vardhhan/syncploy.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://github.com/harsh-vardhhan/syncploy#readme",
+  "bugs": {
+    "url": "https://github.com/harsh-vardhhan/syncploy/issues"
+  },
+  "keywords": [
+    "aws",
+    "serverless",
+    "infrastructure-from-code",
+    "ifc",
+    "lambda",
+    "dynamodb",
+    "s3",
+    "sqs",
+    "sns",
+    "firehose",
+    "cloudformation"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
