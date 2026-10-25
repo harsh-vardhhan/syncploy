@@ -723,7 +723,7 @@ export class GraphValidator {
 
     const visited = new Set<string>();
     const recStack = new Set<string>();
-    const path: { node: string; constructId: string; sourceFile?: string }[] = [];
+    const path: { node: string; constructId: string; sourceFile?: string | undefined }[] = [];
     const seenCycles = new Set<string>();
 
     const normalizeCycle = (nodes: string[]): string => {
