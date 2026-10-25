@@ -12,28 +12,38 @@ export class Synthesizer {
     const resources: Record<string, any> = {};
     const outputs: Record<string, any> = {};
 
-    // 1. HTTP API Gateway
-    resources["HttpApi"] = {
-      Type: "AWS::ApiGatewayV2::HttpApi",
-      Properties: {
-        Name: { "Fn::Sub": "${AWS::StackName}-api" },
-        ProtocolType: "HTTP",
-        CorsConfiguration: {
-          AllowOrigins: ["*"],
-          AllowMethods: ["*"],
-          AllowHeaders: ["*"],
+    // 1. HTTP API Gateway (only if at least one route uses API Gateway)
+    const hasApiGateway = graph.apis.some((a) => a.ingress !== "function-url");
+    if (hasApiGateway) {
+      resources["HttpApi"] = {
+        Type: "AWS::ApiGatewayV2::HttpApi",
+        Properties: {
+          Name: { "Fn::Sub": "${AWS::StackName}-api" },
+          ProtocolType: "HTTP",
+          CorsConfiguration: {
+            AllowOrigins: ["*"],
+            AllowMethods: ["*"],
+            AllowHeaders: ["*"],
+          },
         },
-      },
-    };
+      };
 
-    resources["HttpApiStage"] = {
-      Type: "AWS::ApiGatewayV2::Stage",
-      Properties: {
-        ApiId: { Ref: "HttpApi" },
-        StageName: "$default",
-        AutoDeploy: true,
-      },
-    };
+      resources["HttpApiStage"] = {
+        Type: "AWS::ApiGatewayV2::Stage",
+        Properties: {
+          ApiId: { Ref: "HttpApi" },
+          StageName: "$default",
+          AutoDeploy: true,
+        },
+      };
+
+      outputs["ApiEndpoint"] = {
+        Description: "HTTP API Gateway endpoint URL",
+        Value: {
+          "Fn::Sub": "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com",
+        },
+      };
+    }
 
     // 2. Base Lambda Execution Role
     const roleStatements: any[] = [
@@ -306,39 +316,80 @@ export class Synthesizer {
         Properties: funcProps,
       };
 
-      resources[integKey] = {
-        Type: "AWS::ApiGatewayV2::Integration",
-        Properties: {
-          ApiId: { Ref: "HttpApi" },
-          IntegrationType: "AWS_PROXY",
-          IntegrationUri: { "Fn::GetAtt": [funcKey, "Arn"] },
-          PayloadFormatVersion: "2.0",
-        },
-      };
+      if (api.ingress === "function-url") {
+        const urlKey = `FunctionUrl${logicalId}`;
+        const urlPermKey = `Permission${logicalId}Url`;
 
-      resources[routeKey] = {
-        Type: "AWS::ApiGatewayV2::Route",
-        Properties: {
-          ApiId: { Ref: "HttpApi" },
-          RouteKey: `${api.method} ${apiGatewayPath}`,
-          Target: { "Fn::Sub": `integrations/\${${integKey}}` },
-        },
-      };
+        const corsProp: any = {
+          AllowOrigins: ["*"],
+          AllowMethods: [api.method],
+          AllowHeaders: ["Content-Type", "Authorization", "X-Amz-Date", "X-Api-Key"],
+        };
 
-      resources[permKey] = {
-        Type: "AWS::Lambda::Permission",
-        Properties: {
-          FunctionName: { Ref: funcKey },
-          Action: "lambda:InvokeFunction",
-          Principal: "apigateway.amazonaws.com",
-          SourceArn: {
-            "Fn::Sub": [
-              "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*",
-              { HttpApi: { Ref: "HttpApi" } },
-            ],
+        if (typeof api.cors === "object" && api.cors !== null) {
+          if (api.cors.allowOrigins) corsProp.AllowOrigins = api.cors.allowOrigins;
+          if (api.cors.allowMethods) corsProp.AllowMethods = api.cors.allowMethods;
+          if (api.cors.allowHeaders) corsProp.AllowHeaders = api.cors.allowHeaders;
+        }
+
+        resources[urlKey] = {
+          Type: "AWS::Lambda::Url",
+          Properties: {
+            TargetFunctionArn: { "Fn::GetAtt": [funcKey, "Arn"] },
+            AuthType: "NONE",
+            Cors: corsProp,
           },
-        },
-      };
+        };
+
+        resources[urlPermKey] = {
+          Type: "AWS::Lambda::Permission",
+          Properties: {
+            FunctionName: { Ref: funcKey },
+            Action: "lambda:InvokeFunctionUrl",
+            Principal: "*",
+            FunctionUrlAuthType: "NONE",
+          },
+        };
+
+        outputs[`${logicalId}Url`] = {
+          Description: `Direct Lambda Function URL for ${api.id}`,
+          Value: { "Fn::GetAtt": [urlKey, "FunctionUrl"] },
+        };
+      } else {
+        resources[integKey] = {
+          Type: "AWS::ApiGatewayV2::Integration",
+          Properties: {
+            ApiId: { Ref: "HttpApi" },
+            IntegrationType: "AWS_PROXY",
+            IntegrationUri: { "Fn::GetAtt": [funcKey, "Arn"] },
+            PayloadFormatVersion: "2.0",
+          },
+        };
+
+        resources[routeKey] = {
+          Type: "AWS::ApiGatewayV2::Route",
+          Properties: {
+            ApiId: { Ref: "HttpApi" },
+            RouteKey: `${api.method} ${apiGatewayPath}`,
+            Target: { "Fn::Sub": `integrations/\${${integKey}}` },
+          },
+        };
+
+        resources[permKey] = {
+          Type: "AWS::Lambda::Permission",
+          Properties: {
+            FunctionName: { Ref: funcKey },
+            Action: "lambda:InvokeFunction",
+            Principal: "apigateway.amazonaws.com",
+            SourceArn: {
+              "Fn::Sub": [
+                "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*/*",
+                { HttpApi: { Ref: "HttpApi" } },
+              ],
+            },
+          },
+        };
+      }
     }
 
     // 7. Queue Consumers (Workers)
@@ -380,13 +431,6 @@ export class Synthesizer {
         },
       };
     }
-
-    outputs["ApiEndpoint"] = {
-      Description: "HTTP API Gateway endpoint URL",
-      Value: {
-        "Fn::Sub": "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com",
-      },
-    };
 
     const template = {
       AWSTemplateFormatVersion: "2010-09-09",

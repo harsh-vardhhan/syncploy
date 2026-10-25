@@ -32,10 +32,13 @@ export interface CorsOptions {
   maxAge?: Duration;
 }
 
+export type IngressType = "api-gateway" | "function-url";
+
 export interface ApiOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
   path: string;
   auth?: boolean;
+  ingress?: IngressType;
   timeout?: Duration;
   memory?: MemorySize;
   concurrency?: number;
@@ -63,6 +66,7 @@ export function api<TReq = any, TRes = any>(
       method: options.method ?? "POST",
       path: options.path,
       auth: options.auth,
+      ingress: options.ingress ?? "api-gateway",
       timeout: options.timeout,
       memory: options.memory,
       concurrency: options.concurrency,

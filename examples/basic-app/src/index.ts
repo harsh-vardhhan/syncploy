@@ -26,11 +26,12 @@ export const annotationQueue = new Queue("annotations", {
   },
 });
 
-// API Endpoints with in-code memory, timeout, concurrency & CORS
+// 1. API Gateway REST Endpoint (Unified Routing)
 export const getDocument = api(
   {
     method: "GET",
     path: "/documents/:id",
+    ingress: "api-gateway",
     timeout: "30s",
     memory: "256MB",
     concurrency: 2,
@@ -44,7 +45,21 @@ export const getDocument = api(
   }
 );
 
-// Worker Consumer with batchSize, timeout & concurrency cap
+// 2. Direct Lambda Function URL (for heavy LLM inference up to 15 minutes, $0 gateway cost)
+export const analyzeClinicalDoc = api(
+  {
+    method: "POST",
+    path: "/analyze",
+    ingress: "function-url",
+    timeout: "300s", // 5 minutes!
+    memory: "1024MB",
+  },
+  async ({ docId }: { docId: string }) => {
+    return { docId, analyzed: true, tokens: 1200 };
+  }
+);
+
+// 3. Worker Consumer with batchSize, timeout & concurrency cap
 export const processAnnotation = annotationQueue.consumer(
   {
     batchSize: 5,

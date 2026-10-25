@@ -98,6 +98,15 @@ export class Parser {
               }
             }
 
+            let ingressValue: IngressType = "api-gateway";
+            const ingressProp = optionsObj.getProperty("ingress");
+            if (ingressProp && ingressProp.isKind(SyntaxKind.PropertyAssignment)) {
+              const ingressInit = ingressProp.getInitializer();
+              if (ingressInit && ingressInit.isKind(SyntaxKind.StringLiteral)) {
+                ingressValue = ingressInit.getLiteralValue() as IngressType;
+              }
+            }
+
             // In-code configuration: timeout, memory, concurrency, cors
             const timeout = this.extractDuration(optionsObj.getProperty("timeout"));
             const memory = this.extractMemory(optionsObj.getProperty("memory"));
@@ -111,6 +120,7 @@ export class Parser {
               method: methodValue,
               path: pathValue,
               auth: authValue,
+              ingress: ingressValue,
               timeout,
               memory,
               concurrency,

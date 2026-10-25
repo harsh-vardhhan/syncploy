@@ -3,6 +3,7 @@
 // ==========================================
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
+export type IngressType = "api-gateway" | "function-url";
 
 export interface CorsConfig {
   allowOrigins?: string[];
@@ -17,6 +18,7 @@ export interface ApiRouteIR {
   method: HttpMethod;
   path: string;
   auth?: boolean;
+  ingress?: IngressType;
   timeout?: number; // in seconds
   memory?: number; // in MB
   concurrency?: number; // ReservedConcurrentExecutions

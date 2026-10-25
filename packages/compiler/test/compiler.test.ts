@@ -5,7 +5,7 @@ import { Compiler } from "../src/index";
 
 const TEST_DIR = path.join(__dirname, ".tmp-test-app-configured");
 
-describe("@syncploy/compiler - In-Code Configurations", () => {
+describe("@syncploy/compiler - In-Code Configurations & Function URLs", () => {
   beforeAll(async () => {
     await fs.mkdir(TEST_DIR, { recursive: true });
 
@@ -42,6 +42,7 @@ export const getUser = api(
   {
     method: "GET",
     path: "/users/:id",
+    ingress: "api-gateway",
     timeout: "30s",
     memory: "512MB",
     concurrency: 2,
@@ -52,6 +53,19 @@ export const getUser = api(
   },
   async ({ id }: { id: string }) => {
     return { id, name: "Alice" };
+  }
+);
+
+export const analyzeClinicalDoc = api(
+  {
+    method: "POST",
+    path: "/analyze",
+    ingress: "function-url",
+    timeout: "300s",
+    memory: "1024MB",
+  },
+  async ({ docId }: { docId: string }) => {
+    return { docId, analyzed: true };
   }
 );
 
@@ -101,11 +115,18 @@ export const processDoc = annotationQueue.consumer(
     expect(queue.visibilityTimeout).toBe(180);
     expect(queue.deadLetterQueue?.maxReceiveCount).toBe(3);
 
-    // Verify API Config
-    const api = graph.apis[0]!;
-    expect(api.timeout).toBe(30);
-    expect(api.memory).toBe(512);
-    expect(api.concurrency).toBe(2);
+    // Verify API Gateway Route
+    const apiGw = graph.apis.find((a) => a.id === "getUser")!;
+    expect(apiGw.ingress).toBe("api-gateway");
+    expect(apiGw.timeout).toBe(30);
+    expect(apiGw.memory).toBe(512);
+    expect(apiGw.concurrency).toBe(2);
+
+    // Verify Function URL Route
+    const funcUrlApi = graph.apis.find((a) => a.id === "analyzeClinicalDoc")!;
+    expect(funcUrlApi.ingress).toBe("function-url");
+    expect(funcUrlApi.timeout).toBe(300);
+    expect(funcUrlApi.memory).toBe(1024);
 
     // Verify Queue Consumer Config
     const consumer = graph.consumers[0]!;
@@ -114,7 +135,7 @@ export const processDoc = annotationQueue.consumer(
     expect(consumer.concurrency).toBe(2);
   });
 
-  it("synthesizes accurate CloudFormation properties matching in-code configs", async () => {
+  it("synthesizes accurate CloudFormation properties for both API Gateway and Lambda Function URLs", async () => {
     const compiler = new Compiler(TEST_DIR);
     const output = await compiler.build();
 
@@ -140,13 +161,38 @@ export const processDoc = annotationQueue.consumer(
     expect(res["QueueannotationsDLQ"]).toBeDefined();
     expect(queueRes.Properties.RedrivePolicy.maxReceiveCount).toBe(3);
 
-    // 4. API Lambda with memory, timeout, concurrency
-    const funcRes = res["FunctiongetUser"];
-    expect(funcRes.Properties.Timeout).toBe(30);
-    expect(funcRes.Properties.MemorySize).toBe(512);
-    expect(funcRes.Properties.ReservedConcurrentExecutions).toBe(2);
+    // 4. API Gateway Route
+    const getUserFunc = res["FunctiongetUser"];
+    expect(getUserFunc.Properties.Timeout).toBe(30);
+    expect(getUserFunc.Properties.MemorySize).toBe(512);
+    expect(getUserFunc.Properties.ReservedConcurrentExecutions).toBe(2);
+    expect(res["RoutegetUser"]).toBeDefined();
+    expect(res["IntegrationgetUser"]).toBeDefined();
 
-    // 5. Worker Lambda with timeout, concurrency, EventSourceMapping
+    // 5. Lambda Function URL Route
+    const analyzeFunc = res["FunctionanalyzeClinicalDoc"];
+    expect(analyzeFunc.Properties.Timeout).toBe(300);
+    expect(analyzeFunc.Properties.MemorySize).toBe(1024);
+
+    // Verify AWS::Lambda::Url and Permission are generated
+    const urlResource = res["FunctionUrlanalyzeClinicalDoc"];
+    expect(urlResource).toBeDefined();
+    expect(urlResource.Type).toBe("AWS::Lambda::Url");
+    expect(urlResource.Properties.AuthType).toBe("NONE");
+
+    const urlPerm = res["PermissionanalyzeClinicalDocUrl"];
+    expect(urlPerm).toBeDefined();
+    expect(urlPerm.Properties.Action).toBe("lambda:InvokeFunctionUrl");
+    expect(urlPerm.Properties.Principal).toBe("*");
+
+    // Verify no API Gateway Route was generated for the Function URL
+    expect(res["RouteanalyzeClinicalDoc"]).toBeUndefined();
+    expect(res["IntegrationanalyzeClinicalDoc"]).toBeUndefined();
+
+    // Verify Output contains the Function URL
+    expect(template.Outputs["analyzeClinicalDocUrl"]).toBeDefined();
+
+    // 6. Worker Lambda with timeout, concurrency, EventSourceMapping
     const workerRes = res["FunctionprocessDoc"];
     expect(workerRes.Properties.Timeout).toBe(120);
     expect(workerRes.Properties.ReservedConcurrentExecutions).toBe(2);

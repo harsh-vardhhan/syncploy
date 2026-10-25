@@ -27,7 +27,18 @@ program
 
       console.log(pc.bold("\nDiscovered Infrastructure:"));
       console.log(
-        `  ${pc.green("•")} ${pc.bold("APIs:")}    ${graph.apis.length > 0 ? graph.apis.map((a) => `${a.method} ${a.path}`).join(", ") : pc.dim("none")}`
+        `  ${pc.green("•")} ${pc.bold("APIs:")}    ${
+          graph.apis.length > 0
+            ? graph.apis
+                .map(
+                  (a) =>
+                    `${a.method} ${a.path} ${
+                      a.ingress === "function-url" ? pc.magenta("[URL]") : pc.blue("[GW]")
+                    }`
+                )
+                .join(", ")
+            : pc.dim("none")
+        }`
       );
       console.log(
         `  ${pc.green("•")} ${pc.bold("Tables:")}  ${graph.tables.length > 0 ? graph.tables.map((t) => t.name).join(", ") : pc.dim("none")}`
@@ -167,7 +178,8 @@ program
         console.log(pc.bold(`\nLocal Server ready at: ${pc.cyan(`http://localhost:${port}`)}`));
         console.log(pc.dim("Registered Routes:"));
         for (const api of graph.apis) {
-          console.log(`  ${pc.cyan(api.method.padEnd(7))} ${api.path}`);
+          const typeTag = api.ingress === "function-url" ? pc.magenta("[URL]") : pc.blue("[GW] ");
+          console.log(`  ${typeTag} ${pc.cyan(api.method.padEnd(7))} ${api.path}`);
         }
       });
     } catch (err: any) {
