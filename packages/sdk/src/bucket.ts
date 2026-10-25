@@ -19,6 +19,7 @@ export interface BucketOptions {
   eventBridge?: boolean;
   publicAccessBlock?: boolean;
   objectLock?: boolean | BucketObjectLockOptions;
+  accountScoped?: boolean;
 }
 
 export class Bucket {

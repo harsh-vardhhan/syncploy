@@ -285,8 +285,11 @@ export class Synthesizer {
     // 4. S3 Buckets
     for (const bucket of graph.buckets) {
       const resourceKey = `Bucket${this.sanitizeName(bucket.name)}`;
+      const bucketNameSub = bucket.accountScoped
+        ? `\${AWS::StackName}-${bucket.name}-\${AWS::AccountId}`
+        : `\${AWS::StackName}-${bucket.name}`;
       const bucketProps: any = {
-        BucketName: { "Fn::Sub": `\${AWS::StackName}-${bucket.name}` },
+        BucketName: { "Fn::Sub": bucketNameSub },
       };
 
       if (bucket.versioned) {
@@ -450,6 +453,13 @@ export class Synthesizer {
       const relArtifactDir = path.relative(this.workDir, artifactDir || "");
       const apiGatewayPath = api.path.replace(/:([a-zA-Z0-9_]+)/g, "{$1}");
 
+      const roleKey = `Role${logicalId}`;
+      resources[roleKey] = this.createLambdaRole(
+        logicalId,
+        { tables: true, buckets: true, policies: api.policies },
+        graph
+      );
+
       const funcProps: any = {
         FunctionName: { "Fn::Sub": `\${AWS::StackName}-${api.id}` },
         Runtime: "nodejs20.x",
@@ -457,7 +467,7 @@ export class Synthesizer {
         Code: relArtifactDir,
         Timeout: api.timeout ?? 30,
         MemorySize: api.memory ?? 256,
-        Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
+        Role: { "Fn::GetAtt": [roleKey, "Arn"] },
       };
 
       const functionEnv = this.mergeEnvironment(envVars, api.environment);
@@ -570,6 +580,18 @@ export class Synthesizer {
       const artifactDir = lambdaArtifactDirs[consumer.id];
       const relArtifactDir = path.relative(this.workDir, artifactDir || "");
 
+      const roleKey = `Role${logicalId}`;
+      resources[roleKey] = this.createLambdaRole(
+        logicalId,
+        {
+          tables: true,
+          buckets: true,
+          queues: [consumer.queueName],
+          policies: consumer.policies,
+        },
+        graph
+      );
+
       const funcProps: any = {
         FunctionName: { "Fn::Sub": `\${AWS::StackName}-${consumer.id}` },
         Runtime: "nodejs20.x",
@@ -577,7 +599,7 @@ export class Synthesizer {
         Code: relArtifactDir,
         Timeout: consumer.timeout ?? 120,
         MemorySize: consumer.memory ?? 256,
-        Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
+        Role: { "Fn::GetAtt": [roleKey, "Arn"] },
       };
 
       const consumerEnv = this.mergeEnvironment(envVars, consumer.environment);
@@ -616,6 +638,12 @@ export class Synthesizer {
       if (topic.fifo) {
         topicProps["FifoTopic"] = true;
       }
+      if (topic.subscriptions && topic.subscriptions.length > 0) {
+        topicProps["Subscription"] = topic.subscriptions.map((s) => ({
+          Protocol: s.protocol,
+          Endpoint: s.endpoint,
+        }));
+      }
       resources[resourceKey] = {
         Type: "AWS::SNS::Topic",
         Properties: topicProps,
@@ -637,6 +665,17 @@ export class Synthesizer {
       const artifactDir = lambdaArtifactDirs[consumer.id];
       const relArtifactDir = path.relative(this.workDir, artifactDir || "");
 
+      const roleKey = `Role${logicalId}`;
+      resources[roleKey] = this.createLambdaRole(
+        logicalId,
+        {
+          tableStreams: [consumer.tableName],
+          firehose: true,
+          policies: consumer.policies,
+        },
+        graph
+      );
+
       const funcProps: any = {
         FunctionName: { "Fn::Sub": `\${AWS::StackName}-${consumer.id}` },
         Runtime: "nodejs20.x",
@@ -644,7 +683,7 @@ export class Synthesizer {
         Code: relArtifactDir,
         Timeout: consumer.timeout ?? 60,
         MemorySize: consumer.memory ?? 256,
-        Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
+        Role: { "Fn::GetAtt": [roleKey, "Arn"] },
       };
 
       const consumerEnv = this.mergeEnvironment(envVars, consumer.environment);
@@ -690,6 +729,15 @@ export class Synthesizer {
       const artifactDir = lambdaArtifactDirs[subscriber.id];
       const relArtifactDir = path.relative(this.workDir, artifactDir || "");
 
+      const roleKey = `Role${logicalId}`;
+      resources[roleKey] = this.createLambdaRole(
+        logicalId,
+        {
+          policies: subscriber.policies,
+        },
+        graph
+      );
+
       const funcProps: any = {
         FunctionName: { "Fn::Sub": `\${AWS::StackName}-${subscriber.id}` },
         Runtime: "nodejs20.x",
@@ -697,7 +745,7 @@ export class Synthesizer {
         Code: relArtifactDir,
         Timeout: subscriber.timeout ?? 30,
         MemorySize: subscriber.memory ?? 256,
-        Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
+        Role: { "Fn::GetAtt": [roleKey, "Arn"] },
       };
 
       const subEnv = this.mergeEnvironment(envVars, subscriber.environment);
@@ -755,26 +803,66 @@ export class Synthesizer {
         AlarmActions: alarmActions,
       };
 
-      const metric = alarm.metric || {
-        metricName: "Invocations",
-        namespace: "AWS/Lambda",
-        period: 60,
-        stat: "Sum",
-      };
+      if (alarm.treatMissingData) {
+        alarmProps["TreatMissingData"] = alarm.treatMissingData;
+      }
 
-      alarmProps["MetricName"] = metric.metricName;
-      alarmProps["Namespace"] = metric.namespace || "AWS/Lambda";
-      alarmProps["Period"] = metric.period || 60;
-      alarmProps["Statistic"] = metric.stat || "Sum";
-
-      if (metric.dimensions && Object.keys(metric.dimensions).length > 0) {
-        alarmProps["Dimensions"] = Object.entries(metric.dimensions).map(([k, v]) => {
-          const matchingApi = graph.apis.find((a) => a.id === v || a.exportName === v);
-          return {
-            Name: k,
-            Value: matchingApi ? { Ref: `Function${this.sanitizeName(matchingApi.id)}` } : v,
+      if (alarm.metrics && alarm.metrics.length > 0) {
+        alarmProps["Metrics"] = alarm.metrics.map((m) => {
+          const item: any = {
+            Id: m.id,
           };
+          if (m.expression) item.Expression = m.expression;
+          if (m.label) item.Label = m.label;
+          if (m.returnData !== undefined) item.ReturnData = m.returnData;
+          if (m.metricStat) {
+            const statObj: any = {
+              Metric: {
+                Namespace: m.metricStat.metric.namespace || "AWS/Lambda",
+                MetricName: m.metricStat.metric.metricName,
+              },
+              Period: m.metricStat.period || 60,
+              Stat: m.metricStat.stat || "Sum",
+            };
+            if (m.metricStat.metric.dimensions) {
+              const dims = m.metricStat.metric.dimensions;
+              const dimEntries = Array.isArray(dims)
+                ? dims.map((d) => [d.name, d.value])
+                : Object.entries(dims);
+              statObj.Metric.Dimensions = dimEntries.map(([k, v]) => {
+                const matchingApi = graph.apis.find((a) => a.id === v || a.exportName === v);
+                return {
+                  Name: k,
+                  Value: matchingApi ? { Ref: `Function${this.sanitizeName(matchingApi.id)}` } : v,
+                };
+              });
+            }
+            item.MetricStat = statObj;
+          }
+          return item;
         });
+      } else {
+        const metric = alarm.metric || {
+          metricName: "Invocations",
+          namespace: "AWS/Lambda",
+          period: 60,
+          stat: "Sum",
+        };
+
+        alarmProps["MetricName"] = metric.metricName;
+        alarmProps["Namespace"] = metric.namespace || "AWS/Lambda";
+        alarmProps["Period"] = metric.period || 60;
+        alarmProps["Statistic"] = metric.stat || "Sum";
+
+        if (metric.dimensions && Object.keys(metric.dimensions).length > 0) {
+          alarmProps["Dimensions"] = Object.entries(metric.dimensions).map(([k, v]) => {
+            const matchingApi = graph.apis.find((a) => a.id === v || a.exportName === v);
+            return {
+              Name: k,
+              Value: matchingApi ? { Ref: `Function${this.sanitizeName(matchingApi.id)}` } : v,
+            };
+          });
+        }
       }
 
       resources[resourceKey] = {
@@ -971,6 +1059,147 @@ export class Synthesizer {
       case "binary":
         return "B";
     }
+  }
+
+  private createLambdaRole(
+    logicalId: string,
+    options: {
+      tables?: boolean | undefined;
+      buckets?: boolean | undefined;
+      queues?: string[] | undefined;
+      tableStreams?: string[] | undefined;
+      firehose?: boolean | undefined;
+      policies?: any[] | undefined;
+    },
+    graph: ResourceGraph
+  ): any {
+    const statements: any[] = [
+      {
+        Effect: "Allow",
+        Action: [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+        ],
+        Resource: "arn:aws:logs:*:*:*",
+      },
+    ];
+
+    if (options.tables && graph.tables.length > 0) {
+      statements.push({
+        Effect: "Allow",
+        Action: [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+        ],
+        Resource: graph.tables.flatMap((t) => [
+          { "Fn::GetAtt": [`Table${this.sanitizeName(t.name)}`, "Arn"] },
+          {
+            "Fn::Sub": [
+              "${TableArn}/index/*",
+              { TableArn: { "Fn::GetAtt": [`Table${this.sanitizeName(t.name)}`, "Arn"] } },
+            ],
+          },
+        ]),
+      });
+    }
+
+    if (options.buckets && graph.buckets.length > 0) {
+      statements.push({
+        Effect: "Allow",
+        Action: [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket",
+        ],
+        Resource: graph.buckets.flatMap((b) => [
+          { "Fn::GetAtt": [`Bucket${this.sanitizeName(b.name)}`, "Arn"] },
+          {
+            "Fn::Sub": [
+              "${BucketArn}/*",
+              { BucketArn: { "Fn::GetAtt": [`Bucket${this.sanitizeName(b.name)}`, "Arn"] } },
+            ],
+          },
+        ]),
+      });
+    }
+
+    if (options.queues && options.queues.length > 0) {
+      statements.push({
+        Effect: "Allow",
+        Action: [
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+        ],
+        Resource: options.queues.map((q) => ({
+          "Fn::GetAtt": [`Queue${this.sanitizeName(q)}`, "Arn"],
+        })),
+      });
+    }
+
+    if (options.tableStreams && options.tableStreams.length > 0) {
+      statements.push({
+        Effect: "Allow",
+        Action: [
+          "dynamodb:GetRecords",
+          "dynamodb:GetShardIterator",
+          "dynamodb:DescribeStream",
+          "dynamodb:ListStreams",
+        ],
+        Resource: options.tableStreams.map((tableName) => ({
+          "Fn::GetAtt": [`Table${this.sanitizeName(tableName)}`, "StreamArn"],
+        })),
+      });
+    }
+
+    if (options.firehose && graph.deliveryStreams && graph.deliveryStreams.length > 0) {
+      statements.push({
+        Effect: "Allow",
+        Action: ["firehose:PutRecord", "firehose:PutRecordBatch"],
+        Resource: graph.deliveryStreams.map((ds) => ({
+          "Fn::GetAtt": [`DeliveryStream${this.sanitizeName(ds.name)}`, "Arn"],
+        })),
+      });
+    }
+
+    for (const stmt of options.policies || []) {
+      statements.push({
+        Effect: stmt.effect || "Allow",
+        Action: stmt.actions,
+        Resource: stmt.resources,
+      });
+    }
+
+    return {
+      Type: "AWS::IAM::Role",
+      Properties: {
+        AssumeRolePolicyDocument: {
+          Version: "2012-10-17",
+          Statement: [
+            {
+              Effect: "Allow",
+              Principal: { Service: "lambda.amazonaws.com" },
+              Action: "sts:AssumeRole",
+            },
+          ],
+        },
+        Policies: [
+          {
+            PolicyName: `${logicalId}ExecutionPolicy`,
+            PolicyDocument: {
+              Version: "2012-10-17",
+              Statement: statements,
+            },
+          },
+        ],
+      },
+    };
   }
 
   private mergeEnvironment(

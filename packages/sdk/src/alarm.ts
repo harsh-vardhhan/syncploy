@@ -24,12 +24,12 @@ export interface AlarmMetricDataQuery {
   returnData?: boolean;
   metricStat?: {
     metric: {
-      namespace: string;
+      namespace?: string;
       metricName: string;
-      dimensions?: { name: string; value: string }[];
+      dimensions?: Record<string, string> | { name: string; value: string }[];
     };
-    period: number;
-    stat: string;
+    period?: Duration;
+    stat?: "Sum" | "Average" | "SampleCount" | "Maximum" | "Minimum" | string;
   };
 }
 
@@ -42,9 +42,10 @@ export interface AlarmOptions {
     | "GreaterThanThreshold"
     | "LessThanThreshold"
     | "LessThanOrEqualToThreshold";
+  treatMissingData?: "breaching" | "notBreaching" | "ignore" | "missing";
   metric?: AlarmMetricStat;
   metrics?: AlarmMetricDataQuery[];
-  actions?: (Topic<any> | string)[];
+  actions?: (Topic | string)[];
 }
 
 export class Alarm {

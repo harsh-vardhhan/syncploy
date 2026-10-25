@@ -9,8 +9,14 @@ export interface PolicyStatement {
   resources: string[];
 }
 
+export interface TopicSubscription {
+  protocol: "email" | "sms" | "sqs" | "lambda";
+  endpoint: string;
+}
+
 export interface TopicOptions {
   fifo?: boolean;
+  subscriptions?: TopicSubscription[];
 }
 
 export interface TopicSubscriberOptions {
@@ -84,5 +90,13 @@ export class Topic<T = any> {
       options,
       handler,
     };
+  }
+
+  email(endpoint: string): this {
+    if (!this.options.subscriptions) {
+      (this.options as any).subscriptions = [];
+    }
+    this.options.subscriptions!.push({ protocol: "email", endpoint });
+    return this;
   }
 }

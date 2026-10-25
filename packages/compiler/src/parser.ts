@@ -12,6 +12,7 @@ import type {
   TopicIR,
   TopicSubscriberIR,
   AlarmIR,
+  AlarmMetricQueryIR,
   DeliveryStreamIR,
   TableIndexIR,
   CorsConfig,
@@ -450,6 +451,7 @@ export class Parser {
             let versioned = false;
             let eventBridge = false;
             let publicAccessBlock = true;
+            let accountScoped = false;
             let objectLock: BucketIR["objectLock"];
 
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
@@ -465,6 +467,10 @@ export class Parser {
               const pabProp = opts.getProperty("publicAccessBlock");
               if (pabProp && pabProp.isKind(SyntaxKind.PropertyAssignment)) {
                 publicAccessBlock = pabProp.getInitializer()?.getText() !== "false";
+              }
+              const asProp = opts.getProperty("accountScoped");
+              if (asProp && asProp.isKind(SyntaxKind.PropertyAssignment)) {
+                accountScoped = asProp.getInitializer()?.getText() === "true";
               }
               const olProp = opts.getProperty("objectLock");
               if (olProp && olProp.isKind(SyntaxKind.PropertyAssignment)) {
@@ -486,6 +492,7 @@ export class Parser {
               versioned,
               eventBridge,
               publicAccessBlock,
+              accountScoped,
               objectLock,
               sourceFile: sourceFile.getFilePath(),
             });
@@ -540,15 +547,33 @@ export class Parser {
             varToTopicName[varName] = topicName;
 
             let fifo = false;
+            let subscriptions: TopicIR["subscriptions"];
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
               const opts = args[1] as ObjectLiteralExpression;
               fifo = opts.getProperty("fifo")?.getText() === "true";
+              const subsProp = opts.getProperty("subscriptions");
+              if (subsProp && subsProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const arr = subsProp.getInitializer();
+                if (arr && arr.isKind(SyntaxKind.ArrayLiteralExpression)) {
+                  subscriptions = [];
+                  for (const el of arr.getElements()) {
+                    if (el.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                      const proto = this.extractString(el.getProperty("protocol")) || "email";
+                      const endp = this.extractString(el.getProperty("endpoint")) || "";
+                      if (endp) {
+                        subscriptions.push({ protocol: proto, endpoint: endp });
+                      }
+                    }
+                  }
+                }
+              }
             }
 
             topics.push({
               id: varName,
               name: topicName,
               fifo,
+              subscriptions,
               sourceFile: sourceFile.getFilePath(),
             });
           } else if (className === "Alarm") {
@@ -562,7 +587,9 @@ export class Parser {
             let evaluationPeriods = 1;
             let comparison = "GreaterThanOrEqualToThreshold";
             let description: string | undefined;
+            let treatMissingData: string | undefined;
             let metric: AlarmIR["metric"] | undefined;
+            let metrics: AlarmIR["metrics"];
             const actions: string[] = [];
 
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
@@ -571,6 +598,7 @@ export class Parser {
               evaluationPeriods = this.extractNumber(opts.getProperty("evaluationPeriods")) ?? 1;
               comparison = this.extractString(opts.getProperty("comparison")) || "GreaterThanOrEqualToThreshold";
               description = this.extractString(opts.getProperty("description"));
+              treatMissingData = this.extractString(opts.getProperty("treatMissingData"));
 
               const metricProp = opts.getProperty("metric");
               if (metricProp && metricProp.isKind(SyntaxKind.PropertyAssignment)) {
@@ -599,6 +627,68 @@ export class Parser {
                 }
               }
 
+              const metricsProp = opts.getProperty("metrics");
+              if (metricsProp && metricsProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const arr = metricsProp.getInitializer();
+                if (arr && arr.isKind(SyntaxKind.ArrayLiteralExpression)) {
+                  metrics = [];
+                  for (const el of arr.getElements()) {
+                    if (el.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                      const id = this.extractString(el.getProperty("id")) || "";
+                      const expression = this.extractString(el.getProperty("expression"));
+                      const label = this.extractString(el.getProperty("label"));
+                      const rdProp = el.getProperty("returnData");
+                      const rdInit = rdProp && rdProp.isKind(SyntaxKind.PropertyAssignment) ? rdProp.getInitializer() : undefined;
+                      const returnData = rdInit ? rdInit.getText() !== "false" : undefined;
+                      let metricStat: AlarmMetricQueryIR["metricStat"];
+                      const statProp = el.getProperty("metricStat");
+                      if (statProp && statProp.isKind(SyntaxKind.PropertyAssignment)) {
+                        const sObj = statProp.getInitializer();
+                        if (sObj && sObj.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                          const mProp = sObj.getProperty("metric");
+                          let metricObj: any = { metricName: "Invocations", namespace: "AWS/Lambda" };
+                          if (mProp && mProp.isKind(SyntaxKind.PropertyAssignment)) {
+                            const mInit = mProp.getInitializer();
+                            if (mInit && mInit.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                              const metricName = this.extractString(mInit.getProperty("metricName")) || "Invocations";
+                              const namespace = this.extractString(mInit.getProperty("namespace")) || "AWS/Lambda";
+                              const dims: Record<string, string> = {};
+                              const dProp = mInit.getProperty("dimensions");
+                              if (dProp && dProp.isKind(SyntaxKind.PropertyAssignment)) {
+                                const dInit = dProp.getInitializer();
+                                if (dInit && dInit.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                                  for (const p of dInit.getProperties()) {
+                                    if (p.isKind(SyntaxKind.PropertyAssignment)) {
+                                      const dVal = p.getInitializer();
+                                      if (dVal && dVal.isKind(SyntaxKind.StringLiteral)) {
+                                        dims[p.getName()] = dVal.getLiteralValue();
+                                      }
+                                    }
+                                  }
+                                } else if (dInit && dInit.isKind(SyntaxKind.ArrayLiteralExpression)) {
+                                  for (const dimEl of dInit.getElements()) {
+                                    if (dimEl.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                                      const n = this.extractString(dimEl.getProperty("name")) || this.extractString(dimEl.getProperty("Name"));
+                                      const v = this.extractString(dimEl.getProperty("value")) || this.extractString(dimEl.getProperty("Value"));
+                                      if (n && v) dims[n] = v;
+                                    }
+                                  }
+                                }
+                              }
+                              metricObj = { metricName, namespace, dimensions: dims };
+                            }
+                          }
+                          const period = this.extractDuration(sObj.getProperty("period")) || this.extractNumber(sObj.getProperty("period")) || 60;
+                          const stat = this.extractString(sObj.getProperty("stat")) || "Sum";
+                          metricStat = { metric: metricObj, period, stat };
+                        }
+                      }
+                      metrics.push({ id, expression, label, returnData, metricStat });
+                    }
+                  }
+                }
+              }
+
               const actionsProp = opts.getProperty("actions");
               if (actionsProp && actionsProp.isKind(SyntaxKind.PropertyAssignment)) {
                 const arr = actionsProp.getInitializer();
@@ -619,7 +709,9 @@ export class Parser {
               evaluationPeriods,
               comparison,
               description,
+              treatMissingData,
               metric,
+              metrics,
               actions,
               sourceFile: sourceFile.getFilePath(),
             });
@@ -854,7 +946,14 @@ export class Parser {
     if (target.isKind(SyntaxKind.StringLiteral)) {
       return (target as any).getLiteralValue();
     }
-    return target.getText().replace(/['"]/g, "");
+    const rawText = target.getText();
+    const match = rawText.match(/^process\.env\.([a-zA-Z0-9_]+)(?:\s*\|\|\s*['"](.*)['"])?$/);
+    if (match) {
+      const varName = match[1] || "";
+      const fallback = match[2] ?? "";
+      return process.env[varName] || fallback;
+    }
+    return rawText.replace(/['"]/g, "");
   }
 
   private extractStringArray(node: Node | undefined): string[] | undefined {

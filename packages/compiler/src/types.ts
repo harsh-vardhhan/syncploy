@@ -57,6 +57,7 @@ export interface BucketIR {
   versioned?: boolean | undefined;
   eventBridge?: boolean | undefined;
   publicAccessBlock?: boolean | undefined;
+  accountScoped?: boolean | undefined;
   objectLock?:
     | boolean
     | {
@@ -111,6 +112,7 @@ export interface TopicIR {
   id: string;
   name: string;
   fifo?: boolean | undefined;
+  subscriptions?: { protocol: string; endpoint: string }[] | undefined;
   sourceFile: string;
 }
 
@@ -133,12 +135,12 @@ export interface AlarmMetricQueryIR {
   returnData?: boolean | undefined;
   metricStat?: {
     metric: {
-      namespace: string;
+      namespace?: string | undefined;
       metricName: string;
-      dimensions?: { name: string; value: string }[] | undefined;
+      dimensions?: Record<string, string> | { name: string; value: string }[] | undefined;
     };
-    period: number;
-    stat: string;
+    period?: number | undefined;
+    stat?: string | undefined;
   } | undefined;
 }
 
@@ -149,6 +151,7 @@ export interface AlarmIR {
   threshold: number;
   evaluationPeriods?: number | undefined;
   comparison?: string | undefined;
+  treatMissingData?: string | undefined;
   metric?: {
     namespace?: string | undefined;
     metricName: string;

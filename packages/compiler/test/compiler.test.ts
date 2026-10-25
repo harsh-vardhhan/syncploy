@@ -37,6 +37,7 @@ export const auditLogsBucket = new Bucket("audit-logs", {
     days: 1,
   },
   publicAccessBlock: true,
+  accountScoped: true,
 });
 
 export const auditDeliveryStream = new DeliveryStream("audit-stream", {
@@ -64,6 +65,9 @@ export const annotationQueue = new Queue("annotations", {
 
 export const alertTopic = new Topic("alerts", {
   fifo: false,
+  subscriptions: [
+    { protocol: "email", endpoint: "alerts@example.com" },
+  ],
 });
 
 export const highTrafficAlarm = new Alarm("HighTrafficAlarm", {
@@ -71,7 +75,34 @@ export const highTrafficAlarm = new Alarm("HighTrafficAlarm", {
   evaluationPeriods: 1,
   comparison: "GreaterThanOrEqualToThreshold",
   description: "Triggers alert topic on high traffic",
+  treatMissingData: "notBreaching",
   actions: [alertTopic],
+  metrics: [
+    {
+      id: "e1",
+      expression: "m1 + m2",
+      label: "TotalRequests",
+      returnData: true,
+    },
+    {
+      id: "m1",
+      returnData: false,
+      metricStat: {
+        metric: {
+          metricName: "Invocations",
+        },
+      },
+    },
+    {
+      id: "m2",
+      returnData: false,
+      metricStat: {
+        metric: {
+          metricName: "Throttles",
+        },
+      },
+    },
+  ],
 });
 
 documentsBucket.on("objectCreated", annotationQueue, { prefix: "documents/" });
@@ -320,17 +351,29 @@ export const alertSubscriber = alertTopic.subscribe(
     expect(policyRes).toBeDefined();
     expect(policyRes.Type).toBe("AWS::SQS::QueuePolicy");
 
-    // 8. SNS Topic & Alarm
+    // 8. SNS Topic & Alarm with Metric Math and Subscriptions
     const topicRes = res["Topicalerts"];
     expect(topicRes).toBeDefined();
     expect(topicRes.Type).toBe("AWS::SNS::Topic");
     expect(topicRes.Properties.TopicName).toEqual({ "Fn::Sub": "${AWS::StackName}-alerts" });
+    expect(topicRes.Properties.Subscription).toEqual([{ Protocol: "email", Endpoint: "alerts@example.com" }]);
 
     const alarmRes = res["AlarmHighTrafficAlarm"];
     expect(alarmRes).toBeDefined();
     expect(alarmRes.Type).toBe("AWS::CloudWatch::Alarm");
     expect(alarmRes.Properties.Threshold).toBe(2000);
     expect(alarmRes.Properties.AlarmActions).toEqual([{ Ref: "Topicalerts" }]);
+    expect(alarmRes.Properties.TreatMissingData).toBe("notBreaching");
+    expect(alarmRes.Properties.Metrics.length).toBe(3);
+    expect(alarmRes.Properties.Metrics[0].Expression).toBe("m1 + m2");
+    expect(alarmRes.Properties.Metrics[1].MetricStat.Metric.MetricName).toBe("Invocations");
+    expect(alarmRes.Properties.Metrics[2].MetricStat.Metric.MetricName).toBe("Throttles");
+
+    // Per-Function IAM Roles
+    expect(res["RolegetUser"]).toBeDefined();
+    expect(res["RoleprocessDoc"]).toBeDefined();
+    expect(getUserFunc.Properties.Role).toEqual({ "Fn::GetAtt": ["RolegetUser", "Arn"] });
+    expect(workerRes.Properties.Role).toEqual({ "Fn::GetAtt": ["RoleprocessDoc", "Arn"] });
 
     // 9. DynamoDB Stream Function & EventSourceMapping
     const streamFunc = res["FunctionauditStreamConsumer"];
@@ -360,9 +403,10 @@ export const alertSubscriber = alertTopic.subscribe(
     expect(permRes.Type).toBe("AWS::Lambda::Permission");
     expect(permRes.Properties.Principal).toBe("sns.amazonaws.com");
 
-    // 11. S3 Bucket ObjectLock
+    // 11. S3 Bucket ObjectLock & Account Scoping
     const auditBucketRes = res["Bucketauditlogs"];
     expect(auditBucketRes).toBeDefined();
+    expect(auditBucketRes.Properties.BucketName).toEqual({ "Fn::Sub": "${AWS::StackName}-audit-logs-${AWS::AccountId}" });
     expect(auditBucketRes.Properties.ObjectLockEnabled).toBe(true);
     expect(auditBucketRes.Properties.ObjectLockConfiguration.Rule.DefaultRetention.Mode).toBe("COMPLIANCE");
     expect(auditBucketRes.Properties.ObjectLockConfiguration.Rule.DefaultRetention.Days).toBe(1);
