@@ -37,6 +37,60 @@ Unlike traditional frameworks (or Encore), Syncploy is designed specifically for
 
 ---
 
+## 🏗️ Compiler Architecture & Workflow
+
+```mermaid
+flowchart TD
+    subgraph Input["1. Input Source Code"]
+        TS["TypeScript Application Code<br/>(src/**/*.ts with @syncploy/sdk primitives)"]
+    end
+
+    subgraph Parser["2. Static AST Analysis & Validation"]
+        AST["AST Engine (ts-morph)<br/>Zero-execution static AST scanner for SDK primitives"]
+        VAL["Pre-Flight AWS Platform Validator (&lt;1ms)<br/>Enforces AWS limits, naming, FIFO, IAM syntax & secret scanner"]
+        AST --> VAL
+    end
+
+    subgraph IR["3. Intermediate Representation (IR)"]
+        GRAPH["Serverless Resource Graph & Topology<br/>Pure in-memory serverless dependency graph"]
+    end
+
+    subgraph Pipeline["4. Dual Compilation Pipeline"]
+        subgraph BundlerPass["Code Bundling (Bundler)"]
+            GEN["Virtual Entrypoint Generator<br/>APIGW v2, Function URL, SQS batch, Stream adapters"]
+            ESBUILD["esbuild Bundler & Packaging<br/>Tree-shaken Node 20 ESM & Docker container metadata"]
+            GEN --> ESBUILD
+        end
+
+        subgraph SynthPass["Infrastructure Synthesis (Synthesizer)"]
+            IAM["IAM Policy Synthesizer<br/>Exact least-privilege execution roles & trust policies"]
+            SAFETY["Zero-Data-Loss Safety Rails<br/>Automatic Retain policies on Tables & Buckets"]
+            CFN["CloudFormation Emitter<br/>Pure 100% native AWS CloudFormation template"]
+            IAM --> SAFETY --> CFN
+        end
+    end
+
+    subgraph Artifacts["5. Production Artifacts (.syncploy/)"]
+        BUNDLES["Standalone Lambda Bundles<br/>.syncploy/build/*/index.mjs"]
+        TEMPLATE["CloudFormation Template<br/>.syncploy/template.json"]
+    end
+
+    subgraph Deployment["6. Zero-Lock-In Deployment"]
+        DEPLOY["Deploy Without Vendor Lock-In<br/>aws cloudformation deploy / SAM CLI / CI/CD"]
+    end
+
+    TS --> AST
+    VAL --> GRAPH
+    GRAPH --> GEN
+    GRAPH --> IAM
+    ESBUILD --> BUNDLES
+    CFN --> TEMPLATE
+    BUNDLES --> DEPLOY
+    TEMPLATE --> DEPLOY
+```
+
+---
+
 ## ☁️ Supported Pure AWS Serverless Services
 
 Syncploy targets services that **scale to zero**, require **zero VPC/server management**, and authenticate over stateless IAM/HTTPS:
