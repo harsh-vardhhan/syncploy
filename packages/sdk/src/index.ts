@@ -22,10 +22,24 @@ export interface RequestContext {
   rawEvent?: unknown;
 }
 
+export type Duration = `${number}s` | `${number}m` | `${number}h` | number;
+export type MemorySize = `${number}MB` | `${number}GB` | number;
+
+export interface CorsOptions {
+  allowOrigins?: string[];
+  allowHeaders?: string[];
+  allowMethods?: string[];
+  maxAge?: Duration;
+}
+
 export interface ApiOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
   path: string;
   auth?: boolean;
+  timeout?: Duration;
+  memory?: MemorySize;
+  concurrency?: number;
+  cors?: CorsOptions | boolean;
 }
 
 export type ApiHandler<TReq = any, TRes = any> = (
@@ -49,22 +63,29 @@ export function api<TReq = any, TRes = any>(
       method: options.method ?? "POST",
       path: options.path,
       auth: options.auth,
+      timeout: options.timeout,
+      memory: options.memory,
+      concurrency: options.concurrency,
+      cors: options.cors,
     },
     handler,
   };
 }
 
 // Table (DynamoDB)
+export interface TableIndexDefinition {
+  partitionKey: string;
+  sortKey?: string;
+  projection?: "ALL" | "KEYS_ONLY";
+}
+
 export interface TableOptions {
   partitionKey: { name: string; type: "string" | "number" | "binary" };
   sortKey?: { name: string; type: "string" | "number" | "binary" };
-  indexes?: Record<
-    string,
-    {
-      partitionKey: string;
-      sortKey?: string;
-    }
-  >;
+  billingMode?: "PAY_PER_REQUEST" | "PROVISIONED";
+  stream?: "NEW_IMAGE" | "OLD_IMAGE" | "NEW_AND_OLD_IMAGES" | "KEYS_ONLY";
+  pointInTimeRecovery?: boolean;
+  indexes?: Record<string, TableIndexDefinition>;
 }
 
 export class Table {
@@ -90,6 +111,8 @@ export class Table {
 export interface BucketOptions {
   versioned?: boolean;
   public?: boolean;
+  eventBridge?: boolean;
+  publicAccessBlock?: boolean;
 }
 
 export class Bucket {
@@ -114,16 +137,28 @@ export class Bucket {
 }
 
 // Queue (SQS)
+export interface DeadLetterQueueOptions {
+  maxReceiveCount: number;
+}
+
 export interface QueueOptions {
-  visibilityTimeout?: string;
-  deadLetterQueue?: {
-    maxReceiveCount: number;
-  };
+  visibilityTimeout?: Duration;
+  deadLetterQueue?: DeadLetterQueueOptions;
+  fifo?: boolean;
 }
 
 export interface ConsumerOptions {
   batchSize?: number;
-  timeout?: string;
+  timeout?: Duration;
+  concurrency?: number;
+  memory?: MemorySize;
+}
+
+export interface QueueConsumer<T = any> {
+  readonly _kind: "queue_consumer";
+  readonly queue: Queue;
+  readonly options: ConsumerOptions;
+  readonly handler: (event: T) => Promise<void> | void;
 }
 
 export class Queue {
@@ -134,11 +169,16 @@ export class Queue {
     // Runtime execution
   }
 
-  consumer(
+  consumer<T = any>(
     options: ConsumerOptions,
-    handler: (event: any) => Promise<void> | void
-  ): (event: any) => Promise<void> | void {
-    return handler;
+    handler: (event: T) => Promise<void> | void
+  ): QueueConsumer<T> {
+    return {
+      _kind: "queue_consumer",
+      queue: this,
+      options,
+      handler,
+    };
   }
 }
 

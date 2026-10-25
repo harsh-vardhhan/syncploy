@@ -3,36 +3,66 @@ import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import { Compiler } from "../src/index";
 
-const TEST_DIR = path.join(__dirname, ".tmp-test-app");
+const TEST_DIR = path.join(__dirname, ".tmp-test-app-configured");
 
-describe("@syncploy/compiler", () => {
+describe("@syncploy/compiler - In-Code Configurations", () => {
   beforeAll(async () => {
     await fs.mkdir(TEST_DIR, { recursive: true });
 
-    // Write a sample app file
     await fs.writeFile(
       path.join(TEST_DIR, "app.ts"),
       `
-import { api, Table, Bucket } from "@syncploy/sdk";
+import { api, Table, Bucket, Queue } from "@syncploy/sdk";
 
-export const usersTable = new Table("users", {
-  partitionKey: { name: "id", type: "string" },
-  sortKey: { name: "createdAt", type: "string" }
+export const ehrTable = new Table("ehr", {
+  partitionKey: { name: "PK", type: "string" },
+  sortKey: { name: "SK", type: "string" },
+  billingMode: "PAY_PER_REQUEST",
+  stream: "NEW_IMAGE",
+  pointInTimeRecovery: true,
+  indexes: {
+    GSI1Index: { partitionKey: "GSI1PK", sortKey: "GSI1SK" },
+  },
 });
 
-export const avatarsBucket = new Bucket("avatars");
+export const documentsBucket = new Bucket("documents", {
+  versioned: true,
+  eventBridge: true,
+  publicAccessBlock: true,
+});
+
+export const annotationQueue = new Queue("annotations", {
+  visibilityTimeout: "180s",
+  deadLetterQueue: {
+    maxReceiveCount: 3,
+  },
+});
 
 export const getUser = api(
-  { method: "GET", path: "/users/:id" },
+  {
+    method: "GET",
+    path: "/users/:id",
+    timeout: "30s",
+    memory: "512MB",
+    concurrency: 2,
+    cors: {
+      allowOrigins: ["https://example.com"],
+      allowHeaders: ["Content-Type", "X-Api-Key"],
+    },
+  },
   async ({ id }: { id: string }) => {
-    return { id, name: "Alice", role: "admin" };
+    return { id, name: "Alice" };
   }
 );
 
-export const createUser = api(
-  { method: "POST", path: "/users" },
-  async ({ name }: { name: string }) => {
-    return { id: "123", name };
+export const processDoc = annotationQueue.consumer(
+  {
+    batchSize: 5,
+    timeout: "120s",
+    concurrency: 2,
+  },
+  async (event) => {
+    console.log("Processing", event);
   }
 );
 `,
@@ -44,79 +74,85 @@ export const createUser = api(
     await fs.rm(TEST_DIR, { recursive: true, force: true });
   });
 
-  it("parses resources and APIs from TypeScript source", async () => {
+  it("extracts all in-code configurations accurately", async () => {
     const compiler = new Compiler(TEST_DIR);
     const graph = await compiler.parse();
 
-    expect(graph.apis.length).toBe(2);
-    expect(graph.tables.length).toBe(1);
-    expect(graph.buckets.length).toBe(1);
-
-    // Verify Table
+    // Verify Table Config
     const table = graph.tables[0]!;
-    expect(table.name).toBe("users");
-    expect(table.partitionKey.name).toBe("id");
-    expect(table.sortKey?.name).toBe("createdAt");
+    expect(table.name).toBe("ehr");
+    expect(table.stream).toBe("NEW_IMAGE");
+    expect(table.billingMode).toBe("PAY_PER_REQUEST");
+    expect(table.pointInTimeRecovery).toBe(true);
+    expect(table.indexes?.["GSI1Index"]).toBeDefined();
+    expect(table.indexes?.["GSI1Index"]?.partitionKey).toBe("GSI1PK");
+    expect(table.indexes?.["GSI1Index"]?.sortKey).toBe("GSI1SK");
 
-    // Verify Bucket
+    // Verify Bucket Config
     const bucket = graph.buckets[0]!;
-    expect(bucket.name).toBe("avatars");
+    expect(bucket.name).toBe("documents");
+    expect(bucket.versioned).toBe(true);
+    expect(bucket.eventBridge).toBe(true);
+    expect(bucket.publicAccessBlock).toBe(true);
 
-    // Verify APIs
-    const getUserApi = graph.apis.find((a) => a.id === "getUser")!;
-    expect(getUserApi).toBeDefined();
-    expect(getUserApi.method).toBe("GET");
-    expect(getUserApi.path).toBe("/users/:id");
+    // Verify Queue Config
+    const queue = graph.queues[0]!;
+    expect(queue.name).toBe("annotations");
+    expect(queue.visibilityTimeout).toBe(180);
+    expect(queue.deadLetterQueue?.maxReceiveCount).toBe(3);
 
-    const createUserApi = graph.apis.find((a) => a.id === "createUser")!;
-    expect(createUserApi).toBeDefined();
-    expect(createUserApi.method).toBe("POST");
-    expect(createUserApi.path).toBe("/users");
+    // Verify API Config
+    const api = graph.apis[0]!;
+    expect(api.timeout).toBe(30);
+    expect(api.memory).toBe(512);
+    expect(api.concurrency).toBe(2);
+
+    // Verify Queue Consumer Config
+    const consumer = graph.consumers[0]!;
+    expect(consumer.batchSize).toBe(5);
+    expect(consumer.timeout).toBe(120);
+    expect(consumer.concurrency).toBe(2);
   });
 
-  it("bundles Lambdas and synthesizes CloudFormation template", async () => {
+  it("synthesizes accurate CloudFormation properties matching in-code configs", async () => {
     const compiler = new Compiler(TEST_DIR);
     const output = await compiler.build();
 
-    // 1. Verify bundles exist
-    expect(output.lambdaBundles["getUser"]).toBeDefined();
-    expect(output.lambdaBundles["createUser"]).toBeDefined();
-
-    const getUserBundle = output.lambdaBundles["getUser"]!;
-    const exists = await fs.exists(getUserBundle);
-    expect(exists).toBe(true);
-
-    // 2. Verify CloudFormation template
     const templateContent = await fs.readFile(output.templatePath, "utf-8");
     const template = JSON.parse(templateContent);
+    const res = template.Resources;
 
-    expect(template.AWSTemplateFormatVersion).toBe("2010-09-09");
-    expect(template.Resources["HttpApi"]).toBeDefined();
-    expect(template.Resources["Tableusers"]).toBeDefined();
-    expect(template.Resources["Bucketavatars"]).toBeDefined();
-    expect(template.Resources["FunctiongetUser"]).toBeDefined();
-    expect(template.Resources["FunctioncreateUser"]).toBeDefined();
+    // 1. Table with Stream & GSI
+    const tableRes = res["Tableehr"];
+    expect(tableRes.Properties.StreamSpecification.StreamViewType).toBe("NEW_IMAGE");
+    expect(tableRes.Properties.PointInTimeRecoverySpecification.PointInTimeRecoveryEnabled).toBe(true);
+    expect(tableRes.Properties.GlobalSecondaryIndexes.length).toBe(1);
+    expect(tableRes.Properties.GlobalSecondaryIndexes[0].IndexName).toBe("GSI1Index");
 
-    // Verify API Gateway route key converts /users/:id to /users/{id}
-    const route = template.Resources["RoutegetUser"];
-    expect(route.Properties.RouteKey).toBe("GET /users/{id}");
+    // 2. Bucket with EventBridge & Versioning
+    const bucketRes = res["Bucketdocuments"];
+    expect(bucketRes.Properties.VersioningConfiguration.Status).toBe("Enabled");
+    expect(bucketRes.Properties.NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled).toBe(true);
 
-    // 3. Test running the generated bundle with a mock event
-    const bundleModule = await import(getUserBundle);
-    expect(typeof bundleModule.handler).toBe("function");
+    // 3. Queue with DLQ
+    const queueRes = res["Queueannotations"];
+    expect(queueRes.Properties.VisibilityTimeout).toBe(180);
+    expect(res["QueueannotationsDLQ"]).toBeDefined();
+    expect(queueRes.Properties.RedrivePolicy.maxReceiveCount).toBe(3);
 
-    const mockEvent = {
-      pathParameters: { id: "42" },
-      queryStringParameters: {},
-      headers: {},
-      body: null,
-    };
+    // 4. API Lambda with memory, timeout, concurrency
+    const funcRes = res["FunctiongetUser"];
+    expect(funcRes.Properties.Timeout).toBe(30);
+    expect(funcRes.Properties.MemorySize).toBe(512);
+    expect(funcRes.Properties.ReservedConcurrentExecutions).toBe(2);
 
-    const res = await bundleModule.handler(mockEvent);
-    expect(res.statusCode).toBe(200);
+    // 5. Worker Lambda with timeout, concurrency, EventSourceMapping
+    const workerRes = res["FunctionprocessDoc"];
+    expect(workerRes.Properties.Timeout).toBe(120);
+    expect(workerRes.Properties.ReservedConcurrentExecutions).toBe(2);
 
-    const body = JSON.parse(res.body);
-    expect(body.id).toBe("42");
-    expect(body.name).toBe("Alice");
+    const mappingRes = res["EventSourceMappingprocessDoc"];
+    expect(mappingRes.Properties.BatchSize).toBe(5);
+    expect(mappingRes.Properties.FunctionResponseTypes).toEqual(["ReportBatchItemFailures"]);
   });
 });

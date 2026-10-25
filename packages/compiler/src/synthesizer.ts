@@ -60,9 +60,15 @@ export class Synthesizer {
           "dynamodb:Query",
           "dynamodb:Scan",
         ],
-        Resource: graph.tables.map((t) => ({
-          "Fn::GetAtt": [`Table${this.sanitizeName(t.name)}`, "Arn"],
-        })),
+        Resource: graph.tables.flatMap((t) => [
+          { "Fn::GetAtt": [`Table${this.sanitizeName(t.name)}`, "Arn"] },
+          {
+            "Fn::Sub": [
+              "${TableArn}/index/*",
+              { TableArn: { "Fn::GetAtt": [`Table${this.sanitizeName(t.name)}`, "Arn"] } },
+            ],
+          },
+        ]),
       });
     }
 
@@ -85,6 +91,22 @@ export class Synthesizer {
             ],
           },
         ]),
+      });
+    }
+
+    // Add SQS permissions if queues exist
+    if (graph.queues.length > 0) {
+      roleStatements.push({
+        Effect: "Allow",
+        Action: [
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueAttributes",
+        ],
+        Resource: graph.queues.map((q) => ({
+          "Fn::GetAtt": [`Queue${this.sanitizeName(q.name)}`, "Arn"],
+        })),
       });
     }
 
@@ -116,13 +138,10 @@ export class Synthesizer {
     // 3. DynamoDB Tables
     for (const table of graph.tables) {
       const resourceKey = `Table${this.sanitizeName(table.name)}`;
-      const attributeDefinitions = [
-        {
-          AttributeName: table.partitionKey.name,
-          AttributeType: this.toDdbType(table.partitionKey.type),
-        },
-      ];
-      const keySchema = [
+      const attrMap = new Map<string, string>();
+      attrMap.set(table.partitionKey.name, this.toDdbType(table.partitionKey.type));
+
+      const keySchema: any[] = [
         {
           AttributeName: table.partitionKey.name,
           KeyType: "HASH",
@@ -130,46 +149,129 @@ export class Synthesizer {
       ];
 
       if (table.sortKey) {
-        attributeDefinitions.push({
-          AttributeName: table.sortKey.name,
-          AttributeType: this.toDdbType(table.sortKey.type),
-        });
+        attrMap.set(table.sortKey.name, this.toDdbType(table.sortKey.type));
         keySchema.push({
           AttributeName: table.sortKey.name,
           KeyType: "RANGE",
         });
       }
 
+      // GSIs
+      const gsiList: any[] = [];
+      if (table.indexes) {
+        for (const [idxName, idx] of Object.entries(table.indexes)) {
+          if (!attrMap.has(idx.partitionKey)) {
+            attrMap.set(idx.partitionKey, "S");
+          }
+          const gsiKeySchema: any[] = [
+            { AttributeName: idx.partitionKey, KeyType: "HASH" },
+          ];
+          if (idx.sortKey) {
+            if (!attrMap.has(idx.sortKey)) {
+              attrMap.set(idx.sortKey, "S");
+            }
+            gsiKeySchema.push({ AttributeName: idx.sortKey, KeyType: "RANGE" });
+          }
+
+          gsiList.push({
+            IndexName: idxName,
+            KeySchema: gsiKeySchema,
+            Projection: { ProjectionType: idx.projection ?? "ALL" },
+          });
+        }
+      }
+
+      const attributeDefinitions = Array.from(attrMap.entries()).map(([name, type]) => ({
+        AttributeName: name,
+        AttributeType: type,
+      }));
+
+      const tableProps: any = {
+        TableName: { "Fn::Sub": `\${AWS::StackName}-${table.name}` },
+        BillingMode: table.billingMode ?? "PAY_PER_REQUEST",
+        AttributeDefinitions: attributeDefinitions,
+        KeySchema: keySchema,
+      };
+
+      if (gsiList.length > 0) {
+        tableProps["GlobalSecondaryIndexes"] = gsiList;
+      }
+
+      if (table.stream) {
+        tableProps["StreamSpecification"] = { StreamViewType: table.stream };
+      }
+
+      if (table.pointInTimeRecovery) {
+        tableProps["PointInTimeRecoverySpecification"] = {
+          PointInTimeRecoveryEnabled: true,
+        };
+      }
+
       resources[resourceKey] = {
         Type: "AWS::DynamoDB::Table",
-        Properties: {
-          TableName: { "Fn::Sub": `\${AWS::StackName}-${table.name}` },
-          BillingMode: "PAY_PER_REQUEST",
-          AttributeDefinitions: attributeDefinitions,
-          KeySchema: keySchema,
-        },
+        Properties: tableProps,
       };
     }
 
     // 4. S3 Buckets
     for (const bucket of graph.buckets) {
       const resourceKey = `Bucket${this.sanitizeName(bucket.name)}`;
+      const bucketProps: any = {
+        BucketName: { "Fn::Sub": `\${AWS::StackName}-${bucket.name}` },
+      };
+
+      if (bucket.versioned) {
+        bucketProps["VersioningConfiguration"] = { Status: "Enabled" };
+      }
+
+      if (bucket.eventBridge) {
+        bucketProps["NotificationConfiguration"] = {
+          EventBridgeConfiguration: { EventBridgeEnabled: true },
+        };
+      }
+
+      if (bucket.publicAccessBlock) {
+        bucketProps["PublicAccessBlockConfiguration"] = {
+          BlockPublicAcls: true,
+          BlockPublicPolicy: true,
+          IgnorePublicAcls: true,
+          RestrictPublicBuckets: true,
+        };
+      }
+
       resources[resourceKey] = {
         Type: "AWS::S3::Bucket",
-        Properties: {
-          BucketName: { "Fn::Sub": `\${AWS::StackName}-${bucket.name}` },
-        },
+        Properties: bucketProps,
       };
     }
 
-    // 5. SQS Queues
+    // 5. SQS Queues & DLQs
     for (const queue of graph.queues) {
-      const resourceKey = `Queue${this.sanitizeName(queue.name)}`;
+      const cleanName = this.sanitizeName(queue.name);
+      const resourceKey = `Queue${cleanName}`;
+      const queueProps: any = {
+        QueueName: { "Fn::Sub": `\${AWS::StackName}-${queue.name}` },
+        VisibilityTimeout: queue.visibilityTimeout ?? 180,
+      };
+
+      if (queue.deadLetterQueue) {
+        const dlqKey = `Queue${cleanName}DLQ`;
+        resources[dlqKey] = {
+          Type: "AWS::SQS::Queue",
+          Properties: {
+            QueueName: { "Fn::Sub": `\${AWS::StackName}-${queue.name}-dlq` },
+          },
+        };
+
+        queueProps["RedrivePolicy"] = {
+          deadLetterTargetArn: { "Fn::GetAtt": [dlqKey, "Arn"] },
+          maxReceiveCount: queue.deadLetterQueue.maxReceiveCount,
+        };
+      }
+
       resources[resourceKey] = {
         Type: "AWS::SQS::Queue",
-        Properties: {
-          QueueName: { "Fn::Sub": `\${AWS::StackName}-${queue.name}` },
-        },
+        Properties: queueProps,
       };
     }
 
@@ -183,21 +285,25 @@ export class Synthesizer {
 
       const artifactDir = lambdaArtifactDirs[api.id];
       const relArtifactDir = path.relative(this.workDir, artifactDir || "");
-
-      // Convert Express-like path /users/:id to API Gateway /users/{id}
       const apiGatewayPath = api.path.replace(/:([a-zA-Z0-9_]+)/g, "{$1}");
+
+      const funcProps: any = {
+        FunctionName: { "Fn::Sub": `\${AWS::StackName}-${api.id}` },
+        Runtime: "nodejs20.x",
+        Handler: "index.handler",
+        Code: relArtifactDir,
+        Timeout: api.timeout ?? 30,
+        MemorySize: api.memory ?? 256,
+        Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
+      };
+
+      if (api.concurrency !== undefined) {
+        funcProps["ReservedConcurrentExecutions"] = api.concurrency;
+      }
 
       resources[funcKey] = {
         Type: "AWS::Lambda::Function",
-        Properties: {
-          FunctionName: { "Fn::Sub": `\${AWS::StackName}-${api.id}` },
-          Runtime: "nodejs20.x",
-          Handler: "index.handler",
-          Code: relArtifactDir,
-          Timeout: 30,
-          MemorySize: 256,
-          Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
-        },
+        Properties: funcProps,
       };
 
       resources[integKey] = {
@@ -231,6 +337,46 @@ export class Synthesizer {
               { HttpApi: { Ref: "HttpApi" } },
             ],
           },
+        },
+      };
+    }
+
+    // 7. Queue Consumers (Workers)
+    for (const consumer of graph.consumers) {
+      const logicalId = this.sanitizeName(consumer.id);
+      const funcKey = `Function${logicalId}`;
+      const mappingKey = `EventSourceMapping${logicalId}`;
+      const queueKey = `Queue${this.sanitizeName(consumer.queueName)}`;
+
+      const artifactDir = lambdaArtifactDirs[consumer.id];
+      const relArtifactDir = path.relative(this.workDir, artifactDir || "");
+
+      const funcProps: any = {
+        FunctionName: { "Fn::Sub": `\${AWS::StackName}-${consumer.id}` },
+        Runtime: "nodejs20.x",
+        Handler: "index.handler",
+        Code: relArtifactDir,
+        Timeout: consumer.timeout ?? 120,
+        MemorySize: consumer.memory ?? 256,
+        Role: { "Fn::GetAtt": ["LambdaExecutionRole", "Arn"] },
+      };
+
+      if (consumer.concurrency !== undefined) {
+        funcProps["ReservedConcurrentExecutions"] = consumer.concurrency;
+      }
+
+      resources[funcKey] = {
+        Type: "AWS::Lambda::Function",
+        Properties: funcProps,
+      };
+
+      resources[mappingKey] = {
+        Type: "AWS::Lambda::EventSourceMapping",
+        Properties: {
+          EventSourceArn: { "Fn::GetAtt": [queueKey, "Arn"] },
+          FunctionName: { Ref: funcKey },
+          BatchSize: consumer.batchSize ?? 10,
+          FunctionResponseTypes: ["ReportBatchItemFailures"],
         },
       };
     }

@@ -31,10 +31,17 @@ export class Compiler {
     const lambdaArtifactDirs: Record<string, string> = {};
 
     for (const api of graph.apis) {
-      const entrypointPath = await this.entrypointGen.generate(api);
-      const bundlePath = await this.bundler.bundle(api, entrypointPath);
+      const entrypointPath = await this.entrypointGen.generateApi(api);
+      const bundlePath = await this.bundler.bundle(api.id, entrypointPath);
       lambdaBundles[api.id] = bundlePath;
       lambdaArtifactDirs[api.id] = path.dirname(bundlePath);
+    }
+
+    for (const consumer of graph.consumers) {
+      const entrypointPath = await this.entrypointGen.generateConsumer(consumer);
+      const bundlePath = await this.bundler.bundle(consumer.id, entrypointPath);
+      lambdaBundles[consumer.id] = bundlePath;
+      lambdaArtifactDirs[consumer.id] = path.dirname(bundlePath);
     }
 
     // 3. Synthesize CloudFormation template

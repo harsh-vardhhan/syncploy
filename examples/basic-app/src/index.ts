@@ -1,41 +1,57 @@
 import { api, Table, Bucket, Queue } from "@syncploy/sdk";
 
-// Infrastructure Resources
-export const usersTable = new Table("users", {
-  partitionKey: { name: "id", type: "string" },
-  sortKey: { name: "createdAt", type: "string" },
+// Infrastructure Resources with full in-code configurations
+export const ehrTable = new Table("ehr", {
+  partitionKey: { name: "PK", type: "string" },
+  sortKey: { name: "SK", type: "string" },
+  billingMode: "PAY_PER_REQUEST",
+  stream: "NEW_IMAGE",
+  pointInTimeRecovery: true,
+  indexes: {
+    SKIndex: { partitionKey: "SK", sortKey: "PK" },
+    GSI1Index: { partitionKey: "GSI1PK", sortKey: "GSI1SK" },
+  },
 });
 
-export const documentsBucket = new Bucket("documents");
-export const emailQueue = new Queue("emails");
+export const documentsBucket = new Bucket("documents", {
+  versioned: true,
+  eventBridge: true,
+  publicAccessBlock: true,
+});
 
-// API Endpoints
-export const health = api(
-  { method: "GET", path: "/health" },
-  async () => {
-    return { status: "ok", timestamp: new Date().toISOString() };
-  }
-);
+export const annotationQueue = new Queue("annotations", {
+  visibilityTimeout: "180s",
+  deadLetterQueue: {
+    maxReceiveCount: 3,
+  },
+});
 
-export const getUser = api(
-  { method: "GET", path: "/users/:id" },
+// API Endpoints with in-code memory, timeout, concurrency & CORS
+export const getDocument = api(
+  {
+    method: "GET",
+    path: "/documents/:id",
+    timeout: "30s",
+    memory: "256MB",
+    concurrency: 2,
+    cors: {
+      allowOrigins: ["https://example.com"],
+      allowHeaders: ["Content-Type", "Authorization"],
+    },
+  },
   async ({ id }: { id: string }) => {
-    return {
-      id,
-      name: `User ${id}`,
-      active: true,
-    };
+    return { id, title: "Clinical Note", status: "READY" };
   }
 );
 
-export const createUser = api(
-  { method: "POST", path: "/users" },
-  async ({ name, email }: { name: string; email: string }) => {
-    return {
-      id: Math.random().toString(36).substring(7),
-      name,
-      email,
-      created: true,
-    };
+// Worker Consumer with batchSize, timeout & concurrency cap
+export const processAnnotation = annotationQueue.consumer(
+  {
+    batchSize: 5,
+    timeout: "120s",
+    concurrency: 2, // Hard cap on parallel processing
+  },
+  async (event: any) => {
+    console.log("Processing clinical document:", event);
   }
 );

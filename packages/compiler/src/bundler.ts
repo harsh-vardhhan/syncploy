@@ -1,7 +1,6 @@
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import * as esbuild from "esbuild";
-import type { ApiRouteIR } from "./types";
 
 export interface BundlerOptions {
   minify?: boolean;
@@ -11,15 +10,14 @@ export class Bundler {
   constructor(public readonly workDir: string) {}
 
   public async bundle(
-    api: ApiRouteIR,
+    id: string,
     entrypointPath: string,
     options: BundlerOptions = {}
   ): Promise<string> {
-    const outDir = path.join(this.workDir, ".syncploy", "build", api.id);
+    const outDir = path.join(this.workDir, ".syncploy", "build", id);
     await fs.mkdir(outDir, { recursive: true });
 
     const outFile = path.join(outDir, "index.mjs");
-
     const sdkIndexPath = path.resolve(__dirname, "../../sdk/src/index.ts");
 
     await esbuild.build({

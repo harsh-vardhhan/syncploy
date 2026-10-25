@@ -1,5 +1,15 @@
-import { Project, SyntaxKind, type ObjectLiteralExpression } from "ts-morph";
-import type { ApiRouteIR, HttpMethod, ResourceGraph, TableIR, BucketIR, QueueIR } from "./types";
+import { Project, SyntaxKind, type Node, type ObjectLiteralExpression } from "ts-morph";
+import type {
+  ApiRouteIR,
+  HttpMethod,
+  ResourceGraph,
+  TableIR,
+  BucketIR,
+  QueueIR,
+  QueueConsumerIR,
+  TableIndexIR,
+  CorsConfig,
+} from "./types";
 
 export class Parser {
   private project: Project;
@@ -11,7 +21,6 @@ export class Parser {
   }
 
   public parse(): ResourceGraph {
-    // Add all ts files in project root, excluding dist, node_modules, .syncploy
     this.project.addSourceFilesAtPaths([
       `${this.projectRoot}/**/*.ts`,
       `!${this.projectRoot}/**/node_modules/**`,
@@ -23,6 +32,10 @@ export class Parser {
     const tables: TableIR[] = [];
     const buckets: BucketIR[] = [];
     const queues: QueueIR[] = [];
+    const consumers: QueueConsumerIR[] = [];
+
+    // Map to track variable names to queue names
+    const varToQueueName: Record<string, string> = {};
 
     for (const sourceFile of this.project.getSourceFiles()) {
       for (const decl of sourceFile.getVariableDeclarations()) {
@@ -35,6 +48,8 @@ export class Parser {
         // 1. Detect api(...) declarations
         if (init.isKind(SyntaxKind.CallExpression)) {
           const expr = init.getExpression();
+
+          // Standard api(...)
           if (expr.getText() === "api") {
             if (!isExported) {
               throw new Error(
@@ -83,6 +98,12 @@ export class Parser {
               }
             }
 
+            // In-code configuration: timeout, memory, concurrency, cors
+            const timeout = this.extractDuration(optionsObj.getProperty("timeout"));
+            const memory = this.extractMemory(optionsObj.getProperty("memory"));
+            const concurrency = this.extractNumber(optionsObj.getProperty("concurrency"));
+            const cors = this.extractCors(optionsObj.getProperty("cors"));
+
             apis.push({
               id: varName,
               exportName: varName,
@@ -90,7 +111,43 @@ export class Parser {
               method: methodValue,
               path: pathValue,
               auth: authValue,
+              timeout,
+              memory,
+              concurrency,
+              cors,
             });
+          }
+
+          // Queue consumer: queue.consumer(...)
+          if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+            const propName = expr.getName();
+            if (propName === "consumer") {
+              const targetQueueVar = expr.getExpression().getText();
+              const args = init.getArguments();
+              let batchSize = 10;
+              let timeout: number | undefined;
+              let concurrency: number | undefined;
+              let memory: number | undefined;
+
+              if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                const consumerOpts = args[0] as ObjectLiteralExpression;
+                batchSize = this.extractNumber(consumerOpts.getProperty("batchSize")) ?? 10;
+                timeout = this.extractDuration(consumerOpts.getProperty("timeout"));
+                concurrency = this.extractNumber(consumerOpts.getProperty("concurrency"));
+                memory = this.extractMemory(consumerOpts.getProperty("memory"));
+              }
+
+              consumers.push({
+                id: varName,
+                queueName: varToQueueName[targetQueueVar] || targetQueueVar,
+                exportName: varName,
+                sourceFile: sourceFile.getFilePath(),
+                batchSize,
+                timeout,
+                concurrency,
+                memory,
+              });
+            }
           }
         }
 
@@ -108,12 +165,17 @@ export class Parser {
             }
             const tableName = args[0].getLiteralValue();
 
-            // Default PK
             let partitionKey = { name: "id", type: "string" as const };
             let sortKey: { name: string; type: "string" | "number" | "binary" } | undefined;
+            let billingMode: "PAY_PER_REQUEST" | "PROVISIONED" = "PAY_PER_REQUEST";
+            let stream: "NEW_IMAGE" | "OLD_IMAGE" | "NEW_AND_OLD_IMAGES" | "KEYS_ONLY" | undefined;
+            let pointInTimeRecovery: boolean | undefined;
+            const indexes: Record<string, TableIndexIR> = {};
 
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
               const optionsObj = args[1] as ObjectLiteralExpression;
+
+              // Partition Key
               const pkProp = optionsObj.getProperty("partitionKey");
               if (pkProp && pkProp.isKind(SyntaxKind.PropertyAssignment)) {
                 const pkInit = pkProp.getInitializer();
@@ -135,6 +197,7 @@ export class Parser {
                 }
               }
 
+              // Sort Key
               const skProp = optionsObj.getProperty("sortKey");
               if (skProp && skProp.isKind(SyntaxKind.PropertyAssignment)) {
                 const skInit = skProp.getInitializer();
@@ -158,6 +221,78 @@ export class Parser {
                   sortKey = { name: skName, type: skType };
                 }
               }
+
+              // In-code configuration: stream, billingMode, pointInTimeRecovery, indexes
+              const streamProp = optionsObj.getProperty("stream");
+              if (streamProp && streamProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const streamInit = streamProp.getInitializer();
+                if (streamInit && streamInit.isKind(SyntaxKind.StringLiteral)) {
+                  stream = streamInit.getLiteralValue() as any;
+                }
+              }
+
+              const billingProp = optionsObj.getProperty("billingMode");
+              if (billingProp && billingProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const billingInit = billingProp.getInitializer();
+                if (billingInit && billingInit.isKind(SyntaxKind.StringLiteral)) {
+                  billingMode = billingInit.getLiteralValue() as any;
+                }
+              }
+
+              const pitrProp = optionsObj.getProperty("pointInTimeRecovery");
+              if (pitrProp && pitrProp.isKind(SyntaxKind.PropertyAssignment)) {
+                pointInTimeRecovery = pitrProp.getInitializer()?.getText() === "true";
+              }
+
+              // Indexes (GSIs)
+              const indexesProp = optionsObj.getProperty("indexes");
+              if (indexesProp && indexesProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const indexesInit = indexesProp.getInitializer();
+                if (indexesInit && indexesInit.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                  for (const prop of indexesInit.getProperties()) {
+                    if (prop.isKind(SyntaxKind.PropertyAssignment)) {
+                      const idxName = prop.getName();
+                      const idxObj = prop.getInitializer();
+                      if (idxObj && idxObj.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                        const pkP = idxObj.getProperty("partitionKey");
+                        const skP = idxObj.getProperty("sortKey");
+                        const projP = idxObj.getProperty("projection");
+
+                        let idxPk = "";
+                        let idxSk: string | undefined;
+                        let projection: "ALL" | "KEYS_ONLY" = "ALL";
+
+                        if (pkP && pkP.isKind(SyntaxKind.PropertyAssignment)) {
+                          const pkVal = pkP.getInitializer();
+                          if (pkVal && pkVal.isKind(SyntaxKind.StringLiteral)) {
+                            idxPk = pkVal.getLiteralValue();
+                          }
+                        }
+                        if (skP && skP.isKind(SyntaxKind.PropertyAssignment)) {
+                          const skVal = skP.getInitializer();
+                          if (skVal && skVal.isKind(SyntaxKind.StringLiteral)) {
+                            idxSk = skVal.getLiteralValue();
+                          }
+                        }
+                        if (projP && projP.isKind(SyntaxKind.PropertyAssignment)) {
+                          const projVal = projP.getInitializer();
+                          if (projVal && projVal.isKind(SyntaxKind.StringLiteral)) {
+                            projection = projVal.getLiteralValue() as any;
+                          }
+                        }
+
+                        if (idxPk) {
+                          indexes[idxName] = {
+                            partitionKey: idxPk,
+                            sortKey: idxSk,
+                            projection,
+                          };
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
 
             tables.push({
@@ -165,6 +300,10 @@ export class Parser {
               name: tableName,
               partitionKey,
               sortKey,
+              billingMode,
+              stream,
+              pointInTimeRecovery,
+              indexes,
               sourceFile: sourceFile.getFilePath(),
             });
           } else if (className === "Bucket") {
@@ -174,9 +313,33 @@ export class Parser {
               );
             }
             const bucketName = args[0].getLiteralValue();
+
+            let versioned = false;
+            let eventBridge = false;
+            let publicAccessBlock = true;
+
+            if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+              const opts = args[1] as ObjectLiteralExpression;
+              const vProp = opts.getProperty("versioned");
+              if (vProp && vProp.isKind(SyntaxKind.PropertyAssignment)) {
+                versioned = vProp.getInitializer()?.getText() === "true";
+              }
+              const ebProp = opts.getProperty("eventBridge");
+              if (ebProp && ebProp.isKind(SyntaxKind.PropertyAssignment)) {
+                eventBridge = ebProp.getInitializer()?.getText() === "true";
+              }
+              const pabProp = opts.getProperty("publicAccessBlock");
+              if (pabProp && pabProp.isKind(SyntaxKind.PropertyAssignment)) {
+                publicAccessBlock = pabProp.getInitializer()?.getText() !== "false";
+              }
+            }
+
             buckets.push({
               id: varName,
               name: bucketName,
+              versioned,
+              eventBridge,
+              publicAccessBlock,
               sourceFile: sourceFile.getFilePath(),
             });
           } else if (className === "Queue") {
@@ -186,9 +349,38 @@ export class Parser {
               );
             }
             const queueName = args[0].getLiteralValue();
+            varToQueueName[varName] = queueName;
+
+            let visibilityTimeout: number | undefined;
+            let deadLetterQueue: { maxReceiveCount: number } | undefined;
+            let fifo = false;
+
+            if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+              const opts = args[1] as ObjectLiteralExpression;
+              visibilityTimeout = this.extractDuration(opts.getProperty("visibilityTimeout"));
+
+              const fifoProp = opts.getProperty("fifo");
+              if (fifoProp && fifoProp.isKind(SyntaxKind.PropertyAssignment)) {
+                fifo = fifoProp.getInitializer()?.getText() === "true";
+              }
+
+              const dlqProp = opts.getProperty("deadLetterQueue");
+              if (dlqProp && dlqProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const dlqObj = dlqProp.getInitializer();
+                if (dlqObj && dlqObj.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                  const mrcProp = dlqObj.getProperty("maxReceiveCount");
+                  const maxReceiveCount = this.extractNumber(mrcProp) ?? 3;
+                  deadLetterQueue = { maxReceiveCount };
+                }
+              }
+            }
+
             queues.push({
               id: varName,
               name: queueName,
+              visibilityTimeout,
+              deadLetterQueue,
+              fifo,
               sourceFile: sourceFile.getFilePath(),
             });
           }
@@ -201,6 +393,99 @@ export class Parser {
       tables,
       buckets,
       queues,
+      consumers,
     };
+  }
+
+  private extractDuration(propNode: Node | undefined): number | undefined {
+    if (!propNode || !propNode.isKind(SyntaxKind.PropertyAssignment)) return undefined;
+    const init = propNode.getInitializer();
+    if (!init) return undefined;
+
+    if (init.isKind(SyntaxKind.NumericLiteral)) {
+      return init.getLiteralValue();
+    }
+    if (init.isKind(SyntaxKind.StringLiteral)) {
+      const str = init.getLiteralValue();
+      return this.parseDurationString(str);
+    }
+    return undefined;
+  }
+
+  private parseDurationString(str: string): number {
+    const sMatch = str.match(/^(\d+)s$/);
+    if (sMatch) return parseInt(sMatch[1]!, 10);
+
+    const mMatch = str.match(/^(\d+)m$/);
+    if (mMatch) return parseInt(mMatch[1]!, 10) * 60;
+
+    const hMatch = str.match(/^(\d+)h$/);
+    if (hMatch) return parseInt(hMatch[1]!, 10) * 3600;
+
+    return parseInt(str, 10) || 30;
+  }
+
+  private extractMemory(propNode: Node | undefined): number | undefined {
+    if (!propNode || !propNode.isKind(SyntaxKind.PropertyAssignment)) return undefined;
+    const init = propNode.getInitializer();
+    if (!init) return undefined;
+
+    if (init.isKind(SyntaxKind.NumericLiteral)) {
+      return init.getLiteralValue();
+    }
+    if (init.isKind(SyntaxKind.StringLiteral)) {
+      const str = init.getLiteralValue();
+      const mbMatch = str.match(/^(\d+)MB$/i);
+      if (mbMatch) return parseInt(mbMatch[1]!, 10);
+
+      const gbMatch = str.match(/^(\d+)GB$/i);
+      if (gbMatch) return parseInt(gbMatch[1]!, 10) * 1024;
+    }
+    return undefined;
+  }
+
+  private extractNumber(propNode: Node | undefined): number | undefined {
+    if (!propNode || !propNode.isKind(SyntaxKind.PropertyAssignment)) return undefined;
+    const init = propNode.getInitializer();
+    if (!init || !init.isKind(SyntaxKind.NumericLiteral)) return undefined;
+    return init.getLiteralValue();
+  }
+
+  private extractCors(propNode: Node | undefined): CorsConfig | boolean | undefined {
+    if (!propNode || !propNode.isKind(SyntaxKind.PropertyAssignment)) return undefined;
+    const init = propNode.getInitializer();
+    if (!init) return undefined;
+
+    if (init.getText() === "true") return true;
+    if (init.getText() === "false") return false;
+
+    if (init.isKind(SyntaxKind.ObjectLiteralExpression)) {
+      const config: CorsConfig = {};
+      const originsProp = init.getProperty("allowOrigins");
+      if (originsProp && originsProp.isKind(SyntaxKind.PropertyAssignment)) {
+        const arr = originsProp.getInitializer();
+        if (arr && arr.isKind(SyntaxKind.ArrayLiteralExpression)) {
+          config.allowOrigins = arr.getElements().map((e) => e.getText().replace(/['"]/g, ""));
+        }
+      }
+
+      const headersProp = init.getProperty("allowHeaders");
+      if (headersProp && headersProp.isKind(SyntaxKind.PropertyAssignment)) {
+        const arr = headersProp.getInitializer();
+        if (arr && arr.isKind(SyntaxKind.ArrayLiteralExpression)) {
+          config.allowHeaders = arr.getElements().map((e) => e.getText().replace(/['"]/g, ""));
+        }
+      }
+
+      const methodsProp = init.getProperty("allowMethods");
+      if (methodsProp && methodsProp.isKind(SyntaxKind.PropertyAssignment)) {
+        const arr = methodsProp.getInitializer();
+        if (arr && arr.isKind(SyntaxKind.ArrayLiteralExpression)) {
+          config.allowMethods = arr.getElements().map((e) => e.getText().replace(/['"]/g, ""));
+        }
+      }
+      return config;
+    }
+    return undefined;
   }
 }
