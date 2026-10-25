@@ -546,7 +546,7 @@ export const containerWorker = workQueue.consumer(
     expect(funcDefault.Properties.Runtime).toBeUndefined();
     expect(funcDefault.Properties.Handler).toBeUndefined();
     expect(funcDefault.Properties.Code).toEqual({
-      ImageUri: { "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AWS::StackName}-containerApiDefault:latest" },
+      ImageUri: { "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${AWS::StackName}-containerapidefault:latest" },
     });
     expect(funcDefault.Metadata).toEqual({
       Dockerfile: "Dockerfile",

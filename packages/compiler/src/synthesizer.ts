@@ -1187,9 +1187,10 @@ export class Synthesizer {
     if (container.imageUri) {
       funcProps.Code = { ImageUri: container.imageUri };
     } else {
+      const ecrRepoName = fallbackId.toLowerCase();
       funcProps.Code = {
         ImageUri: {
-          "Fn::Sub": `\${AWS::AccountId}.dkr.ecr.\${AWS::Region}.amazonaws.com/\${AWS::StackName}-${fallbackId}:latest`,
+          "Fn::Sub": `\${AWS::AccountId}.dkr.ecr.\${AWS::Region}.amazonaws.com/\${AWS::StackName}-${ecrRepoName}:latest`,
         },
       };
     }
