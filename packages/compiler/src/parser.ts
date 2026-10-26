@@ -1411,26 +1411,46 @@ export class Parser {
     const env: Record<string, string> = {};
     for (const prop of (init as any).getProperties()) {
       if (prop.isKind(SyntaxKind.PropertyAssignment)) {
-        const key = prop.getName();
-        const propInit = prop.getInitializer();
-        if (propInit) {
-          if (propInit.isKind(SyntaxKind.StringLiteral)) {
-            env[key] = propInit.getLiteralValue();
-          } else {
-            const rawText = propInit.getText().trim();
-            const match = rawText.match(/^process\.env\.([a-zA-Z0-9_]+)(?:\s*\|\|\s*['"](.*)['"])?$/);
-            if (match) {
-              const varName = match[1];
-              const fallback = match[2] ?? "";
-              env[key] = process.env[varName] || fallback;
-            } else {
-              env[key] = rawText.replace(/['"]/g, "");
+        this.extractPropertyAssignment(prop, env);
+      } else if (prop.isKind(SyntaxKind.SpreadAssignment)) {
+        const expr = prop.getExpression();
+        if (expr.isKind(SyntaxKind.ConditionalExpression)) {
+          const whenTrue = expr.getWhenTrue();
+          if (whenTrue.isKind(SyntaxKind.ObjectLiteralExpression)) {
+            for (const innerProp of whenTrue.getProperties()) {
+              this.extractPropertyAssignment(innerProp, env);
             }
+          }
+        } else if (expr.isKind(SyntaxKind.ObjectLiteralExpression)) {
+          for (const innerProp of expr.getProperties()) {
+            this.extractPropertyAssignment(innerProp, env);
           }
         }
       }
     }
     return Object.keys(env).length > 0 ? env : undefined;
+  }
+
+  private extractPropertyAssignment(prop: any, env: Record<string, string>) {
+    if (prop.isKind(SyntaxKind.PropertyAssignment)) {
+      const key = prop.getName();
+      const propInit = prop.getInitializer();
+      if (propInit) {
+        if (propInit.isKind(SyntaxKind.StringLiteral)) {
+          env[key] = propInit.getLiteralValue();
+        } else {
+          const rawText = propInit.getText().trim();
+          const match = rawText.match(/^process\.env\.([a-zA-Z0-9_]+)(?:\s*\|\|\s*['"](.*)['"])?$/);
+          if (match) {
+            const varName = match[1];
+            const fallback = match[2] ?? "";
+            env[key] = process.env[varName] || fallback;
+          } else {
+            env[key] = rawText.replace(/['"]/g, "");
+          }
+        }
+      }
+    }
   }
 
   private extractPolicies(node: Node | undefined): PolicyStatementIR[] | undefined {
