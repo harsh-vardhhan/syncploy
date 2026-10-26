@@ -63,6 +63,9 @@ export function Footer() {
           <p>&copy; {new Date().getFullYear()} Syncploy. Designed for AWS Serverless Engineers.</p>
           <p className="font-mono">Clean 4 Serverless Standard</p>
         </div>
+        <div className="mt-4 text-[11px] text-slate-400 dark:text-neutral-500 text-center sm:text-left">
+          * Terraform is a registered trademark of HashiCorp, Inc. Syncploy is an independent open-source project and is not affiliated with or endorsed by HashiCorp.
+        </div>
       </div>
     </footer>
   );

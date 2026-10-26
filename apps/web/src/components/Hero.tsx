@@ -30,15 +30,15 @@ export function Hero() {
 
         {/* Headline */}
         <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
-          Stop writing YAML. <br className="hidden sm:inline" />
+          The Terraform for <br className="hidden sm:inline" />
           <span className="bg-gradient-to-r from-indigo-600 via-cyan-600 to-emerald-600 dark:from-indigo-400 dark:via-cyan-400 dark:to-emerald-400 bg-clip-text text-transparent">
-            Let the compiler synthesize AWS.
+            AWS Serverless.
           </span>
         </h1>
 
         {/* Subtitle */}
         <p className="max-w-2xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-neutral-400 leading-relaxed">
-          Write pure TypeScript. Syncploy parses your application logic, detects recursive loops and denial-of-wallet vectors at compile-time, and synthesizes 1:1 CloudFormation templates with zero stateful replacements.
+          Type-safe infrastructure synthesized straight from your TypeScript code — zero YAML, zero state files, zero data-loss replacements.
         </p>
 
         {/* CTA buttons & Copy Pill */}

@@ -5,9 +5,9 @@ import { Footer } from "@/components/Footer";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: "Syncploy - Infrastructure-from-Code Compiler for Pure AWS Serverless",
+  title: "Syncploy - The Terraform for AWS Serverless",
   description:
-    "Write standard TypeScript. Syncploy parses your application logic, detects recursive loops at compile-time, and synthesizes 1:1 CloudFormation templates with zero stateful replacements.",
+    "Type-safe infrastructure synthesized straight from your TypeScript code — zero YAML, zero state files, zero data-loss replacements.",
   icons: {
     icon: "/favicon.ico",
   },
