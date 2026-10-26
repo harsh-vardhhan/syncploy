@@ -13,6 +13,7 @@ import {
   Layers,
   Sparkles,
   Code,
+  Bot,
 } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -85,6 +86,16 @@ export function Header() {
         {/* Right CTA (visible on lg+) */}
         <div className="hidden lg:flex items-center gap-2.5 xl:gap-3">
           <ThemeToggle />
+          <a
+            href="/llms.txt"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-[#232736] bg-slate-50 dark:bg-[#12141C] text-xs font-mono font-medium text-slate-600 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300 dark:border-indigo-500/30 transition-colors"
+            title="LLM & Agentic AI Documentation Standard"
+          >
+            <Bot className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+            <span>llms.txt</span>
+          </a>
           <a
             href="https://github.com/harsh-vardhhan/syncploy"
             target="_blank"
@@ -181,6 +192,16 @@ export function Header() {
               <Code className="h-4 w-4 shrink-0 text-cyan-500" />
               <span>Serverless Constructs</span>
             </Link>
+            <a
+              href="/llms.txt"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-700 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-[#12141C] transition-colors"
+            >
+              <Bot className="h-4 w-4 shrink-0 text-indigo-500" />
+              <span>llms.txt (AI Agent Docs)</span>
+            </a>
           </nav>
 
           <div className="pt-3 border-t border-slate-200 dark:border-[#232736] flex items-center justify-between gap-3">

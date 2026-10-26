@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DOCS_DATA } from "@/data/docs";
-import { BookOpen, Shield, Code, Terminal, Layers, ChevronDown, ListFilter } from "lucide-react";
+import { BookOpen, Shield, Code, Terminal, Layers, ChevronDown, ListFilter, Bot } from "lucide-react";
 
 export default function DocsLayout({
   children,
@@ -93,6 +93,36 @@ export default function DocsLayout({
                 </ul>
               </div>
             ))}
+
+            {/* AI Agent Callout (Mobile) */}
+            <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/50 dark:bg-indigo-950/20 text-xs space-y-1.5">
+              <div className="flex items-center gap-1.5 font-semibold text-indigo-700 dark:text-indigo-300">
+                <Bot className="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
+                <span>AI Coding Agents</span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-neutral-400 leading-relaxed">
+                Using Cursor, Devin, or Claude Code? Ingest our token-optimized docs directly:
+              </p>
+              <div className="flex items-center gap-2 pt-0.5 font-mono text-[11px]">
+                <a
+                  href="/llms.txt"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+                >
+                  /llms.txt
+                </a>
+                <span className="text-slate-400">&bull;</span>
+                <a
+                  href="/llms-full.txt"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+                >
+                  /llms-full.txt
+                </a>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -128,6 +158,36 @@ export default function DocsLayout({
               </ul>
             </div>
           ))}
+
+          {/* AI Agent Callout (Desktop) */}
+          <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-500/20 bg-indigo-50/50 dark:bg-indigo-950/20 text-xs space-y-1.5">
+            <div className="flex items-center gap-1.5 font-semibold text-indigo-700 dark:text-indigo-300">
+              <Bot className="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
+              <span>AI Coding Agents</span>
+            </div>
+            <p className="text-[11px] text-slate-600 dark:text-neutral-400 leading-relaxed">
+              Using Cursor, Devin, or Claude Code? Ingest our token-optimized docs directly:
+            </p>
+            <div className="flex items-center gap-2 pt-0.5 font-mono text-[11px]">
+              <a
+                href="/llms.txt"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+              >
+                /llms.txt
+              </a>
+              <span className="text-slate-400">&bull;</span>
+              <a
+                href="/llms-full.txt"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
+              >
+                /llms-full.txt
+              </a>
+            </div>
+          </div>
         </div>
       </aside>
 

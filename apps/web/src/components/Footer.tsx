@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Terminal, Github } from "lucide-react";
+import { Terminal, Github, Bot } from "lucide-react";
 
 export function Footer() {
   return (
@@ -51,6 +51,18 @@ export function Footer() {
               <li>
                 <a href="https://www.npmjs.com/package/@syncploy/sdk" target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 dark:hover:text-white transition-colors">
                   npm: @syncploy/sdk
+                </a>
+              </li>
+              <li>
+                <a href="/llms.txt" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-1.5 font-mono text-xs">
+                  <Bot className="h-3.5 w-3.5 text-indigo-500" />
+                  <span>/llms.txt (AI Docs)</span>
+                </a>
+              </li>
+              <li>
+                <a href="/llms-full.txt" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex items-center gap-1.5 font-mono text-xs">
+                  <Bot className="h-3.5 w-3.5 text-indigo-500" />
+                  <span>/llms-full.txt (Full Bundle)</span>
                 </a>
               </li>
               <li>

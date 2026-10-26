@@ -3,8 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "bun run ./scripts/generate-llms-txt.ts && next dev",
+    "prebuild": "bun run ./scripts/generate-llms-txt.ts",
     "build": "next build",
+    "generate:llms": "bun run ./scripts/generate-llms-txt.ts",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
