@@ -23,18 +23,38 @@ export function Hero() {
         {/* Top Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-xs font-semibold text-indigo-700 dark:text-indigo-300 shadow-sm">
           <Zap className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-          <span>Infrastructure-from-Code for TypeScript</span>
+          <span>Zero YAML CloudFormation</span>
           <span className="text-slate-400 dark:text-neutral-500">&bull;</span>
-          <span className="text-slate-600 dark:text-neutral-400">Pure AWS Serverless</span>
+          <span className="text-slate-600 dark:text-neutral-400">Pure TypeScript</span>
         </div>
 
-        {/* Headline */}
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
-          The Terraform for <br className="hidden sm:inline" />
-          <span className="bg-gradient-to-r from-indigo-600 via-cyan-600 to-emerald-600 dark:from-indigo-400 dark:via-cyan-400 dark:to-emerald-400 bg-clip-text text-transparent">
-            AWS Serverless.
-          </span>
-        </h1>
+        {/* Headline with Eyebrow */}
+        <div className="space-y-4">
+          <div className="inline-flex items-center justify-center">
+            <span
+              className="text-xs sm:text-sm font-semibold tracking-wider uppercase text-slate-600 dark:text-neutral-300 font-mono inline-flex items-center gap-1.5"
+              aria-label="Not Infrastructure as Code, Infrastructure from Code"
+            >
+              <span>Not Infrastructure</span>
+              <span className="relative inline-block mx-1 font-bold">
+                <span className="line-through decoration-rose-500 decoration-[2.5px] text-slate-400 dark:text-neutral-500">
+                  as
+                </span>
+                <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[10px] sm:text-[11px] font-mono font-extrabold text-cyan-600 dark:text-cyan-400 -rotate-12 select-none bg-cyan-50 dark:bg-cyan-950/60 px-1 py-0.5 rounded border border-cyan-200 dark:border-cyan-800/80 shadow-xs">
+                  from
+                </span>
+              </span>
+              <span>Code</span>
+            </span>
+          </div>
+
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
+            The Terraform for <br className="hidden sm:inline" />
+            <span className="bg-gradient-to-r from-indigo-600 via-cyan-600 to-emerald-600 dark:from-indigo-400 dark:via-cyan-400 dark:to-emerald-400 bg-clip-text text-transparent">
+              AWS Serverless.
+            </span>
+          </h1>
+        </div>
 
         {/* Subtitle */}
         <p className="max-w-2xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-neutral-400 leading-relaxed">
