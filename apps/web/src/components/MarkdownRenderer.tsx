@@ -54,7 +54,9 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
               </span>
               <span className="text-[11px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Mermaid Live Flow</span>
             </div>
-            <Mermaid chart={codeBuffer.join("\n")} className="[&>svg]:w-full [&>svg]:max-w-4xl [&>svg]:min-w-[600px] [&>svg]:h-auto [&>svg]:mx-auto" />
+            <div className="w-full overflow-x-auto flex justify-center py-2">
+              <Mermaid chart={codeBuffer.join("\n")} className="[&>svg]:w-full [&>svg]:max-w-4xl [&>svg]:min-w-[600px] [&>svg]:h-auto [&>svg]:mx-auto" />
+            </div>
           </div>
         );
         continue;

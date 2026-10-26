@@ -112,7 +112,7 @@ export function CaseStudyShowcase() {
       </div>
 
       {/* 4 Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
         <div className="p-5 rounded-2xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
           <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-2">
             <Layers className="h-4 w-4" />
@@ -160,7 +160,7 @@ export function CaseStudyShowcase() {
 
       {/* Mermaid Architecture Showcase Card */}
       <div className="rounded-3xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-xl overflow-hidden mb-8">
-        <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#232736] bg-slate-50/80 dark:bg-[#0E1017] px-6 py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-200 dark:border-[#232736] bg-slate-50/80 dark:bg-[#0E1017] px-6 py-4">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-neutral-200">
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Live Cloud Architecture Flowchart</span>
