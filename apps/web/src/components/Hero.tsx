@@ -32,7 +32,7 @@ export function Hero() {
         <div className="space-y-6 pt-2">
           <div className="inline-flex items-center justify-center">
             <span
-              className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white inline-flex items-center justify-center flex-wrap gap-x-2.5 sm:gap-x-4"
+              className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white inline-flex items-center justify-center flex-wrap gap-x-2.5 sm:gap-x-4 underline decoration-indigo-500/80 dark:decoration-indigo-400/80 decoration-[3px] sm:decoration-[4px] underline-offset-8 sm:underline-offset-[12px]"
               aria-label="Infrastructure from Code"
             >
               <span>Infrastructure</span>
