@@ -235,9 +235,15 @@ program
       const compiler = new Compiler(projectRoot);
       const graph = await compiler.parse();
 
-      const synthesizer = new Synthesizer(projectRoot);
-      const templatePath = await synthesizer.synthesize(graph, {});
-      const template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
+      let template: any;
+      const existingTemplatePath = path.join(projectRoot, ".syncploy", "template.json");
+      if (fs.existsSync(existingTemplatePath)) {
+        template = JSON.parse(fs.readFileSync(existingTemplatePath, "utf-8"));
+      } else {
+        const synthesizer = new Synthesizer(projectRoot);
+        const templatePath = await synthesizer.synthesize(graph, {});
+        template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
+      }
 
       const stackName = opts.stackName || process.env.STACK_NAME || path.basename(projectRoot);
       const region = opts.region || process.env.AWS_REGION || "ap-south-1";
