@@ -212,4 +212,111 @@ program
     }
   });
 
+program
+  .command("policy")
+  .description("Synthesize and evaluate least-privilege AWS IAM deployment policy for CI/CD runners")
+  .argument("[dir]", "Project root directory", ".")
+  .option("-s, --stack-name <name>", "CloudFormation stack name (defaults to directory name or ehr-annotation-backend)")
+  .option("-r, --region <region>", "AWS region (defaults to ap-south-1 or AWS_REGION)")
+  .option("-a, --account <account>", "AWS Account ID (defaults to <AWS_ACCOUNT_ID> or AWS_ACCOUNT_ID)")
+  .option("-c, --compare <file>", "Existing deploy policy JSON to evaluate against (e.g. deploy-policy.json)")
+  .option("-o, --out <file>", "Write synthesized deploy policy JSON to file")
+  .action(async (dir, opts) => {
+    const projectRoot = path.resolve(process.cwd(), dir);
+    const envPath = path.join(projectRoot, ".env");
+    if (fs.existsSync(envPath) && typeof (process as any).loadEnvFile === "function") {
+      try {
+        (process as any).loadEnvFile(envPath);
+      } catch {}
+    }
+
+    try {
+      const { PolicyGenerator, Synthesizer } = await import("@syncploy/compiler");
+      const compiler = new Compiler(projectRoot);
+      const graph = await compiler.parse();
+
+      const synthesizer = new Synthesizer(projectRoot);
+      const templatePath = await synthesizer.synthesize(graph, {});
+      const template = JSON.parse(fs.readFileSync(templatePath, "utf-8"));
+
+      const stackName = opts.stackName || process.env.STACK_NAME || path.basename(projectRoot);
+      const region = opts.region || process.env.AWS_REGION || "ap-south-1";
+      const accountId = opts.account || process.env.AWS_ACCOUNT_ID || "<AWS_ACCOUNT_ID>";
+
+      const generator = new PolicyGenerator();
+      const generated = generator.generate(graph, template, {
+        stackName,
+        region,
+        accountId,
+      });
+
+      console.log(pc.green(pc.bold(`\n✔ Synthesized Least-Privilege Deploy Policy for '${stackName}':`)));
+      console.log(`  ${pc.cyan("•")} ${pc.bold("Statements:")} ${generated.Statement.length}`);
+      console.log(`  ${pc.cyan("•")} ${pc.bold("Target Region:")} ${region}`);
+      console.log(`  ${pc.cyan("•")} ${pc.bold("Target Account:")} ${accountId}`);
+
+      if (opts.compare) {
+        const comparePath = path.resolve(process.cwd(), opts.compare);
+        if (!fs.existsSync(comparePath)) {
+          throw new Error(`Comparison file not found at ${comparePath}`);
+        }
+        const existing = JSON.parse(fs.readFileSync(comparePath, "utf-8"));
+        const report = generator.evaluate(existing, generated, graph);
+
+        console.log(pc.bold(pc.cyan(`\n🔍 Evaluation Against Existing '${path.basename(comparePath)}':`)));
+        console.log(`  ${pc.dim("Existing Statements:")}   ${report.summary.existingStatements}`);
+        console.log(`  ${pc.dim("Generated Statements:")}  ${report.summary.generatedStatements}`);
+        console.log(
+          `  ${pc.red(pc.bold(`Dead / Unused Statements:`))}  ${report.summary.deadStatementsCount}`
+        );
+        console.log(
+          `  ${pc.yellow(pc.bold(`Insecure Wildcard Reductions:`))} ${report.summary.wildcardReductionsCount}`
+        );
+        console.log(
+          `  ${pc.magenta(pc.bold(`Missing CloudFormation Actions:`))} ${report.summary.missingActionsCount}`
+        );
+
+        if (report.deadPermissions.length > 0) {
+          console.log(pc.red(pc.bold(`\n⚠ Dead Permissions Detected (Not declared in infrastructure code):`)));
+          for (const d of report.deadPermissions) {
+            console.log(`  ${pc.red("✖")} ${pc.bold(d.sid || "Statement")}: ${pc.dim(d.reason)}`);
+            console.log(`    Actions: ${pc.dim(d.actions.join(", "))}`);
+          }
+        }
+
+        if (report.wildcardReductions.length > 0) {
+          console.log(pc.yellow(pc.bold(`\n🔒 Insecure Resource '*' Wildcards Tightened to Scoped ARNs:`)));
+          for (const w of report.wildcardReductions) {
+            console.log(`  ${pc.yellow("•")} ${pc.bold(w.sid || w.service)}: Scoped from '*' to:`);
+            const targets = Array.isArray(w.minimalScopedResource) ? w.minimalScopedResource : [w.minimalScopedResource];
+            for (const t of targets) {
+              console.log(`    ${pc.green("✔")} ${t}`);
+            }
+          }
+        }
+
+        if (report.missingActionsInExisting.length > 0) {
+          console.log(pc.magenta(pc.bold(`\n⚡ Missing CloudFormation Handler Actions (High Risk of Deploy-Time 403s):`)));
+          for (const m of report.missingActionsInExisting) {
+            console.log(`  ${pc.magenta("•")} ${pc.bold(m.sid || m.service)} missing:`);
+            for (const a of m.missingActions) {
+              console.log(`    ${pc.magenta("+")} ${a}`);
+            }
+          }
+        }
+      }
+
+      if (opts.out) {
+        const outPath = path.resolve(process.cwd(), opts.out);
+        fs.writeFileSync(outPath, JSON.stringify(generated, null, 4));
+        console.log(pc.cyan(`\n📁 Policy written to: ${pc.bold(outPath)}`));
+      } else if (!opts.compare) {
+        console.log(JSON.stringify(generated, null, 2));
+      }
+    } catch (err: any) {
+      console.error(pc.red(`\n✖ Policy generation failed: ${err.message}`));
+      process.exit(1);
+    }
+  });
+
 program.parse(process.argv);
