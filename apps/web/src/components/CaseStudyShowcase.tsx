@@ -77,7 +77,7 @@ export function CaseStudyShowcase() {
 
         <p className="max-w-3xl mx-auto text-base sm:text-lg text-slate-600 dark:text-neutral-400 leading-relaxed">
           How the live HIPAA-compliant <strong className="text-slate-900 dark:text-white font-semibold">EHR Annotation Platform</strong>—a
-          clinical extraction and OMOP Common Data Model pipeline—migrated from a 350+ line legacy AWS SAM template to
+          clinical extraction and OMOP Common Data Model pipeline—migrated from a 600+ line legacy AWS SAM template to
           Syncploy with <span className="text-emerald-600 dark:text-emerald-400 font-semibold">zero downtime</span>,{" "}
           <span className="text-emerald-600 dark:text-emerald-400 font-semibold">zero stateful replacements</span>, and{" "}
           <span className="text-emerald-600 dark:text-emerald-400 font-semibold">zero data loss</span>.
@@ -120,7 +120,7 @@ export function CaseStudyShowcase() {
           </div>
           <div className="text-3xl font-extrabold text-slate-900 dark:text-white">11 Services</div>
           <div className="text-xs text-slate-500 dark:text-neutral-400 mt-1">
-            DynamoDB, S3, SQS, SNS, Firehose, Cognito, SageMaker, CloudWatch, Lambda
+            DynamoDB, S3, SQS, SNS, Firehose, Cognito, SageMaker, EventBridge, IAM, CloudWatch, Lambda
           </div>
         </div>
 
@@ -140,9 +140,9 @@ export function CaseStudyShowcase() {
             <Terminal className="h-4 w-4" />
             <span>Ergonomics</span>
           </div>
-          <div className="text-3xl font-extrabold text-slate-900 dark:text-white">43% Less Code</div>
+          <div className="text-3xl font-extrabold text-slate-900 dark:text-white">45% Less Code</div>
           <div className="text-xs text-slate-500 dark:text-neutral-400 mt-1">
-            350+ lines of brittle SAM YAML macros collapsed into ~200 lines of TypeScript
+            600+ lines of brittle SAM YAML macros collapsed into ~300 lines of TypeScript
           </div>
         </div>
 
@@ -153,7 +153,7 @@ export function CaseStudyShowcase() {
           </div>
           <div className="text-3xl font-extrabold text-slate-900 dark:text-white">&lt;50ms</div>
           <div className="text-xs text-slate-500 dark:text-neutral-400 mt-1">
-            Sub-50ms cold starts via Bun/Elysia container with direct Function URL ingress
+            Sub-50ms compute latency via Bun/Elysia container with direct Function URL ingress
           </div>
         </div>
       </div>

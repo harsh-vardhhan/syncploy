@@ -2,7 +2,7 @@
 
 > **11 AWS Services • Single-Table Clinical DynamoDB • 7-Year WORM Compliance • Proven in Live**
 
-Syncploy has been proven in live healthcare infrastructure with the **[EHR Annotation Platform](https://ehr-backend-frontend.vercel.app/)** ([GitHub: harsh-vardhhan/EHR-backend](https://github.com/harsh-vardhhan/EHR-backend))—a HIPAA-compliant Electronic Health Record clinical annotation platform and OMOP Common Data Model (CDM) lakehouse—was fully migrated from a 350+ line legacy AWS SAM template to Syncploy Infrastructure-from-Code with **zero downtime, zero stateful resource recreation, and zero data loss**.
+Syncploy has been proven in live healthcare infrastructure with the **[EHR Annotation Platform](https://ehr-backend-frontend.vercel.app/)** ([GitHub: harsh-vardhhan/EHR-backend](https://github.com/harsh-vardhhan/EHR-backend))—a HIPAA-compliant Electronic Health Record clinical annotation platform and OMOP Common Data Model (CDM) lakehouse—was fully migrated from a 600+ line legacy AWS SAM template to Syncploy Infrastructure-from-Code with **zero downtime, zero stateful resource recreation, and zero data loss**.
 
 > [!NOTE]
 > The complete codebase, TypeScript infrastructure definitions, and GitHub Actions deployment pipelines are open-source and verifiable at [harsh-vardhhan/EHR-backend](https://github.com/harsh-vardhhan/EHR-backend).
@@ -254,12 +254,12 @@ export const ehrBackendFunction = api(
 
 | Architectural Capability | Legacy AWS SAM | Syncploy (IfC) | Improvement |
 | :--- | :--- | :--- | :--- |
-| **Lines of Configuration** | 350+ lines YAML | ~200 lines TypeScript | **43% reduction** |
+| **Lines of Configuration** | 600+ lines YAML | ~300 lines TypeScript | **45% reduction** |
 | **Type Checking** | None (Untyped YAML) | 100% `tsc --noEmit` | **Zero config drift** |
 | **Stateful Replacements** | High manual risk | `syncploy diff --check-replacement` | **Guaranteed 0 data loss** |
 | **CI/CD IAM Credentials** | Wildcard `AdministratorAccess` | Auto-synthesized `deploy-policy.json` | **Least-privilege compliant** |
 | **Event Wiring Boilerplate** | ~60 lines IAM/QueuePolicy YAML | 1 line: `documentsBucket.on(...)` | **100% compiler-inferred** |
-| **API Ingress Overhead** | API Gateway hourly cost | Native Lambda Function URL | **$0.00 idle cost, <50ms cold start** |
+| **API Ingress Overhead** | API Gateway hourly cost | Native Lambda Function URL | **$0.00 idle cost, <50ms compute latency** |
 
 ---
 
