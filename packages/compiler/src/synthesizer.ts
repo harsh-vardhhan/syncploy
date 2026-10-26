@@ -455,21 +455,24 @@ export class Synthesizer {
     for (const queue of graph.queues) {
       const resourceKey = this.getQueueLogicalId(queue);
       const queueProps: any = {
-        QueueName: this.resolvePhysicalName(queue.queueName, { "Fn::Sub": `\${AWS::StackName}-${queue.name}` }),
         VisibilityTimeout: queue.visibilityTimeout ?? 180,
       };
+      if (queue.queueName) {
+        queueProps.QueueName = this.resolvePhysicalName(queue.queueName, undefined);
+      }
 
       if (queue.deadLetterQueue) {
         const dlqKey = this.getDLQLogicalId(queue);
-        const dlqProps: any = {
-          QueueName: this.resolvePhysicalName(
+        const dlqProps: any = {};
+        if (queue.deadLetterQueue.queueName) {
+          dlqProps.QueueName = this.resolvePhysicalName(
             queue.deadLetterQueue.queueName,
-            { "Fn::Sub": `\${AWS::StackName}-${queue.name}-dlq` }
-          ),
-        };
+            undefined
+          );
+        }
         resources[dlqKey] = {
           Type: "AWS::SQS::Queue",
-          Properties: dlqProps,
+          ...(Object.keys(dlqProps).length > 0 ? { Properties: dlqProps } : {}),
         };
 
         queueProps["RedrivePolicy"] = {
@@ -644,7 +647,7 @@ export class Synthesizer {
         resources[urlKey] = {
           Type: "AWS::Lambda::Url",
           Properties: {
-            TargetFunctionArn: { "Fn::GetAtt": [funcKey, "Arn"] },
+            TargetFunctionArn: { Ref: funcKey },
             AuthType: "NONE",
             Cors: corsProp,
           },
