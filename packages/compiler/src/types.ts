@@ -52,6 +52,7 @@ export interface ApiRouteIR {
   functionName?: string | undefined;
   roleLogicalId?: string | undefined;
   permissionLogicalId?: string | undefined;
+  invokePermissionLogicalId?: string | undefined;
   mutations?: FunctionMutationsIR | undefined;
 }
 
@@ -132,6 +133,7 @@ export interface QueueConsumerIR {
   eventSourceMappingLogicalId?: string | undefined;
   roleLogicalId?: string | undefined;
   permissionLogicalId?: string | undefined;
+  invokePermissionLogicalId?: string | undefined;
   mutations?: FunctionMutationsIR | undefined;
 }
 
@@ -154,6 +156,7 @@ export interface TableStreamConsumerIR {
   eventSourceMappingLogicalId?: string | undefined;
   roleLogicalId?: string | undefined;
   permissionLogicalId?: string | undefined;
+  invokePermissionLogicalId?: string | undefined;
   mutations?: FunctionMutationsIR | undefined;
 }
 

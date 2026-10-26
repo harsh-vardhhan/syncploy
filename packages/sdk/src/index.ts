@@ -58,6 +58,7 @@ export interface ApiOptions {
   functionName?: string;
   roleLogicalId?: string;
   permissionLogicalId?: string;
+  invokePermissionLogicalId?: string;
 }
 
 export type ApiHandler<TReq = any, TRes = any> = (

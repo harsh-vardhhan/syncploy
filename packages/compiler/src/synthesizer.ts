@@ -631,6 +631,7 @@ export class Synthesizer {
       if (api.ingress === "function-url") {
         const urlKey = api.logicalId ? `${api.logicalId}Url` : `FunctionUrl${baseId}`;
         const urlPermKey = api.permissionLogicalId || (api.logicalId ? `Permission${api.logicalId}Url` : `Permission${baseId}Url`);
+        const invokePermKey = api.invokePermissionLogicalId || (api.logicalId ? `${api.logicalId}URLInvokeAllowPublicAccess` : `${funcKey}URLInvokeAllowPublicAccess`);
 
         const corsProp: any = {
           AllowOrigins: ["*"],
@@ -660,6 +661,16 @@ export class Synthesizer {
             Action: "lambda:InvokeFunctionUrl",
             Principal: "*",
             FunctionUrlAuthType: "NONE",
+          },
+        };
+
+        resources[invokePermKey] = {
+          Type: "AWS::Lambda::Permission",
+          Properties: {
+            FunctionName: { Ref: funcKey },
+            Action: "lambda:InvokeFunction",
+            Principal: "*",
+            InvokedViaFunctionUrl: true,
           },
         };
 

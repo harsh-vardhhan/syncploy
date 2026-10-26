@@ -202,6 +202,7 @@ export class Parser {
             const functionName = this.extractString(optionsObj.getProperty("functionName"));
             const roleLogicalId = this.extractString(optionsObj.getProperty("roleLogicalId"));
             const permissionLogicalId = this.extractString(optionsObj.getProperty("permissionLogicalId"));
+            const invokePermissionLogicalId = this.extractString(optionsObj.getProperty("invokePermissionLogicalId"));
 
             const handlerNode = args.length > 1 ? args[1] : undefined;
             const mutations = this.extractMutationsFromNode(
@@ -232,6 +233,7 @@ export class Parser {
               functionName,
               roleLogicalId,
               permissionLogicalId,
+              invokePermissionLogicalId,
               mutations,
             });
           }
