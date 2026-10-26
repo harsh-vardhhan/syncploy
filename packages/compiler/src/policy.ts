@@ -71,21 +71,11 @@ export class PolicyGenerator {
       Sid: "CloudFormationStackManagement",
       Effect: "Allow",
       Action: [
-        "cloudformation:CreateStack",
-        "cloudformation:UpdateStack",
-        "cloudformation:DeleteStack",
-        "cloudformation:DescribeStacks",
-        "cloudformation:DescribeStackEvents",
-        "cloudformation:DescribeStackResources",
-        "cloudformation:GetTemplate",
-        "cloudformation:ValidateTemplate",
-        "cloudformation:CreateChangeSet",
-        "cloudformation:DescribeChangeSet",
-        "cloudformation:ExecuteChangeSet",
-        "cloudformation:DeleteChangeSet",
+        "cloudformation:*",
       ],
       Resource: [
         `arn:aws:cloudformation:${region}:${accountId}:stack/${stackName}*`,
+        `arn:aws:cloudformation:${region}:${accountId}:stack/aws-sam-cli-managed-default*`,
         "arn:aws:cloudformation:*:aws:transform/*",
       ],
     });
