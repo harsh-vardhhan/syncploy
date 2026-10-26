@@ -29,6 +29,7 @@ export const STATEFUL_RESOURCE_TYPES = new Set([
   "AWS::OpenSearchService::Domain",
   "AWS::Elasticsearch::Domain",
   "AWS::Neptune::DBCluster",
+  "AWS::Cognito::UserPool",
 ]);
 
 export function findStatefulReplacements(diffs: ResourceDiff[]): ResourceDiff[] {

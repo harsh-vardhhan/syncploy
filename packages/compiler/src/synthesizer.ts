@@ -9,6 +9,7 @@ import type {
   TopicIR,
   DeliveryStreamIR,
   AlarmIR,
+  AuthIR,
 } from "./types";
 
 export class Synthesizer {
@@ -69,6 +70,25 @@ export class Synthesizer {
 
   public getAlarmLogicalId(alarm: AlarmIR): string {
     return alarm.logicalId || `Alarm${this.sanitizeName(alarm.name)}`;
+  }
+
+  public getAuthLogicalId(authOrName: AuthIR | string, graph?: ResourceGraph): string {
+    if (typeof authOrName === "string") {
+      const found = graph?.auths?.find((a) => a.name === authOrName || a.id === authOrName);
+      if (found && found.logicalId) return found.logicalId;
+      return `Auth${this.sanitizeName(authOrName)}UserPool`;
+    }
+    return authOrName.logicalId || `Auth${this.sanitizeName(authOrName.name)}UserPool`;
+  }
+
+  public getAuthClientLogicalId(authOrName: AuthIR | string, graph?: ResourceGraph): string {
+    if (typeof authOrName === "string") {
+      const found = graph?.auths?.find((a) => a.name === authOrName || a.id === authOrName);
+      if (found && found.client?.clientLogicalId) return found.client.clientLogicalId;
+      const userPoolKey = this.getAuthLogicalId(authOrName, graph);
+      return `${userPoolKey}Client`;
+    }
+    return authOrName.client?.clientLogicalId || `${this.getAuthLogicalId(authOrName, graph)}Client`;
   }
 
   private resolvePhysicalName(name: string | undefined, defaultSub: any): any {
@@ -515,6 +535,19 @@ export class Synthesizer {
         envVars[`${baseUpper}_DELIVERY_STREAM_NAME`] = { Ref: logicalId };
       }
       envVars[ds.name] = { Ref: logicalId };
+    }
+
+    for (const auth of graph.auths || []) {
+      const userPoolLogicalId = this.getAuthLogicalId(auth, graph);
+      const clientLogicalId = this.getAuthClientLogicalId(auth, graph);
+      const upperName = auth.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+
+      envVars[`SYNCPLOY_AUTH_${upperName}_USER_POOL_ID`] = { Ref: userPoolLogicalId };
+      envVars[`SYNCPLOY_AUTH_${upperName}_CLIENT_ID`] = { Ref: clientLogicalId };
+      envVars["COGNITO_USER_POOL_ID"] = { Ref: userPoolLogicalId };
+      envVars["COGNITO_CLIENT_ID"] = { Ref: clientLogicalId };
+      envVars[`${upperName}_USER_POOL_ID`] = { Ref: userPoolLogicalId };
+      envVars[`${upperName}_CLIENT_ID`] = { Ref: clientLogicalId };
     }
 
     for (const api of graph.apis) {
@@ -1138,6 +1171,97 @@ export class Synthesizer {
         Description: `Name of the ${ds.name} Kinesis Firehose Delivery Stream`,
         Value: { Ref: streamKey },
       };
+    }
+
+    // 14. Cognito User Pools & User Pool Clients
+    for (const auth of graph.auths || []) {
+      const userPoolKey = this.getAuthLogicalId(auth, graph);
+      const clientKey = this.getAuthClientLogicalId(auth, graph);
+
+      const usernameAttrs = auth.signInMethod === "phone" ? ["phone_number"] : ["email"];
+      const autoVerifiedAttrs = auth.autoVerify ?? (auth.signInMethod === "phone" ? ["phone_number"] : ["email"]);
+
+      const passwordPolicy = auth.passwordPolicy ?? {};
+      const userPoolProps: any = {
+        UserPoolName: this.resolvePhysicalName(auth.userPoolName, { "Fn::Sub": `\${AWS::StackName}-${auth.name}` }),
+        UsernameAttributes: usernameAttrs,
+        AutoVerifiedAttributes: autoVerifiedAttrs,
+        Policies: {
+          PasswordPolicy: {
+            MinimumLength: passwordPolicy.minLength ?? 12,
+            RequireUppercase: passwordPolicy.requireUppercase ?? true,
+            RequireLowercase: passwordPolicy.requireLowercase ?? true,
+            RequireNumbers: passwordPolicy.requireNumbers ?? true,
+            RequireSymbols: passwordPolicy.requireSymbols ?? true,
+            TemporaryPasswordValidityDays: passwordPolicy.tempPasswordValidityDays ?? 7,
+          },
+        },
+      };
+
+      if (auth.adminOnly !== false) {
+        userPoolProps.AdminCreateUserConfig = {
+          AllowAdminCreateUserOnly: true,
+        };
+      }
+
+      resources[userPoolKey] = {
+        Type: "AWS::Cognito::UserPool",
+        Properties: userPoolProps,
+      };
+
+      const clientOpts = auth.client ?? {};
+      const clientProps: any = {
+        ClientName: this.resolvePhysicalName(clientOpts.clientName, { "Fn::Sub": `\${AWS::StackName}-${auth.name}-Client` }),
+        UserPoolId: { Ref: userPoolKey },
+        GenerateSecret: clientOpts.generateSecret ?? false,
+        ExplicitAuthFlows: clientOpts.explicitAuthFlows ?? [
+          "ALLOW_USER_PASSWORD_AUTH",
+          "ALLOW_USER_SRP_AUTH",
+          "ALLOW_REFRESH_TOKEN_AUTH",
+        ],
+        PreventUserExistenceErrors: clientOpts.preventUserExistenceErrors !== false ? "ENABLED" : "LEGACY",
+      };
+
+      resources[clientKey] = {
+        Type: "AWS::Cognito::UserPoolClient",
+        Properties: clientProps,
+      };
+
+      outputs[`${this.sanitizeName(userPoolKey)}Id`] = {
+        Description: `Cognito User Pool ID for ${auth.name}`,
+        Value: { Ref: userPoolKey },
+        Export: {
+          Name: { "Fn::Sub": `\${AWS::StackName}-${userPoolKey}Id` },
+        },
+      };
+
+      outputs[`${this.sanitizeName(clientKey)}Id`] = {
+        Description: `Cognito User Pool Client ID for ${auth.name}`,
+        Value: { Ref: clientKey },
+        Export: {
+          Name: { "Fn::Sub": `\${AWS::StackName}-${clientKey}Id` },
+        },
+      };
+
+      // Also provide standard output names for easy adoption: CognitoUserPoolId & CognitoUserPoolClientId
+      if (userPoolKey.toLowerCase().includes("userpool")) {
+        outputs["CognitoUserPoolId"] = {
+          Description: "Cognito User Pool ID",
+          Value: { Ref: userPoolKey },
+          Export: {
+            Name: { "Fn::Sub": `\${AWS::StackName}-UserPoolId` },
+          },
+        };
+      }
+      if (clientKey.toLowerCase().includes("client")) {
+        outputs["CognitoUserPoolClientId"] = {
+          Description: "Cognito User Pool Client ID",
+          Value: { Ref: clientKey },
+          Export: {
+            Name: { "Fn::Sub": `\${AWS::StackName}-UserPoolClientId` },
+          },
+        };
+      }
     }
 
     const template = {

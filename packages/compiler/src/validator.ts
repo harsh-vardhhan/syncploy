@@ -58,6 +58,7 @@ export class GraphValidator {
     this.validateTopics(graph);
     this.validateDeliveryStreams(graph);
     this.validateAlarms(graph);
+    this.validateAuths(graph);
     this.validateInfraRecursion(graph);
     this.validateDenialOfWallet(graph);
     this.validateElectroDb(graph);
@@ -85,6 +86,10 @@ export class GraphValidator {
       ...(graph.topics || []),
       ...(graph.deliveryStreams || []),
       ...(graph.alarms || []),
+      ...(graph.auths || []).map((a) => ({ logicalId: a.logicalId, id: a.id, sourceFile: a.sourceFile })),
+      ...(graph.auths || [])
+        .filter((a) => a.client?.clientLogicalId)
+        .map((a) => ({ logicalId: a.client?.clientLogicalId, id: `${a.id}_Client`, sourceFile: a.sourceFile })),
     ];
 
     for (const r of allResources) {
@@ -510,7 +515,41 @@ export class GraphValidator {
     }
   }
 
-  // 12. CORS Validation
+  // 12. Cognito User Pools & Authentication
+  private validateAuths(graph: ResourceGraph): void {
+    for (const auth of graph.auths || []) {
+      if (auth.passwordPolicy?.minLength !== undefined) {
+        if (auth.passwordPolicy.minLength < 6) {
+          this.addError(
+            "ERR_AUTH_PASSWORD_MIN_LENGTH",
+            auth.id,
+            `Auth '${auth.name}': passwordPolicy.minLength must be at least 6 characters (AWS Cognito minimum requirement).`,
+            auth.sourceFile
+          );
+        } else if (auth.passwordPolicy.minLength < 12) {
+          this.addWarning(
+            "WARN_AUTH_PASSWORD_LENGTH_SHORT",
+            auth.id,
+            `Auth '${auth.name}': passwordPolicy.minLength (${auth.passwordPolicy.minLength}) is less than recommended 12 characters for Clean 4 / HIPAA healthcare security.`,
+            auth.sourceFile
+          );
+        }
+      }
+
+      if (auth.client?.clientLogicalId) {
+        if (!CFN_LOGICAL_ID_REGEX.test(auth.client.clientLogicalId)) {
+          this.addError(
+            "ERR_CFN_LOGICAL_ID",
+            `${auth.id}_Client`,
+            `Auth client logicalId '${auth.client.clientLogicalId}' is invalid. CloudFormation logical IDs must be alphanumeric only ([A-Za-z0-9]).`,
+            auth.sourceFile
+          );
+        }
+      }
+    }
+  }
+
+  // 13. CORS Validation
   private validateCors(id: string, cors: any, sourceFile?: string): void {
     if (!cors || typeof cors !== "object") return;
 

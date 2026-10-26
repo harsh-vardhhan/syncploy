@@ -1,6 +1,6 @@
 {
   "name": "@syncploy/sdk",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Infrastructure-from-Code (IfC) Runtime SDK for Pure AWS Serverless",
   "type": "module",
   "main": "./dist/index.js",

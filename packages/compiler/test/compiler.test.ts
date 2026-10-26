@@ -917,4 +917,104 @@ export const badConsumer = recursiveTable.stream(async (event) => {
       await expect(compiler.build()).rejects.toThrow("Pre-flight validation failed with 1 error(s).");
     });
   });
+
+  describe("Cognito Auth Construct Synthesis & Environment Wiring", () => {
+    const testDir = path.join(__dirname, ".tmp-test-app-auth");
+
+    beforeAll(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+      const code = `
+import { Auth, api } from "@syncploy/sdk";
+
+export const clinicianAuth = new Auth("ehr", {
+  logicalId: "EhrUserPool",
+  adminOnly: true,
+  signInMethod: "email",
+  passwordPolicy: {
+    minLength: 12,
+    requireUppercase: true,
+    requireLowercase: true,
+    requireNumbers: true,
+    requireSymbols: true,
+    tempPasswordValidityDays: 7,
+  },
+  client: {
+    clientLogicalId: "EhrUserPoolClient",
+    generateSecret: false,
+    explicitAuthFlows: [
+      "ALLOW_USER_PASSWORD_AUTH",
+      "ALLOW_USER_SRP_AUTH",
+      "ALLOW_REFRESH_TOKEN_AUTH",
+    ],
+    preventUserExistenceErrors: true,
+  },
+});
+
+export const backend = api({
+  method: "GET",
+  path: "/health",
+  logicalId: "EhrBackendFunction",
+  ingress: "function-url",
+  handler: async () => ({ status: 200, body: "ok" }),
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+    });
+
+    afterAll(async () => {
+      await fs.rm(testDir, { recursive: true, force: true });
+    });
+
+    it("synthesizes AWS::Cognito::UserPool, UserPoolClient, outputs, and auto-wires Lambda environment variables", async () => {
+      const compiler = new Compiler(testDir);
+      const out = await compiler.build();
+      const template = JSON.parse(await fs.readFile(out.templatePath, "utf-8"));
+      const res = template.Resources;
+      const outputs = template.Outputs;
+
+      // 1. User Pool
+      expect(res["EhrUserPool"]).toBeDefined();
+      expect(res["EhrUserPool"].Type).toBe("AWS::Cognito::UserPool");
+      expect(res["EhrUserPool"].Properties.AdminCreateUserConfig).toEqual({
+        AllowAdminCreateUserOnly: true,
+      });
+      expect(res["EhrUserPool"].Properties.UsernameAttributes).toEqual(["email"]);
+      expect(res["EhrUserPool"].Properties.AutoVerifiedAttributes).toEqual(["email"]);
+      expect(res["EhrUserPool"].Properties.Policies.PasswordPolicy).toEqual({
+        MinimumLength: 12,
+        RequireUppercase: true,
+        RequireLowercase: true,
+        RequireNumbers: true,
+        RequireSymbols: true,
+        TemporaryPasswordValidityDays: 7,
+      });
+
+      // 2. User Pool Client
+      expect(res["EhrUserPoolClient"]).toBeDefined();
+      expect(res["EhrUserPoolClient"].Type).toBe("AWS::Cognito::UserPoolClient");
+      expect(res["EhrUserPoolClient"].Properties.UserPoolId).toEqual({ Ref: "EhrUserPool" });
+      expect(res["EhrUserPoolClient"].Properties.GenerateSecret).toBe(false);
+      expect(res["EhrUserPoolClient"].Properties.PreventUserExistenceErrors).toBe("ENABLED");
+      expect(res["EhrUserPoolClient"].Properties.ExplicitAuthFlows).toEqual([
+        "ALLOW_USER_PASSWORD_AUTH",
+        "ALLOW_USER_SRP_AUTH",
+        "ALLOW_REFRESH_TOKEN_AUTH",
+      ]);
+
+      // 3. Stack Outputs
+      expect(outputs["CognitoUserPoolId"]).toBeDefined();
+      expect(outputs["CognitoUserPoolId"].Value).toEqual({ Ref: "EhrUserPool" });
+      expect(outputs["CognitoUserPoolClientId"]).toBeDefined();
+      expect(outputs["CognitoUserPoolClientId"].Value).toEqual({ Ref: "EhrUserPoolClient" });
+
+      // 4. Lambda Environment Auto-Wiring
+      const func = res["FunctionEhrBackendFunction"] || res["EhrBackendFunction"];
+      expect(func).toBeDefined();
+      const env = func.Properties.Environment.Variables;
+      expect(env["COGNITO_USER_POOL_ID"]).toEqual({ Ref: "EhrUserPool" });
+      expect(env["COGNITO_CLIENT_ID"]).toEqual({ Ref: "EhrUserPoolClient" });
+      expect(env["SYNCPLOY_AUTH_EHR_USER_POOL_ID"]).toEqual({ Ref: "EhrUserPool" });
+      expect(env["SYNCPLOY_AUTH_EHR_CLIENT_ID"]).toEqual({ Ref: "EhrUserPoolClient" });
+    });
+  });
 });
