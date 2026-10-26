@@ -8,7 +8,6 @@ export function BenchmarkComparison() {
       syncploy: true,
       cdk: "mixed",
       sst: "mixed",
-      serverlessFramework: "mixed",
       encore: "mixed",
     },
     {
@@ -16,7 +15,6 @@ export function BenchmarkComparison() {
       syncploy: true,
       cdk: false,
       sst: false,
-      serverlessFramework: false,
       encore: false,
     },
     {
@@ -24,7 +22,6 @@ export function BenchmarkComparison() {
       syncploy: true,
       cdk: false,
       sst: false,
-      serverlessFramework: false,
       encore: false,
     },
     {
@@ -32,23 +29,20 @@ export function BenchmarkComparison() {
       syncploy: true,
       cdk: false,
       sst: false,
-      serverlessFramework: false,
       encore: false,
     },
     {
       feature: "1:1 Standard CloudFormation Export",
       syncploy: true,
       cdk: true,
-      sst: "Pulumi/CFN",
-      serverlessFramework: true,
+      sst: false,
       encore: false,
     },
     {
       feature: "TypeScript Native (No Go / Rust runtime required)",
       syncploy: true,
       cdk: true,
-      sst: true,
-      serverlessFramework: true,
+      sst: false,
       encore: false,
     },
     {
@@ -56,7 +50,6 @@ export function BenchmarkComparison() {
       syncploy: true,
       cdk: false,
       sst: false,
-      serverlessFramework: false,
       encore: false,
     },
   ];
@@ -96,7 +89,7 @@ export function BenchmarkComparison() {
               <th className="p-4 font-semibold text-indigo-600 dark:text-indigo-400">Syncploy</th>
               <th className="p-4 font-medium text-slate-600 dark:text-neutral-400">AWS CDK</th>
               <th className="p-4 font-medium text-slate-600 dark:text-neutral-400">SST (Ion)</th>
-              <th className="p-4 font-medium text-slate-600 dark:text-neutral-400">Encore (Go)</th>
+              <th className="p-4 font-medium text-slate-600 dark:text-neutral-400">Encore.ts</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-[#232736]">
