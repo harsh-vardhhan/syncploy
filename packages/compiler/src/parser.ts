@@ -47,7 +47,7 @@ export class Parser {
     let curr = node;
     while (
       curr.isKind(SyntaxKind.AsExpression) ||
-      curr.isKind(SyntaxKind.TypeAssertion) ||
+      curr.isKind(SyntaxKind.TypeAssertionExpression) ||
       curr.isKind(SyntaxKind.ParenthesizedExpression)
     ) {
       curr = (curr as any).getExpression();
