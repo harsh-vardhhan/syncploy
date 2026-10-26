@@ -29,18 +29,27 @@ export function Hero() {
         </div>
 
         {/* Headline with Eyebrow */}
-        <div className="space-y-4">
+        <div className="space-y-6 pt-2">
           <div className="inline-flex items-center justify-center">
             <span
-              className="text-xs sm:text-sm font-semibold tracking-wider uppercase text-slate-600 dark:text-neutral-300 font-mono inline-flex items-center gap-1.5"
-              aria-label="Not Infrastructure as Code, Infrastructure from Code"
+              className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white inline-flex items-center justify-center flex-wrap gap-x-2.5 sm:gap-x-4"
+              aria-label="Infrastructure from Code"
             >
-              <span>Not Infrastructure</span>
-              <span className="relative inline-block mx-1 font-bold">
-                <span className="line-through decoration-rose-500 decoration-[2.5px] text-slate-400 dark:text-neutral-500">
+              <span>Infrastructure</span>
+              <span className="relative inline-block font-black px-1 sm:px-1.5">
+                <span className="relative z-10 text-slate-400 dark:text-neutral-500 line-through decoration-rose-500 decoration-[3.5px] sm:decoration-[5px]">
                   as
                 </span>
-                <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[10px] sm:text-[11px] font-mono font-extrabold text-cyan-600 dark:text-cyan-400 -rotate-12 select-none bg-cyan-50 dark:bg-cyan-950/60 px-1 py-0.5 rounded border border-cyan-200 dark:border-cyan-800/80 shadow-xs">
+                {/* Physical strike bar overlay to guarantee visibility across all displays */}
+                <span
+                  className="absolute top-1/2 -left-1 -right-1 h-[3.5px] sm:h-[5px] -translate-y-1/2 bg-rose-500 -rotate-6 rounded-full pointer-events-none z-20 shadow-xs"
+                  aria-hidden="true"
+                />
+                {/* 'from' annotation floating directly above */}
+                <span
+                  className="absolute -top-5 sm:-top-7 left-1/2 -translate-x-1/2 text-xs sm:text-sm font-mono font-black text-cyan-600 dark:text-cyan-400 -rotate-12 select-none bg-cyan-50 dark:bg-cyan-950/90 px-1.5 py-0.5 sm:px-2.5 sm:py-0.5 rounded-md border border-cyan-300 dark:border-cyan-700 shadow-sm whitespace-nowrap z-30"
+                  aria-hidden="true"
+                >
                   from
                 </span>
               </span>
