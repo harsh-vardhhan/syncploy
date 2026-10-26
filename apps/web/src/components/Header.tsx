@@ -32,42 +32,31 @@ export function Header() {
           <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
             Syncploy
             <span
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 font-mono font-medium"
+              className="hidden sm:inline-flex items-center text-[11px] px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 font-mono font-medium"
               title="Syncploy is in Public Alpha"
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
-              alpha v0.1.7
+              alpha
             </span>
           </span>
         </Link>
 
         {/* Desktop Navigation (visible on lg+) */}
-        <nav className="hidden lg:flex items-center gap-5 xl:gap-8 text-sm font-medium text-slate-600 dark:text-neutral-300">
+        <nav className="hidden lg:flex items-center gap-6 xl:gap-8 text-sm font-medium text-slate-600 dark:text-neutral-300">
           <Link
             href="/docs"
-            className={`hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5 ${
+            className={`hover:text-slate-900 dark:hover:text-white transition-colors ${
               pathname === "/docs" ? "text-indigo-600 dark:text-indigo-400 font-semibold" : ""
             }`}
           >
-            <BookOpen className="h-4 w-4 text-slate-400 dark:text-neutral-400" />
-            Documentation
+            Docs
           </Link>
           <Link
             href="/docs/safety-rails"
-            className={`hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5 ${
+            className={`hover:text-slate-900 dark:hover:text-white transition-colors ${
               pathname === "/docs/safety-rails" ? "text-emerald-600 dark:text-emerald-400 font-semibold" : ""
             }`}
           >
-            <Shield className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             Safety Rails
-          </Link>
-          <Link
-            href="/docs/brownfield-adoption"
-            className={`hover:text-slate-900 dark:hover:text-white transition-colors ${
-              pathname === "/docs/brownfield-adoption" ? "text-indigo-600 dark:text-indigo-400 font-semibold" : ""
-            }`}
-          >
-            Brownfield Adoption
           </Link>
           <Link
             href="/docs/ehr-backend-case-study"
@@ -87,45 +76,49 @@ export function Header() {
           </Link>
         </nav>
 
-        {/* Right CTA (visible on lg+) */}
-        <div className="hidden lg:flex items-center gap-2.5 xl:gap-3">
-          <ThemeToggle />
+        {/* Right Actions & CTA (visible on lg+) */}
+        <div className="hidden lg:flex items-center gap-3">
           <a
             href="/llms.txt"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-[#232736] bg-slate-50 dark:bg-[#12141C] text-xs font-mono font-medium text-slate-600 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300 dark:border-indigo-500/30 transition-colors"
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-mono text-slate-500 dark:text-neutral-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-[#1A1D28] transition-colors"
             title="LLM & Agentic AI Documentation Standard"
           >
             <Bot className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
             <span>llms.txt</span>
           </a>
-          <a
-            href="https://www.npmjs.com/package/@syncploy/sdk"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] text-sm font-medium text-slate-700 dark:text-neutral-300 hover:text-[#CB3837] dark:hover:text-[#ff6b69] hover:border-red-300 dark:hover:border-red-500/30 transition-colors"
-            title="View @syncploy/sdk on npm"
-          >
-            <svg className="h-4 w-4 fill-[#CB3837] shrink-0" viewBox="0 0 24 24" role="img">
-              <title>npm</title>
-              <path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/>
-            </svg>
-            <span className="hidden xl:inline text-xs font-mono font-semibold">npm</span>
-          </a>
-          <a
-            href="https://github.com/harsh-vardhhan/syncploy"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] text-sm font-medium text-slate-700 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#1A1D28] transition-colors"
-            title="Star Syncploy on GitHub"
-          >
-            <Github className="h-4 w-4 shrink-0" />
-            <span className="hidden xl:inline">GitHub</span>
-          </a>
+
+          <div className="flex items-center text-slate-500 dark:text-neutral-400">
+            <a
+              href="https://www.npmjs.com/package/@syncploy/sdk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-lg hover:text-[#CB3837] dark:hover:text-[#ff6b69] hover:bg-slate-100 dark:hover:bg-[#1A1D28] transition-colors"
+              title="View @syncploy/sdk on npm"
+            >
+              <svg className="h-4 w-4 fill-current shrink-0" viewBox="0 0 24 24" role="img">
+                <title>npm</title>
+                <path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/>
+              </svg>
+            </a>
+            <a
+              href="https://github.com/harsh-vardhhan/syncploy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-lg hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#1A1D28] transition-colors"
+              title="Star Syncploy on GitHub"
+            >
+              <Github className="h-4 w-4 shrink-0" />
+            </a>
+            <ThemeToggle />
+          </div>
+
+          <div className="h-4 w-px bg-slate-200 dark:bg-[#232736]" />
+
           <Link
             href="/docs"
-            className="px-3.5 py-1.5 xl:px-4 xl:py-2 rounded-lg bg-indigo-600 text-xs xl:text-sm font-semibold text-white shadow-md hover:bg-indigo-500 transition-colors shrink-0"
+            className="px-3.5 py-1.5 rounded-lg bg-indigo-600 text-xs font-semibold text-white shadow-sm hover:bg-indigo-500 transition-colors shrink-0"
           >
             Get Started
           </Link>
