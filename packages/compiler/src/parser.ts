@@ -1,4 +1,12 @@
-import { Project, SyntaxKind, type Node, type ObjectLiteralExpression, type SourceFile } from "ts-morph";
+import {
+  Project,
+  SyntaxKind,
+  type Node,
+  type ObjectLiteralExpression,
+  type SourceFile,
+  type VariableDeclaration,
+  type NewExpression,
+} from "ts-morph";
 import type {
   ApiRouteIR,
   HttpMethod,
@@ -20,6 +28,8 @@ import type {
   EventBindingIR,
   ContainerIR,
   FunctionMutationsIR,
+  ElectroEntityIR,
+  ElectroIndexIR,
 } from "./types";
 
 export class Parser {
@@ -50,6 +60,7 @@ export class Parser {
     const alarms: AlarmIR[] = [];
     const deliveryStreams: DeliveryStreamIR[] = [];
     const bindings: EventBindingIR[] = [];
+    const electroEntities: ElectroEntityIR[] = [];
 
     // Maps to track variable names to resource names
     const varToTableName: Record<string, string> = {};
@@ -57,6 +68,7 @@ export class Parser {
     const varToBucketName: Record<string, string> = {};
     const varToTopicName: Record<string, string> = {};
     const varToDeliveryStreamName: Record<string, string> = {};
+    const varToEntity: Record<string, ElectroEntityIR> = {};
 
     // Pass 1: Pre-populate variable-to-resource-name mappings across all project files
     for (const sourceFile of this.project.getSourceFiles()) {
@@ -78,6 +90,13 @@ export class Parser {
           varToTopicName[varName] = args[0].getLiteralValue();
         } else if (className === "DeliveryStream" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
           varToDeliveryStreamName[varName] = args[0].getLiteralValue();
+        } else if (className === "Entity" || className.endsWith(".Entity")) {
+          const entity = this.extractElectroEntity(decl, sourceFile);
+          if (entity) {
+            electroEntities.push(entity);
+            varToEntity[varName] = entity;
+            varToTableName[varName] = entity.tableName || entity.serviceName;
+          }
         }
       }
     }
@@ -999,6 +1018,80 @@ export class Parser {
       }
     }
 
+    // ElectroDB Integration: Auto-synthesize and enrich DynamoDB tables from ElectroDB entities
+    if (electroEntities.length > 0) {
+      const entitiesByService: Record<string, ElectroEntityIR[]> = {};
+      for (const entity of electroEntities) {
+        if (!entitiesByService[entity.serviceName]) {
+          entitiesByService[entity.serviceName] = [];
+        }
+        entitiesByService[entity.serviceName]!.push(entity);
+      }
+
+      for (const [serviceName, entities] of Object.entries(entitiesByService)) {
+        const firstEntity = entities[0]!;
+        const pkField = firstEntity.primaryIndex.pkField || "PK";
+        const skField = firstEntity.primaryIndex.skField;
+
+        // Union all secondary indexes across all entities in this service
+        const unionedIndexes: Record<string, TableIndexIR> = {};
+        for (const entity of entities) {
+          for (const secIdx of Object.values(entity.secondaryIndexes)) {
+            if (!unionedIndexes[secIdx.name]) {
+              unionedIndexes[secIdx.name] = {
+                partitionKey: secIdx.pkField,
+                sortKey: secIdx.skField,
+                projection: (secIdx.projection as any) || "ALL",
+              };
+            }
+          }
+        }
+
+        // Check if an explicit table exists for this service
+        const existingTable = tables.find(
+          (t) =>
+            t.name === serviceName ||
+            (firstEntity.tableName && (t.name === firstEntity.tableName || t.tableName === firstEntity.tableName)) ||
+            t.tableName === serviceName
+        );
+        if (existingTable) {
+          existingTable.electroEntities = entities.map((e) => e.id);
+          // If partition key was default, enrich it
+          if (existingTable.partitionKey.name === "id" && pkField !== "id") {
+            existingTable.partitionKey.name = pkField;
+          }
+          if (!existingTable.sortKey && skField) {
+            existingTable.sortKey = { name: skField, type: "string" };
+          }
+          // Merge any unioned indexes not present in the explicit table
+          const mergedIndexes = {
+            ...unionedIndexes,
+            ...(existingTable.indexes || {}),
+          };
+          if (Object.keys(mergedIndexes).length > 0) {
+            existingTable.indexes = mergedIndexes;
+          }
+        } else {
+          // Auto-synthesize table from ElectroDB entities
+          const hasIndexes = Object.keys(unionedIndexes).length > 0;
+          const synthesizedTable: TableIR = {
+            id: `${serviceName}Table`,
+            name: serviceName,
+            partitionKey: { name: pkField, type: "string" },
+            sortKey: skField ? { name: skField, type: "string" } : undefined,
+            billingMode: "PAY_PER_REQUEST",
+            indexes: hasIndexes ? unionedIndexes : undefined,
+            sourceFile: firstEntity.sourceFile,
+            retain: true,
+            deletionPolicy: "Retain",
+            electroEntities: entities.map((e) => e.id),
+          };
+          tables.push(synthesizedTable);
+          varToTableName[`${serviceName}Table`] = serviceName;
+        }
+      }
+    }
+
     return {
       apis,
       tables,
@@ -1011,6 +1104,7 @@ export class Parser {
       alarms,
       deliveryStreams,
       bindings,
+      electroEntities,
     };
   }
 
@@ -1264,42 +1358,80 @@ export class Parser {
     const queuesSent: string[] = [];
     const topicsPublished: string[] = [];
 
-    const callExprs = targetNode.getDescendantsOfKind(SyntaxKind.CallExpression);
-    for (const call of callExprs) {
-      const expr = call.getExpression();
-      if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
-        const callerText = expr.getExpression().getText();
-        const methodName = expr.getName();
+    // Traverse targetNode and any locally referenced helper functions/variables
+    const nodesToScan: Node[] = [targetNode];
+    const visitedNodes = new Set<Node>([targetNode]);
 
-        // Check Table writes
-        const tblName = varToTableName[callerText];
-        if (tblName && ["put", "delete", "update", "batchWrite"].includes(methodName)) {
-          if (!tablesWritten.includes(tblName)) {
-            tablesWritten.push(tblName);
+    while (nodesToScan.length > 0) {
+      const curr = nodesToScan.pop()!;
+      const callExprs = curr.getDescendantsOfKind(SyntaxKind.CallExpression);
+
+      for (const call of callExprs) {
+        const expr = call.getExpression();
+
+        // Check if this call invokes a local helper function in the same file
+        if (expr.isKind(SyntaxKind.Identifier)) {
+          const fnName = expr.getText();
+          const localFunc = sourceFile.getFunction(fnName);
+          if (localFunc && !visitedNodes.has(localFunc)) {
+            visitedNodes.add(localFunc);
+            nodesToScan.push(localFunc);
+          }
+          const localVar = sourceFile.getVariableDeclaration(fnName);
+          const varInit = localVar?.getInitializer();
+          if (varInit && !visitedNodes.has(varInit)) {
+            visitedNodes.add(varInit);
+            nodesToScan.push(varInit);
           }
         }
 
-        // Check Bucket writes
-        const bktName = varToBucketName[callerText];
-        if (bktName && ["put", "putText", "putBuffer", "upload", "delete"].includes(methodName)) {
-          if (!bucketsWritten.includes(bktName)) {
-            bucketsWritten.push(bktName);
-          }
-        }
+        if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+          const callerText = expr.getExpression().getText();
+          const methodName = expr.getName();
+          const baseCaller = callerText.includes(".") ? callerText.split(".").pop()! : callerText;
 
-        // Check Queue sends
-        const qName = varToQueueName[callerText];
-        if (qName && ["send", "sendMessage"].includes(methodName)) {
-          if (!queuesSent.includes(qName)) {
-            queuesSent.push(qName);
+          // Check Table writes (standard SDK methods + ElectroDB mutations)
+          const tblName = varToTableName[callerText] || varToTableName[baseCaller];
+          if (
+            tblName &&
+            [
+              "put",
+              "delete",
+              "update",
+              "batchWrite",
+              "create",
+              "patch",
+              "remove",
+              "upsert",
+            ].includes(methodName)
+          ) {
+            if (!tablesWritten.includes(tblName)) {
+              tablesWritten.push(tblName);
+            }
           }
-        }
 
-        // Check Topic publishes
-        const topName = varToTopicName[callerText];
-        if (topName && ["publish", "send"].includes(methodName)) {
-          if (!topicsPublished.includes(topName)) {
-            topicsPublished.push(topName);
+          // Check Bucket writes
+          const bktName = varToBucketName[callerText] || varToBucketName[baseCaller];
+          if (bktName && ["put", "putText", "putBuffer", "upload", "delete"].includes(methodName)) {
+            if (!bucketsWritten.includes(bktName)) {
+              bucketsWritten.push(bktName);
+            }
+          }
+
+          // Check Queue sends
+          const qName = varToQueueName[callerText] || varToQueueName[baseCaller];
+          if (qName && ["send", "sendMessage"].includes(methodName)) {
+            if (!queuesSent.includes(qName)) {
+              queuesSent.push(qName);
+            }
+          }
+
+          // Check Topic publishes
+          const topName = varToTopicName[callerText] || varToTopicName[baseCaller];
+          if (topName && ["publish", "send"].includes(methodName)) {
+            if (!topicsPublished.includes(topName)) {
+              topicsPublished.push(topName);
+            }
           }
         }
       }
@@ -1319,6 +1451,201 @@ export class Parser {
       bucketsWritten: bucketsWritten.length > 0 ? bucketsWritten : undefined,
       queuesSent: queuesSent.length > 0 ? queuesSent : undefined,
       topicsPublished: topicsPublished.length > 0 ? topicsPublished : undefined,
+    };
+  }
+
+  private extractElectroEntity(
+    decl: VariableDeclaration,
+    sourceFile: SourceFile
+  ): ElectroEntityIR | undefined {
+    const init = decl.getInitializer();
+    if (!init || !init.isKind(SyntaxKind.NewExpression)) return undefined;
+
+    const newExpr = init as NewExpression;
+    const args = newExpr.getArguments();
+    if (args.length === 0) return undefined;
+
+    let schemaObj: ObjectLiteralExpression | undefined;
+    const firstArg = args[0]!;
+    if (firstArg.isKind(SyntaxKind.ObjectLiteralExpression)) {
+      schemaObj = firstArg as ObjectLiteralExpression;
+    } else if (firstArg.isKind(SyntaxKind.Identifier)) {
+      const identName = firstArg.getText();
+      const varDecl = sourceFile.getVariableDeclaration(identName);
+      const varInit = varDecl?.getInitializer();
+      if (varInit && varInit.isKind(SyntaxKind.ObjectLiteralExpression)) {
+        schemaObj = varInit as ObjectLiteralExpression;
+      }
+    }
+
+    if (!schemaObj) return undefined;
+
+    // 1. Extract model
+    const modelProp = schemaObj.getProperty("model");
+    let entityName = decl.getName();
+    let serviceName = "default";
+    let version: string | undefined;
+
+    if (modelProp && modelProp.isKind(SyntaxKind.PropertyAssignment)) {
+      const modelInit = modelProp.getInitializer();
+      if (modelInit && modelInit.isKind(SyntaxKind.ObjectLiteralExpression)) {
+        const mObj = modelInit as ObjectLiteralExpression;
+        entityName = this.extractString(mObj.getProperty("entity")) || entityName;
+        serviceName = this.extractString(mObj.getProperty("service")) || serviceName;
+        version = this.extractString(mObj.getProperty("version"));
+      }
+    }
+
+    // 2. Extract attributes
+    const attributes: Record<string, string> = {};
+    const attrProp = schemaObj.getProperty("attributes");
+    if (attrProp && attrProp.isKind(SyntaxKind.PropertyAssignment)) {
+      const attrInit = attrProp.getInitializer();
+      if (attrInit && attrInit.isKind(SyntaxKind.ObjectLiteralExpression)) {
+        for (const p of attrInit.getProperties()) {
+          if (p.isKind(SyntaxKind.PropertyAssignment)) {
+            const propName = p.getName();
+            const pVal = p.getInitializer();
+            let attrType = "string";
+            if (pVal && pVal.isKind(SyntaxKind.ObjectLiteralExpression)) {
+              const tProp = pVal.getProperty("type");
+              if (tProp && tProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const tInit = tProp.getInitializer();
+                if (tInit && tInit.isKind(SyntaxKind.StringLiteral)) {
+                  attrType = tInit.getLiteralValue();
+                } else if (tInit && tInit.isKind(SyntaxKind.ArrayLiteralExpression)) {
+                  attrType = "string";
+                }
+              }
+            } else if (pVal && pVal.isKind(SyntaxKind.StringLiteral)) {
+              attrType = pVal.getLiteralValue();
+            }
+            attributes[propName] = attrType;
+          }
+        }
+      }
+    }
+
+    // 3. Extract indexes
+    let primaryIndex: ElectroIndexIR = {
+      name: "primary",
+      pkField: "PK",
+      skField: "SK",
+      isPrimary: true,
+      projection: "ALL",
+    };
+    const secondaryIndexes: Record<string, ElectroIndexIR> = {};
+
+    const indexesProp = schemaObj.getProperty("indexes");
+    if (indexesProp && indexesProp.isKind(SyntaxKind.PropertyAssignment)) {
+      const indexesInit = indexesProp.getInitializer();
+      if (indexesInit && indexesInit.isKind(SyntaxKind.ObjectLiteralExpression)) {
+        for (const p of indexesInit.getProperties()) {
+          if (!p.isKind(SyntaxKind.PropertyAssignment)) continue;
+          const idxPropName = p.getName();
+          const idxVal = p.getInitializer();
+          if (!idxVal || !idxVal.isKind(SyntaxKind.ObjectLiteralExpression)) continue;
+
+          const idxObj = idxVal as ObjectLiteralExpression;
+          const explicitIndexName = this.extractString(idxObj.getProperty("index"));
+          const isPrimary = idxPropName === "primary" || (!explicitIndexName && idxPropName === "primary");
+
+          // Extract pk field
+          let pkField = "PK";
+          const pkProp = idxObj.getProperty("pk");
+          if (pkProp && pkProp.isKind(SyntaxKind.PropertyAssignment)) {
+            const pkValObj = pkProp.getInitializer();
+            if (pkValObj && pkValObj.isKind(SyntaxKind.ObjectLiteralExpression)) {
+              pkField = this.extractString(pkValObj.getProperty("field")) || "";
+              if (!pkField) {
+                const compProp = pkValObj.getProperty("composite");
+                if (compProp && compProp.isKind(SyntaxKind.PropertyAssignment)) {
+                  const compInit = compProp.getInitializer();
+                  if (compInit && compInit.isKind(SyntaxKind.ArrayLiteralExpression)) {
+                    const firstEl = compInit.getElements()[0];
+                    if (firstEl && firstEl.isKind(SyntaxKind.StringLiteral)) {
+                      pkField = firstEl.getLiteralValue();
+                    }
+                  }
+                }
+              }
+              if (!pkField) pkField = "PK";
+            }
+          }
+
+          // Extract sk field
+          let skField: string | undefined;
+          const skProp = idxObj.getProperty("sk");
+          if (skProp && skProp.isKind(SyntaxKind.PropertyAssignment)) {
+            const skValObj = skProp.getInitializer();
+            if (skValObj && skValObj.isKind(SyntaxKind.ObjectLiteralExpression)) {
+              skField = this.extractString(skValObj.getProperty("field")) || "";
+              if (!skField) {
+                const compProp = skValObj.getProperty("composite");
+                if (compProp && compProp.isKind(SyntaxKind.PropertyAssignment)) {
+                  const compInit = compProp.getInitializer();
+                  if (compInit && compInit.isKind(SyntaxKind.ArrayLiteralExpression)) {
+                    const firstEl = compInit.getElements()[0];
+                    if (firstEl && firstEl.isKind(SyntaxKind.StringLiteral)) {
+                      skField = firstEl.getLiteralValue();
+                    }
+                  }
+                }
+              }
+              if (!skField) skField = undefined;
+            }
+          }
+
+          // Extract projection
+          let projection: "ALL" | "KEYS_ONLY" | undefined = "ALL";
+          const projProp = idxObj.getProperty("project") || idxObj.getProperty("projection");
+          if (projProp && projProp.isKind(SyntaxKind.PropertyAssignment)) {
+            const projVal = this.extractString(projProp);
+            if (projVal && (projVal.toUpperCase() === "KEYS_ONLY" || projVal.toLowerCase() === "keys")) {
+              projection = "KEYS_ONLY";
+            }
+          }
+
+          const parsedIndex: ElectroIndexIR = {
+            name: explicitIndexName || idxPropName,
+            pkField,
+            skField: skField || undefined,
+            isPrimary,
+            projection,
+          };
+
+          if (isPrimary) {
+            primaryIndex = parsedIndex;
+          } else {
+            secondaryIndexes[parsedIndex.name] = parsedIndex;
+          }
+        }
+      }
+    }
+
+    // 4. Extract table name if present as string literal in options (args[1])
+    let tableName: string | undefined;
+    if (args.length > 1 && args[1] && args[1].isKind(SyntaxKind.ObjectLiteralExpression)) {
+      const opts = args[1] as ObjectLiteralExpression;
+      const tblProp = opts.getProperty("table");
+      if (tblProp && tblProp.isKind(SyntaxKind.PropertyAssignment)) {
+        const tblInit = tblProp.getInitializer();
+        if (tblInit && tblInit.isKind(SyntaxKind.StringLiteral)) {
+          tableName = tblInit.getLiteralValue();
+        }
+      }
+    }
+
+    return {
+      id: decl.getName(),
+      entityName,
+      serviceName,
+      version: version || undefined,
+      sourceFile: sourceFile.getFilePath(),
+      primaryIndex,
+      secondaryIndexes,
+      attributes,
+      tableName: tableName || undefined,
     };
   }
 }

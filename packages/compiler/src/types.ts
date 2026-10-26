@@ -73,6 +73,7 @@ export interface TableIR {
   tableName?: string | undefined;
   retain?: boolean | undefined;
   deletionPolicy?: "Retain" | "Delete" | "Snapshot" | undefined;
+  electroEntities?: string[] | undefined;
 }
 
 export interface BucketIR {
@@ -235,6 +236,26 @@ export interface DeliveryStreamIR {
   streamName?: string | undefined;
 }
 
+export interface ElectroIndexIR {
+  name: string; // e.g. "SKIndex", "primary"
+  pkField: string; // e.g. "PK"
+  skField?: string | undefined; // e.g. "SK"
+  isPrimary: boolean;
+  projection?: "ALL" | "KEYS_ONLY" | undefined;
+}
+
+export interface ElectroEntityIR {
+  id: string; // variable name, e.g. "DocumentEntity"
+  entityName: string; // model.entity, e.g. "document"
+  serviceName: string; // model.service, e.g. "ehr"
+  version?: string | undefined;
+  sourceFile: string;
+  primaryIndex: ElectroIndexIR;
+  secondaryIndexes: Record<string, ElectroIndexIR>;
+  attributes: Record<string, string>; // name -> type
+  tableName?: string | undefined;
+}
+
 export interface ResourceGraph {
   apis: ApiRouteIR[];
   tables: TableIR[];
@@ -247,6 +268,7 @@ export interface ResourceGraph {
   alarms: AlarmIR[];
   deliveryStreams: DeliveryStreamIR[];
   bindings: EventBindingIR[];
+  electroEntities?: ElectroEntityIR[] | undefined;
 }
 
 export interface BuildOutput {
