@@ -49,8 +49,14 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="https://www.npmjs.com/package/@syncploy/sdk" target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 dark:hover:text-white transition-colors">
-                  npm: @syncploy/sdk
+                <a
+                  href="https://www.npmjs.com/package/@syncploy/sdk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5"
+                >
+                  <svg className="h-3.5 w-3.5 fill-[#CB3837] shrink-0" viewBox="0 0 24 24" role="img"><title>npm</title><path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/></svg>
+                  <span>npm: @syncploy/sdk (v0.1.7)</span>
                 </a>
               </li>
               <li>
@@ -64,6 +70,12 @@ export function Footer() {
                   <Bot className="h-3.5 w-3.5 text-indigo-500" />
                   <span>/llms-full.txt (Full Bundle)</span>
                 </a>
+              </li>
+              <li>
+                <span className="inline-flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 font-mono">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  Public Alpha Stage (v0.1.x)
+                </span>
               </li>
               <li>
                 <span className="text-xs text-slate-500 dark:text-neutral-500">MIT Licensed &bull; Open Source</span>

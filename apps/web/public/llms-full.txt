@@ -63,6 +63,10 @@ export const checkoutApi = api(
 > [!NOTE]
 > When you run `syncploy build`, Syncploy synthesizes an `AWS::Serverless::Function`, `AWS::DynamoDB::Table`, `AWS::SQS::Queue`, and optimal IAM roles without requiring any external cloud accounts or Docker daemons.
 
+> [!IMPORTANT]
+> **Project Status: Public Alpha (`v0.1.x`)**
+> Syncploy is currently in active public alpha with the `@syncploy/sdk` package published on [npm](https://www.npmjs.com/package/@syncploy/sdk). While the underlying compiler and runtime are battle-tested in live production workloads (such as our [EHR Annotation Platform Showcase](/docs/ehr-backend-case-study)), APIs and construct ergonomics are actively evolving toward `v1.0`. Early feedback and issue reports are welcome on [GitHub](https://github.com/harsh-vardhhan/syncploy).
+
 ---
 
 ## How the Compiler Works

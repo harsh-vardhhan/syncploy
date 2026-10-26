@@ -29,10 +29,14 @@ export function Header() {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-cyan-500 text-white shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
             <Terminal className="h-5 w-5" />
           </div>
-          <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+          <span className="text-xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
             Syncploy
-            <span className="hidden sm:inline-flex text-xs px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20 font-mono font-medium">
-              v0.1.7
+            <span
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 font-mono font-medium"
+              title="Syncploy is in Public Alpha"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+              alpha v0.1.7
             </span>
           </span>
         </Link>
@@ -95,6 +99,19 @@ export function Header() {
           >
             <Bot className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
             <span>llms.txt</span>
+          </a>
+          <a
+            href="https://www.npmjs.com/package/@syncploy/sdk"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] text-sm font-medium text-slate-700 dark:text-neutral-300 hover:text-[#CB3837] dark:hover:text-[#ff6b69] hover:border-red-300 dark:hover:border-red-500/30 transition-colors"
+            title="View @syncploy/sdk on npm"
+          >
+            <svg className="h-4 w-4 fill-[#CB3837] shrink-0" viewBox="0 0 24 24" role="img">
+              <title>npm</title>
+              <path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/>
+            </svg>
+            <span className="hidden xl:inline text-xs font-mono font-semibold">npm</span>
           </a>
           <a
             href="https://github.com/harsh-vardhhan/syncploy"
@@ -204,20 +221,32 @@ export function Header() {
             </a>
           </nav>
 
-          <div className="pt-3 border-t border-slate-200 dark:border-[#232736] flex items-center justify-between gap-3">
+          <div className="pt-3 border-t border-slate-200 dark:border-[#232736] flex flex-wrap items-center justify-between gap-2.5">
+            <a
+              href="https://www.npmjs.com/package/@syncploy/sdk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 min-w-[100px] flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] text-sm font-medium text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-[#1A1D28] transition-colors"
+            >
+              <svg className="h-4 w-4 fill-[#CB3837] shrink-0" viewBox="0 0 24 24" role="img">
+                <title>npm</title>
+                <path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/>
+              </svg>
+              <span>npm</span>
+            </a>
             <a
               href="https://github.com/harsh-vardhhan/syncploy"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] text-sm font-medium text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-[#1A1D28] transition-colors"
+              className="flex-1 min-w-[100px] flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] text-sm font-medium text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-[#1A1D28] transition-colors"
             >
-              <Github className="h-4 w-4" />
-              <span>GitHub Star</span>
+              <Github className="h-4 w-4 shrink-0" />
+              <span>GitHub</span>
             </a>
             <Link
               href="/docs"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex-1 text-center px-4 py-2.5 rounded-xl bg-indigo-600 text-sm font-semibold text-white shadow-md hover:bg-indigo-500 transition-colors"
+              className="w-full sm:w-auto sm:flex-1 text-center px-4 py-2.5 rounded-xl bg-indigo-600 text-sm font-semibold text-white shadow-md hover:bg-indigo-500 transition-colors"
             >
               Get Started
             </Link>

@@ -1,6 +1,7 @@
 # ⚡ Syncploy
 
-[![npm version](https://img.shields.io/npm/v/@syncploy/sdk.svg?color=blue)](https://www.npmjs.com/package/@syncploy/sdk)
+[![npm package](https://img.shields.io/npm/v/@syncploy/sdk.svg?color=cb3837&logo=npm)](https://www.npmjs.com/package/@syncploy/sdk)
+[![status](https://img.shields.io/badge/status-public%20alpha-amber.svg)](https://github.com/harsh-vardhhan/syncploy)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![CI](https://github.com/harsh-vardhhan/syncploy/actions/workflows/ci.yml/badge.svg)](https://github.com/harsh-vardhhan/syncploy/actions/workflows/ci.yml)
 [![Live Showcase](https://img.shields.io/badge/Live%20Showcase-EHR%20Platform-emerald)](https://ehr-backend-frontend.vercel.app/)
@@ -8,6 +9,10 @@
 > **The Terraform for AWS Serverless.**  
 > Infrastructure-from-Code (IfC) compiler and runtime SDK for TypeScript.  
 > Synthesize 1:1 AWS CloudFormation with zero YAML, zero state files, and zero data-loss replacements.
+
+> [!NOTE]
+> **Syncploy is currently in Public Alpha (`v0.1.x`).**  
+> The core compiler and runtime are battle-tested in live clinical healthcare infrastructure (see our [EHR Annotation Platform Showcase](#-real-world-showcase-ehr-annotation-platform-migration)). As we stabilize toward `v1.0`, API interfaces and construct ergonomic details are actively evolving. Feedback, issues, and early adopter contributions are welcome!
 
 ```bash
 bun add @syncploy/sdk
