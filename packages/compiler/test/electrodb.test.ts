@@ -121,7 +121,7 @@ export const getDoc = api({ method: "GET", path: "/documents" }, async () => {
     expect(graph.electroEntities).toBeDefined();
     expect(graph.electroEntities!.length).toBe(2);
 
-    const docEntity = graph.electroEntities!.find((e) => e.id === "DocumentEntity")!;
+    const docEntity = graph.electroEntities!.find((e: any) => e.id === "DocumentEntity")!;
     expect(docEntity).toBeDefined();
     expect(docEntity.entityName).toBe("document");
     expect(docEntity.serviceName).toBe("ehr");
@@ -129,7 +129,7 @@ export const getDoc = api({ method: "GET", path: "/documents" }, async () => {
     expect(docEntity.primaryIndex.skField).toBe("SK");
     expect(docEntity.secondaryIndexes["SKIndex"]).toBeDefined();
 
-    const annEntity = graph.electroEntities!.find((e) => e.id === "AnnotationEntity")!;
+    const annEntity = graph.electroEntities!.find((e: any) => e.id === "AnnotationEntity")!;
     expect(annEntity).toBeDefined();
     expect(annEntity.entityName).toBe("annotation");
     expect(annEntity.secondaryIndexes["SKIndex"]).toBeDefined();

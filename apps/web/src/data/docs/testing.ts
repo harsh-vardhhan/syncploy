@@ -1,0 +1,9 @@
+import type { DocItem } from '../types';
+
+export const testingDoc: DocItem = {
+  slug: "testing",
+  title: "In-Memory Zero-Mock Testing",
+  category: "CLI & Operations",
+  description: "Lightning-fast unit and integration testing without Docker or LocalStack.",
+  content: "\n# In-Memory Zero-Mock Testing\n\nTesting serverless applications typically requires either complex Docker setups (like LocalStack) or brittle mock objects (`aws-sdk-mock`).\n\nSyncploy includes an **in-memory simulated runtime harness** directly inside `@syncploy/sdk/testing`.\n\n---\n\n## Testing API Handlers\n\n```typescript\nimport { test, expect } from \"bun:test\";\nimport { uploadAnnotation } from \"../src/app\";\nimport { patientTable, processingQueue } from \"../src/infra\";\n\ntest(\"creates patient annotation and enqueues task\", async () => {\n  // Reset in-memory state:\n  patientTable.clear();\n  processingQueue.clear();\n\n  // Invoke the API handler directly with a Fetch Request:\n  const request = new Request(\"https://api.internal/annotations\", {\n    method: \"POST\",\n    headers: { \"Content-Type\": \"application/json\" },\n    body: JSON.stringify({ patientId: \"P-100\", notes: \"Normal ECG\" }),\n  });\n\n  const response = await uploadAnnotation(request);\n  const data = await response.json();\n\n  expect(response.status).toBe(200);\n  expect(data.status).toBe(\"queued\");\n\n  // Verify state persisted in-memory:\n  const items = await patientTable.query({ PK: \"PATIENT#P-100\" });\n  expect(items.length).toBe(1);\n\n  // Verify queue received the message:\n  const messages = processingQueue.getInFlightMessages();\n  expect(messages.length).toBe(1);\n  expect(messages[0].body.patientId).toBe(\"P-100\");\n});\n```\n\n> [!TIP]\n> In-memory tests run in under **5 milliseconds** with zero external network calls or cloud credentials.\n",
+};

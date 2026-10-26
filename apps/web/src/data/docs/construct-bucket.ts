@@ -1,0 +1,9 @@
+import type { DocItem } from '../types';
+
+export const constructBucketDoc: DocItem = {
+  slug: "construct-bucket",
+  title: "Bucket (Amazon S3)",
+  category: "Core Constructs",
+  description: "Amazon S3 buckets with ObjectLock compliance, EventBridge routing, and public blocks.",
+  content: "\n# Bucket (Amazon S3)\n\nThe `Bucket` construct provisions secure, enterprise-grade Amazon S3 object storage with enforced encryption and public access blocks.\n\n```typescript\nimport { Bucket } from \"@syncploy/sdk\";\n\n// Standard medical document bucket with EventBridge notifications\nexport const documentsBucket = new Bucket(\"documents\", {\n  logicalId: \"DocumentsBucket\",\n  eventBridge: true,\n  publicAccessBlock: true,\n});\n\n// HIPAA compliance audit bucket with immutable Object Lock\nexport const auditLogsBucket = new Bucket(\"audit-logs\", {\n  logicalId: \"EhrAuditLogsBucket\",\n  accountScoped: true,\n  objectLock: {\n    mode: \"COMPLIANCE\",\n    days: 365,\n  },\n  publicAccessBlock: true,\n});\n```\n\n---\n\n## Event Routing & Notifications\n\nRoute S3 file upload events directly to an SQS queue with prefix and suffix filters:\n\n```typescript\nimport { annotationQueue } from \"./queue\";\n\ndocumentsBucket.on(\"objectCreated\", annotationQueue, {\n  prefix: \"clinical-notes/\",\n  suffix: \".pdf\",\n});\n```\n\n---\n\n## Runtime Client API\n\n```typescript\n// Read and write text:\nawait documentsBucket.putText(\"notes/patient-1.txt\", \"Blood pressure: 120/80\");\nconst text = await documentsBucket.getText(\"notes/patient-1.txt\");\n\n// Read and write binary buffers:\nawait documentsBucket.putBuffer(\"scans/xray.png\", imageBuffer, \"image/png\");\nconst buffer = await documentsBucket.getBuffer(\"scans/xray.png\");\n\n// List files:\nconst files = await documentsBucket.list({ prefix: \"notes/\" });\n```\n",
+};

@@ -1,0 +1,189 @@
+import type { ResourceGraph, FunctionMutationsIR } from "../../types";
+import type { ValidationContext } from "../types";
+
+export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGraph): void {
+  interface GraphEdge {
+    target: string;
+    constructId: string;
+    sourceFile?: string | undefined;
+  }
+
+  const adj = new Map<string, GraphEdge[]>();
+
+  const addEdge = (from: string, target: string, constructId: string, sourceFile?: string) => {
+    if (!adj.has(from)) adj.set(from, []);
+    adj.get(from)!.push({ target, constructId, sourceFile });
+  };
+
+  // A. Trigger Edges:
+  for (const s of graph.tableStreams) {
+    addEdge(`Table '${s.tableName}'`, `Stream Consumer '${s.id}'`, s.id, s.sourceFile);
+  }
+
+  for (const c of graph.consumers) {
+    addEdge(`Queue '${c.queueName}'`, `Queue Consumer '${c.id}'`, c.id, c.sourceFile);
+  }
+
+  for (const sub of graph.topicSubscribers) {
+    addEdge(`Topic '${sub.topicName}'`, `Topic Subscriber '${sub.id}'`, sub.id, sub.sourceFile);
+  }
+
+  for (const b of graph.bindings || []) {
+    addEdge(`Bucket '${b.sourceBucketName}'`, `Queue '${b.targetQueueName}'`, b.id);
+  }
+
+  // B. Mutation / Write Edges:
+  const allFunctions: {
+    id: string;
+    nodeName: string;
+    mutations?: FunctionMutationsIR | undefined;
+    policies?: any[] | undefined;
+    sourceFile?: string | undefined;
+  }[] = [
+    ...graph.tableStreams.map((s) => ({
+      id: s.id,
+      nodeName: `Stream Consumer '${s.id}'`,
+      mutations: s.mutations,
+      policies: s.policies,
+      sourceFile: s.sourceFile,
+    })),
+    ...graph.consumers.map((c) => ({
+      id: c.id,
+      nodeName: `Queue Consumer '${c.id}'`,
+      mutations: c.mutations,
+      policies: c.policies,
+      sourceFile: c.sourceFile,
+    })),
+    ...graph.topicSubscribers.map((sub) => ({
+      id: sub.id,
+      nodeName: `Topic Subscriber '${sub.id}'`,
+      mutations: sub.mutations,
+      policies: sub.policies,
+      sourceFile: sub.sourceFile,
+    })),
+    ...graph.apis.map((api) => ({
+      id: api.id,
+      nodeName: `API '${api.id}'`,
+      mutations: api.mutations,
+      policies: api.policies,
+      sourceFile: api.sourceFile,
+    })),
+  ];
+
+  for (const fn of allFunctions) {
+    for (const tbl of fn.mutations?.tablesWritten || []) {
+      addEdge(fn.nodeName, `Table '${tbl}'`, fn.id, fn.sourceFile);
+    }
+    for (const bkt of fn.mutations?.bucketsWritten || []) {
+      addEdge(fn.nodeName, `Bucket '${bkt}'`, fn.id, fn.sourceFile);
+    }
+    for (const q of fn.mutations?.queuesSent || []) {
+      addEdge(fn.nodeName, `Queue '${q}'`, fn.id, fn.sourceFile);
+    }
+    for (const top of fn.mutations?.topicsPublished || []) {
+      addEdge(fn.nodeName, `Topic '${top}'`, fn.id, fn.sourceFile);
+    }
+
+    if (fn.policies) {
+      for (const stmt of fn.policies) {
+        const acts: string[] = stmt.actions || [];
+        const res: string[] = stmt.resources || [];
+
+        if (
+          acts.some(
+            (a) =>
+              a.startsWith("dynamodb:Put") ||
+              a.startsWith("dynamodb:Update") ||
+              a.startsWith("dynamodb:Delete") ||
+              a.startsWith("dynamodb:BatchWrite")
+          )
+        ) {
+          for (const t of graph.tables) {
+            if (res.includes("*") || res.some((r) => r.includes(t.name) || (t.tableName && r.includes(t.tableName)))) {
+              addEdge(fn.nodeName, `Table '${t.name}'`, fn.id, fn.sourceFile);
+            }
+          }
+        }
+
+        if (acts.some((a) => a === "sqs:SendMessage" || a === "sqs:SendMessageBatch")) {
+          for (const q of graph.queues) {
+            if (res.includes("*") || res.some((r) => r.includes(q.name) || (q.queueName && r.includes(q.queueName)))) {
+              addEdge(fn.nodeName, `Queue '${q.name}'`, fn.id, fn.sourceFile);
+            }
+          }
+        }
+
+        if (acts.some((a) => a === "s3:PutObject" || a === "s3:PutObjectAcl")) {
+          for (const b of graph.buckets) {
+            if (res.includes("*") || res.some((r) => r.includes(b.name) || (b.bucketName && r.includes(b.bucketName)))) {
+              addEdge(fn.nodeName, `Bucket '${b.name}'`, fn.id, fn.sourceFile);
+            }
+          }
+        }
+
+        if (acts.some((a) => a === "sns:Publish")) {
+          for (const top of graph.topics || []) {
+            if (res.includes("*") || res.some((r) => r.includes(top.name) || (top.topicName && r.includes(top.topicName)))) {
+              addEdge(fn.nodeName, `Topic '${top.name}'`, fn.id, fn.sourceFile);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const visited = new Set<string>();
+  const recStack = new Set<string>();
+  const path: { node: string; constructId: string; sourceFile?: string | undefined }[] = [];
+  const seenCycles = new Set<string>();
+
+  const normalizeCycle = (nodes: string[]): string => {
+    const cycleNodes = nodes.slice(0, -1);
+    let minIdx = 0;
+    for (let i = 1; i < cycleNodes.length; i++) {
+      if (cycleNodes[i]! < cycleNodes[minIdx]!) {
+        minIdx = i;
+      }
+    }
+    const rotated = [...cycleNodes.slice(minIdx), ...cycleNodes.slice(0, minIdx)];
+    return rotated.join(" -> ");
+  };
+
+  const dfs = (node: string, currentConstructId: string, currentSourceFile?: string) => {
+    visited.add(node);
+    recStack.add(node);
+    path.push({ node, constructId: currentConstructId, sourceFile: currentSourceFile });
+
+    const neighbors = adj.get(node) || [];
+    for (const edge of neighbors) {
+      if (!visited.has(edge.target)) {
+        dfs(edge.target, edge.constructId, edge.sourceFile);
+      } else if (recStack.has(edge.target)) {
+        const startIndex = path.findIndex((p) => p.node === edge.target);
+        if (startIndex !== -1) {
+          const cycleSegment = path.slice(startIndex).map((p) => p.node).concat(edge.target);
+          const normalized = normalizeCycle(cycleSegment);
+          if (!seenCycles.has(normalized)) {
+            seenCycles.add(normalized);
+            const cycleStr = cycleSegment.join(" -> ");
+            ctx.addError(
+              "ERR_RECURSIVE_LOOP",
+              edge.constructId,
+              `Infinite recursion loop detected: ${cycleStr}. This event-driven cycle causes continuous self-amplifying Lambda invocations and exponential Denial-of-Wallet.`,
+              edge.sourceFile
+            );
+          }
+        }
+      }
+    }
+
+    path.pop();
+    recStack.delete(node);
+  };
+
+  for (const startNode of adj.keys()) {
+    if (!visited.has(startNode)) {
+      dfs(startNode, startNode);
+    }
+  }
+}
