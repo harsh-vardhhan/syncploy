@@ -54,7 +54,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
               </span>
               <span className="text-[11px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Mermaid Live Flow</span>
             </div>
-            <Mermaid chart={codeBuffer.join("\n")} />
+            <Mermaid chart={codeBuffer.join("\n")} className="[&>svg]:max-h-[520px] [&>svg]:w-auto [&>svg]:mx-auto" />
           </div>
         );
         continue;

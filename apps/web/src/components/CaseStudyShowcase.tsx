@@ -23,63 +23,45 @@ import { Mermaid } from "./Mermaid";
 export function CaseStudyShowcase() {
   const [activeTab, setActiveTab] = useState<"architecture" | "code" | "diff" | "api">("architecture");
 
-  const mermaidChart = `flowchart TD
-    subgraph Ingress["Ingress & Authentication"]
-        Client["Clinician Web Portal"]
-        Cognito["Amazon Cognito UserPool<br/><b>EhrUserPool</b> (SRP Invariants)"]
+  const mermaidChart = `flowchart LR
+    subgraph Ingress["1. Ingress & Auth"]
+        Client["Clinician Portal"]
+        Cognito["Cognito Auth<br/><b>EhrUserPool</b>"]
     end
 
-    subgraph Compute["Elysia.js Backend Compute"]
-        FUrl["AWS Lambda Function URL<br/><b>EhrBackendFunction</b> (Bun/Elysia)"]
-        KillSwitch["DDoS Circuit Breaker<br/><b>EhrLambdaKillSwitchFunction</b>"]
+    subgraph Compute["2. API & Compute"]
+        FUrl["Lambda Function URL<br/><b>EhrBackendFunction</b>"]
+        KillSwitch["Circuit Breaker<br/><b>KillSwitch Lambda</b>"]
     end
 
-    subgraph Storage["Stateful Storage (0-Replacement)"]
-        Dynamo[("DynamoDB Single-Table<br/><b>EhrTable</b> (PK, SK, GSIs)")]
-        S3Docs[("S3 Medical Documents<br/><b>DocumentsBucket</b> (SSE-S3)")]
+    subgraph Storage["3. Stateful Storage"]
+        Dynamo[("DynamoDB<br/><b>EhrTable</b>")]
+        S3Docs[("S3 Documents<br/><b>DocumentsBucket</b>")]
     end
 
-    subgraph AsyncPipeline["Asynchronous Clinical Extraction"]
-        SQS["SQS Processing Queue<br/><b>EhrAnnotationQueue</b>"]
-        DLQ["SQS Dead Letter Queue<br/><b>EhrAnnotationDLQ</b>"]
-        Worker["Clinical NER Lambda<br/><b>EhrAnnotationWorkerFunction</b>"]
-        SageMaker["AWS SageMaker Endpoint<br/><b>GLiNER ReLex Model</b>"]
+    subgraph Pipeline["4. Extraction & AI"]
+        SQS["SQS Queue + DLQ<br/><b>AnnotationQueue</b>"]
+        Worker["NER Lambda<br/><b>WorkerFunction</b>"]
+        SageMaker["AWS SageMaker<br/><b>GLiNER Model</b>"]
     end
 
-    subgraph CompliancePipeline["HIPAA Audit & OMOP Data Lake"]
-        DDBStream["DynamoDB Streams<br/>(NEW_IMAGE)"]
-        FirehoseAudit["Kinesis Firehose<br/><b>EhrAuditDeliveryStream</b>"]
-        FirehoseOmop["Kinesis Firehose<br/><b>EhrOmopDeliveryStream</b>"]
-        S3Audit[("S3 HIPAA Audit Vault<br/><b>EhrAuditLogsBucket</b> (ObjectLock WORM)")]
-        S3Omop[("OMOP CDM Data Lake<br/><b>Parquet Clinical Lakehouse</b>")]
+    subgraph Vault["5. HIPAA Compliance"]
+        Firehose["Kinesis Firehose"]
+        S3Audit[("S3 ObjectLock WORM<br/><b>AuditLogsBucket</b>")]
     end
 
-    subgraph SafetyRails["Denial-of-Wallet Shield"]
-        CWAlarm["CloudWatch Metric Math<br/><b>EhrLambdaTrafficAlarm</b> (>2000 req/min)"]
-        SNSTopic["SNS Alert Topic<br/><b>EhrKillSwitchTopic</b>"]
-    end
-
-    Client -->|1. Authenticate SRP| Cognito
-    Client -->|2. HTTPS REST| FUrl
-    FUrl -->|3. Query Patient Encounters| Dynamo
-    FUrl -->|4. Store Clinical Documents| S3Docs
-
-    S3Docs -->|5. ObjectCreated Event| SQS
-    SQS -->|6. Batch Poll 180s Timeout| Worker
-    SQS -.->|Failed 3x Retries| DLQ
-    Worker -->|7. Infer Named Entities| SageMaker
-    Worker -->|8. Save Entity Graph| Dynamo
-
-    Dynamo -->|9. Mutation Stream| DDBStream
-    DDBStream -->|10. Stream Ingestion| FirehoseAudit
-    DDBStream -->|11. Extract OMOP Entities| FirehoseOmop
-    FirehoseAudit -->|12. 900s GZIP Buffer| S3Audit
-    FirehoseOmop -->|13. 900s GZIP Buffer| S3Omop
-
-    FUrl -.->|Track Invocations + Throttles| CWAlarm
-    CWAlarm -->|Trigger on DDoS Spikes| SNSTopic
-    SNSTopic -->|Trigger Emergency Shutdown| KillSwitch
-    KillSwitch -->|Set Concurrency = 0| FUrl`;
+    Client --> Cognito
+    Client --> FUrl
+    FUrl --> Dynamo
+    FUrl --> S3Docs
+    S3Docs --> SQS
+    SQS --> Worker
+    Worker --> SageMaker
+    Worker --> Dynamo
+    Dynamo --> Firehose
+    Firehose --> S3Audit
+    FUrl -.->|Alarm >2000/min| KillSwitch
+    KillSwitch -.->|Throttle = 0| FUrl`;
 
   const tsSnippet = `// packages/shared/src/infra.ts & packages/api/src/infra.ts
 import { Table, Bucket, Queue, Topic, Alarm, DeliveryStream, Auth, api } from "@syncploy/sdk";
@@ -388,11 +370,13 @@ $ curl -s https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/
                 <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#1E2433] pb-3 mb-4 text-xs font-mono text-slate-500 dark:text-neutral-400">
                   <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-neutral-200">
                     <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    Interactive Cloud Architecture Flowchart
+                    Cloud Architecture Flowchart
                   </span>
-                  <span className="text-[11px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Mermaid Rendered Live</span>
+                  <span className="text-[11px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Compact Pipeline View</span>
                 </div>
-                <Mermaid chart={mermaidChart} />
+                <div className="w-full overflow-x-auto flex justify-center py-2">
+                  <Mermaid chart={mermaidChart} className="[&>svg]:max-h-[280px] sm:[&>svg]:max-h-[320px] [&>svg]:w-auto [&>svg]:mx-auto" />
+                </div>
               </div>
             </div>
           )}
