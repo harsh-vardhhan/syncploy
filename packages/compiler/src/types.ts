@@ -236,6 +236,36 @@ export interface DeliveryStreamIR {
   streamName?: string | undefined;
 }
 
+export interface AuthPasswordPolicyIR {
+  minLength?: number | undefined;
+  requireUppercase?: boolean | undefined;
+  requireLowercase?: boolean | undefined;
+  requireNumbers?: boolean | undefined;
+  requireSymbols?: boolean | undefined;
+  tempPasswordValidityDays?: number | undefined;
+}
+
+export interface AuthClientIR {
+  generateSecret?: boolean | undefined;
+  explicitAuthFlows?: string[] | undefined;
+  preventUserExistenceErrors?: boolean | undefined;
+  clientLogicalId?: string | undefined;
+  clientName?: string | undefined;
+}
+
+export interface AuthIR {
+  id: string;
+  name: string;
+  signInMethod?: "email" | "phone" | "username" | undefined;
+  autoVerify?: ("email" | "phone")[] | undefined;
+  adminOnly?: boolean | undefined;
+  passwordPolicy?: AuthPasswordPolicyIR | undefined;
+  client?: AuthClientIR | undefined;
+  sourceFile: string;
+  logicalId?: string | undefined;
+  userPoolName?: string | undefined;
+}
+
 export interface ElectroIndexIR {
   name: string; // e.g. "SKIndex", "primary"
   pkField: string; // e.g. "PK"
@@ -268,6 +298,7 @@ export interface ResourceGraph {
   alarms: AlarmIR[];
   deliveryStreams: DeliveryStreamIR[];
   bindings: EventBindingIR[];
+  auths?: AuthIR[] | undefined;
   electroEntities?: ElectroEntityIR[] | undefined;
 }
 

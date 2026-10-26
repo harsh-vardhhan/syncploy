@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from "bun:test";
-import { api, HttpError, Table, Bucket, Queue, Secret, Topic, Alarm, DeliveryStream } from "../src/index";
+import { api, HttpError, Table, Bucket, Queue, Secret, Topic, Alarm, DeliveryStream, Auth } from "../src/index";
 
 describe("@syncploy/sdk", () => {
   it("creates an API endpoint definition", () => {
@@ -193,6 +193,42 @@ describe("@syncploy/sdk", () => {
 
       process.env.SYNCPLOY_DELIVERY_STREAM_AUDIT = "ehr-stack-audit-stream";
       expect(stream.streamName).toBe("ehr-stack-audit-stream");
+    });
+  });
+
+  describe("Auth Runtime Client", () => {
+    beforeEach(() => {
+      delete process.env.SYNCPLOY_AUTH_CLINICIAN_AUTH_USER_POOL_ID;
+      delete process.env.SYNCPLOY_AUTH_CLINICIAN_AUTH_CLIENT_ID;
+      delete process.env.COGNITO_USER_POOL_ID;
+      delete process.env.COGNITO_CLIENT_ID;
+    });
+
+    it("resolves userPoolId and userPoolClientId from environment variables", () => {
+      const auth = new Auth("clinician-auth", {
+        signInMethod: "email",
+        adminOnly: true,
+        passwordPolicy: { minLength: 12 },
+      });
+
+      expect(auth._kind).toBe("auth");
+      expect(auth.name).toBe("clinician-auth");
+      expect(auth.userPoolId).toBe("");
+      expect(auth.userPoolClientId).toBe("");
+
+      process.env.SYNCPLOY_AUTH_CLINICIAN_AUTH_USER_POOL_ID = "ap-south-1_test123";
+      process.env.SYNCPLOY_AUTH_CLINICIAN_AUTH_CLIENT_ID = "client_abc456";
+
+      expect(auth.userPoolId).toBe("ap-south-1_test123");
+      expect(auth.userPoolClientId).toBe("client_abc456");
+
+      delete process.env.SYNCPLOY_AUTH_CLINICIAN_AUTH_USER_POOL_ID;
+      delete process.env.SYNCPLOY_AUTH_CLINICIAN_AUTH_CLIENT_ID;
+      process.env.COGNITO_USER_POOL_ID = "ap-south-1_fallback";
+      process.env.COGNITO_CLIENT_ID = "client_fallback";
+
+      expect(auth.userPoolId).toBe("ap-south-1_fallback");
+      expect(auth.userPoolClientId).toBe("client_fallback");
     });
   });
 });

@@ -22,6 +22,7 @@ import type {
   AlarmIR,
   AlarmMetricQueryIR,
   DeliveryStreamIR,
+  AuthIR,
   TableIndexIR,
   CorsConfig,
   PolicyStatementIR,
@@ -59,6 +60,7 @@ export class Parser {
     const topicSubscribers: TopicSubscriberIR[] = [];
     const alarms: AlarmIR[] = [];
     const deliveryStreams: DeliveryStreamIR[] = [];
+    const auths: AuthIR[] = [];
     const bindings: EventBindingIR[] = [];
     const electroEntities: ElectroEntityIR[] = [];
 
@@ -68,6 +70,7 @@ export class Parser {
     const varToBucketName: Record<string, string> = {};
     const varToTopicName: Record<string, string> = {};
     const varToDeliveryStreamName: Record<string, string> = {};
+    const varToAuthName: Record<string, string> = {};
     const varToEntity: Record<string, ElectroEntityIR> = {};
 
     // Pass 1: Pre-populate variable-to-resource-name mappings across all project files
@@ -90,6 +93,8 @@ export class Parser {
           varToTopicName[varName] = args[0].getLiteralValue();
         } else if (className === "DeliveryStream" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
           varToDeliveryStreamName[varName] = args[0].getLiteralValue();
+        } else if (className === "Auth" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
+          varToAuthName[varName] = args[0].getLiteralValue();
         } else if (className === "Entity" || className.endsWith(".Entity")) {
           const entity = this.extractElectroEntity(decl, sourceFile);
           if (entity) {
@@ -950,6 +955,102 @@ export class Parser {
               logicalId,
               streamName: customStreamName,
             });
+          } else if (className === "Auth") {
+            if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
+              throw new Error(
+                `Auth '${varName}' in ${sourceFile.getFilePath()} must have a string literal name as first argument.`
+              );
+            }
+            const authName = args[0].getLiteralValue();
+            varToAuthName[varName] = authName;
+
+            let signInMethod: AuthIR["signInMethod"] = "email";
+            let autoVerify: ("email" | "phone")[] | undefined;
+            let adminOnly: boolean | undefined = true;
+            let passwordPolicy: AuthIR["passwordPolicy"];
+            let client: AuthIR["client"];
+            let logicalId: string | undefined;
+            let userPoolName: string | undefined;
+
+            if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+              const opts = args[1] as ObjectLiteralExpression;
+              logicalId = this.extractString(opts.getProperty("logicalId"));
+              userPoolName = this.extractString(opts.getProperty("userPoolName"));
+              const methodStr = this.extractString(opts.getProperty("signInMethod"));
+              if (methodStr === "email" || methodStr === "phone" || methodStr === "username") {
+                signInMethod = methodStr;
+              }
+              const adminOnlyVal = this.extractBoolean(opts.getProperty("adminOnly"));
+              if (adminOnlyVal !== undefined) {
+                adminOnly = adminOnlyVal;
+              }
+
+              const autoVerifyProp = opts.getProperty("autoVerify");
+              if (autoVerifyProp && autoVerifyProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const init = autoVerifyProp.getInitializer();
+                if (init && init.isKind(SyntaxKind.ArrayLiteralExpression)) {
+                  autoVerify = init
+                    .getElements()
+                    .filter((e) => e.isKind(SyntaxKind.StringLiteral))
+                    .map((e) => (e as any).getLiteralValue() as "email" | "phone");
+                }
+              }
+
+              const policyProp = opts.getProperty("passwordPolicy");
+              if (policyProp && policyProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const init = policyProp.getInitializer();
+                if (init && init.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                  const policyOpts = init as ObjectLiteralExpression;
+                  passwordPolicy = {
+                    minLength: this.extractNumber(policyOpts.getProperty("minLength")),
+                    requireUppercase: this.extractBoolean(policyOpts.getProperty("requireUppercase")),
+                    requireLowercase: this.extractBoolean(policyOpts.getProperty("requireLowercase")),
+                    requireNumbers: this.extractBoolean(policyOpts.getProperty("requireNumbers")),
+                    requireSymbols: this.extractBoolean(policyOpts.getProperty("requireSymbols")),
+                    tempPasswordValidityDays: this.extractNumber(policyOpts.getProperty("tempPasswordValidityDays")),
+                  };
+                }
+              }
+
+              const clientProp = opts.getProperty("client");
+              if (clientProp && clientProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const init = clientProp.getInitializer();
+                if (init && init.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                  const clientOpts = init as ObjectLiteralExpression;
+                  let explicitAuthFlows: string[] | undefined;
+                  const flowsProp = clientOpts.getProperty("explicitAuthFlows");
+                  if (flowsProp && flowsProp.isKind(SyntaxKind.PropertyAssignment)) {
+                    const flowsInit = flowsProp.getInitializer();
+                    if (flowsInit && flowsInit.isKind(SyntaxKind.ArrayLiteralExpression)) {
+                      explicitAuthFlows = flowsInit
+                        .getElements()
+                        .filter((e) => e.isKind(SyntaxKind.StringLiteral))
+                        .map((e) => (e as any).getLiteralValue());
+                    }
+                  }
+                  client = {
+                    generateSecret: this.extractBoolean(clientOpts.getProperty("generateSecret")),
+                    explicitAuthFlows,
+                    preventUserExistenceErrors: this.extractBoolean(clientOpts.getProperty("preventUserExistenceErrors")),
+                    clientLogicalId: this.extractString(clientOpts.getProperty("clientLogicalId")),
+                    clientName: this.extractString(clientOpts.getProperty("clientName")),
+                  };
+                }
+              }
+            }
+
+            auths.push({
+              id: varName,
+              name: authName,
+              signInMethod,
+              autoVerify,
+              adminOnly,
+              passwordPolicy,
+              client,
+              sourceFile: sourceFile.getFilePath(),
+              logicalId,
+              userPoolName,
+            });
           }
         }
       }
@@ -1104,6 +1205,7 @@ export class Parser {
       alarms,
       deliveryStreams,
       bindings,
+      auths,
       electroEntities,
     };
   }
