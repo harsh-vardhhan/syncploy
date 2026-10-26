@@ -1193,7 +1193,9 @@ export class Synthesizer {
             RequireLowercase: passwordPolicy.requireLowercase ?? true,
             RequireNumbers: passwordPolicy.requireNumbers ?? true,
             RequireSymbols: passwordPolicy.requireSymbols ?? true,
-            TemporaryPasswordValidityDays: passwordPolicy.tempPasswordValidityDays ?? 7,
+            ...(passwordPolicy.tempPasswordValidityDays !== undefined
+              ? { TemporaryPasswordValidityDays: passwordPolicy.tempPasswordValidityDays }
+              : {}),
           },
         },
       };
