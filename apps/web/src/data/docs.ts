@@ -747,12 +747,20 @@ export const paymentWebhook = api({ path: "/webhook", method: "POST" }, async (r
   // CATEGORY 3: COMPILER, ARCHITECTURE & SAFETY
   // =========================================================================
   {
-    slug: "recursion-shield",
-    title: "Infinite Recursion Shield",
+    slug: "safety-rails",
+    title: "Safety Rails & Loop Shield",
     category: "Compiler & Safety",
-    description: "Compile-time detection of infinite Lambda-DynamoDB and queue event cycles.",
+    description: "Compile-time detection of infinite Lambda-DynamoDB cycles and Denial-of-Wallet (DoW) vectors.",
     content: `
-# Infinite Recursion Shield
+# Safety Rails & Loop Shield
+
+Serverless architectures scale automatically to absorb traffic surges — but without compile-time guardrails, an architectural bug can scale your AWS account into financial ruin.
+
+Syncploy integrates an automated **Pre-Flight Safety Engine** that inspects your application's Abstract Syntax Tree (AST) before synthesis, halting compilation if infinite loops or Denial-of-Wallet (DoW) vulnerabilities are detected.
+
+---
+
+## 1. Infinite Recursion Loop Prevention
 
 In event-driven architectures, **infinite recursion loops** are the #1 cause of catastrophic surprise cloud bills ($10,000+ overnight charges).
 
@@ -769,20 +777,14 @@ export const badStreamWorker = patientTable.stream({ batchSize: 50 }, async (rec
 });
 \`\`\`
 
----
-
-## How the Shield Works
-
+### How the Shield Works
 Syncploy builds a **Static Directed Graph** of your entire architecture during compilation:
-1. It tracks all event producers (DynamoDB Streams, S3 EventBridge, SQS Queues, SNS Topics).
-2. It tracks all event consumers (Lambda handlers).
-3. It inspects handler AST bodies for write mutations (\`table.put\`, \`queue.send\`, \`bucket.upload\`, \`topic.publish\`).
-4. It performs **Cycle Detection (Tarjan's strongly connected components algorithm)** across direct and multi-hop paths.
+1. Tracks all event producers (DynamoDB Streams, S3 EventBridge, SQS Queues, SNS Topics).
+2. Tracks all event consumers (Lambda handlers).
+3. Inspects handler AST bodies for write mutations (\`table.put\`, \`queue.send\`, \`bucket.upload\`, \`topic.publish\`).
+4. Performs **Cycle Detection (Tarjan's strongly connected components algorithm)** across direct and multi-hop paths.
 
----
-
-## Compiler Diagnostic Output
-
+### Compiler Diagnostic Output
 When a cycle is detected, Syncploy halts compilation immediately before anything touches AWS:
 
 \`\`\`text
@@ -796,31 +798,21 @@ When a cycle is detected, Syncploy halts compilation immediately before anything
 ✖ Compilation aborted. 0 AWS resources modified.
 \`\`\`
 
----
-
-## Multi-Hop Cycle Detection
-
+### Multi-Hop Cycle Detection
 Syncploy also detects complex cross-service loops, such as:
 \`\`\`text
 Table A -> Stream Worker -> Queue B -> Consumer -> Topic C -> Subscriber -> Table A
 \`\`\`
-`,
-  },
-  {
-    slug: "dow-safety-rails",
-    title: "Denial-of-Wallet Safety Rails",
-    category: "Compiler & Safety",
-    description: "Compile-time audits protecting against DDoS, unreserved concurrency, and poison pill cascades.",
-    content: `
-# Denial-of-Wallet Safety Rails
-
-Serverless scales automatically — which means an unthrottled API endpoint under DDoS or bot crawling will scale your AWS account to its maximum limit (1,000+ parallel Lambda instances), causing massive financial Denial-of-Wallet (DoW).
-
-Syncploy enforces static safety rails before code is deployed.
 
 ---
 
-## Audit Rules
+## 2. Denial-of-Wallet (DoW) Auditing
+
+Unthrottled API endpoints under DDoS or bot crawling will scale your AWS account to its maximum limit (1,000+ parallel Lambda instances), causing massive financial Denial-of-Wallet (DoW).
+
+Syncploy enforces static safety rails before code is deployed.
+
+### Audit Rules Reference
 
 | Rule Code | Severity | Description | Remediation |
 | --- | --- | --- | --- |
@@ -831,10 +823,9 @@ Syncploy enforces static safety rails before code is deployed.
 
 ---
 
-## Hardening Examples
+## 3. Production Hardening Examples
 
-### 1. Capping Public Function URLs
-
+### Capping Public Function URLs
 \`\`\`typescript
 // ✅ PROTECTED: Capped at 50 parallel instances
 export const publicApi = api(
@@ -845,8 +836,7 @@ export const publicApi = api(
 );
 \`\`\`
 
-### 2. Preventing Poison Pill Cascades with DLQs
-
+### Preventing Poison Pill Cascades with DLQs
 \`\`\`typescript
 // ✅ PROTECTED: Messages failing 3 times are quarantined in the DLQ
 export const workQueue = new Queue("orders", {
@@ -855,6 +845,21 @@ export const workQueue = new Queue("orders", {
     logicalId: "OrdersDeadLetterQueue",
   },
 });
+\`\`\`
+
+### Enforcing SQS 6x Visibility Math
+\`\`\`typescript
+// ✅ PROTECTED: Visibility timeout is 6x consumer execution timeout
+export const taskQueue = new Queue("tasks", {
+  visibilityTimeout: "180s",
+});
+
+export const taskWorker = taskQueue.consumer(
+  { timeout: "30s", concurrency: 10 },
+  async (batch) => {
+    // Process batch
+  }
+);
 \`\`\`
 `,
   },
