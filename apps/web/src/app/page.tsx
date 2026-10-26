@@ -1,5 +1,6 @@
 import React from "react";
 import { Hero } from "@/components/Hero";
+import { CaseStudyShowcase } from "@/components/CaseStudyShowcase";
 import { InteractiveComparison } from "@/components/InteractiveComparison";
 import { Features } from "@/components/Features";
 import { BenchmarkComparison } from "@/components/BenchmarkComparison";
@@ -10,6 +11,7 @@ export default function Home() {
   return (
     <div className="space-y-12">
       <Hero />
+      <CaseStudyShowcase />
       <InteractiveComparison />
       <Features />
       <BenchmarkComparison />

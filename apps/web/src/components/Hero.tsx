@@ -20,12 +20,26 @@ export function Hero() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-indigo-500/10 via-cyan-500/10 to-transparent dark:from-indigo-600/20 dark:via-cyan-500/10 blur-3xl pointer-events-none -z-10" />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
-        {/* Top Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-xs font-semibold text-indigo-700 dark:text-indigo-300 shadow-sm">
-          <Zap className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-          <span>Zero YAML CloudFormation</span>
-          <span className="text-slate-400 dark:text-neutral-500">&bull;</span>
-          <span className="text-slate-600 dark:text-neutral-400">Pure TypeScript</span>
+        {/* Top Badges */}
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-xs font-semibold text-indigo-700 dark:text-indigo-300 shadow-sm">
+            <Zap className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+            <span>Zero YAML CloudFormation</span>
+            <span className="text-slate-400 dark:text-neutral-500">&bull;</span>
+            <span className="text-slate-600 dark:text-neutral-400">Pure TypeScript</span>
+          </div>
+
+          <Link
+            href="#showcase"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-purple-200 dark:border-purple-500/30 bg-purple-50/80 dark:bg-purple-950/30 text-xs font-semibold text-purple-700 dark:text-purple-300 shadow-sm hover:scale-105 transition-all group"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <span>Case Study: Live EHR Healthcare Backend</span>
+            <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
+          </Link>
         </div>
 
         {/* Headline with Eyebrow */}
