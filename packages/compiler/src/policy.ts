@@ -399,7 +399,7 @@ export class PolicyGenerator {
           "ecr:TagResource",
           "ecr:UntagResource",
         ],
-        Resource: [`arn:aws:ecr:${region}:${accountId}:repository/${stackName}*`],
+        Resource: [`arn:aws:ecr:${region}:${accountId}:repository/*`],
       });
 
       // Authorization token strictly requires '*' by AWS IAM specification
