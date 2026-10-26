@@ -113,7 +113,7 @@ export function Mermaid({ chart, className = "" }: MermaidProps) {
 
   return (
     <div
-      className={`mermaid-container overflow-x-auto flex justify-center py-4 [&>svg]:max-w-full [&>svg]:h-auto ${className}`}
+      className={`mermaid-container w-full overflow-x-auto flex justify-center py-2 [&>svg]:w-full [&>svg]:max-w-full [&>svg]:h-auto ${className}`}
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );

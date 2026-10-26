@@ -178,7 +178,7 @@ export function CaseStudyShowcase() {
           <div className="w-full overflow-x-auto flex justify-center py-2">
             <Mermaid
               chart={mermaidChart}
-              className="[&>svg]:max-h-[260px] sm:[&>svg]:max-h-[300px] [&>svg]:w-auto [&>svg]:mx-auto"
+              className="[&>svg]:w-full [&>svg]:max-w-5xl [&>svg]:min-w-[640px] [&>svg]:h-auto [&>svg]:mx-auto"
             />
           </div>
 
