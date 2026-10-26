@@ -25,6 +25,9 @@ export interface TopicSubscriberOptions {
   container?: ContainerOptions | boolean;
   logicalId?: string;
   functionName?: string;
+  subscriptionLogicalId?: string;
+  permissionLogicalId?: string;
+  roleLogicalId?: string;
 }
 
 export interface TopicSubscriber<T = any> {

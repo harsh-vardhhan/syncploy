@@ -50,6 +50,8 @@ export interface ApiRouteIR {
   container?: ContainerIR | undefined;
   logicalId?: string | undefined;
   functionName?: string | undefined;
+  roleLogicalId?: string | undefined;
+  permissionLogicalId?: string | undefined;
   mutations?: FunctionMutationsIR | undefined;
 }
 
@@ -127,6 +129,9 @@ export interface QueueConsumerIR {
   container?: ContainerIR | undefined;
   logicalId?: string | undefined;
   functionName?: string | undefined;
+  eventSourceMappingLogicalId?: string | undefined;
+  roleLogicalId?: string | undefined;
+  permissionLogicalId?: string | undefined;
   mutations?: FunctionMutationsIR | undefined;
 }
 
@@ -146,6 +151,9 @@ export interface TableStreamConsumerIR {
   container?: ContainerIR | undefined;
   logicalId?: string | undefined;
   functionName?: string | undefined;
+  eventSourceMappingLogicalId?: string | undefined;
+  roleLogicalId?: string | undefined;
+  permissionLogicalId?: string | undefined;
   mutations?: FunctionMutationsIR | undefined;
 }
 
@@ -172,6 +180,9 @@ export interface TopicSubscriberIR {
   container?: ContainerIR | undefined;
   logicalId?: string | undefined;
   functionName?: string | undefined;
+  subscriptionLogicalId?: string | undefined;
+  permissionLogicalId?: string | undefined;
+  roleLogicalId?: string | undefined;
   mutations?: FunctionMutationsIR | undefined;
 }
 
@@ -220,6 +231,8 @@ export interface EventBindingIR {
   targetQueueName: string;
   prefix?: string | undefined;
   suffix?: string | undefined;
+  ruleLogicalId?: string | undefined;
+  queuePolicyLogicalId?: string | undefined;
 }
 
 export interface DeliveryStreamIR {
@@ -234,6 +247,7 @@ export interface DeliveryStreamIR {
   sourceFile: string;
   logicalId?: string | undefined;
   streamName?: string | undefined;
+  roleLogicalId?: string | undefined;
 }
 
 export interface AuthPasswordPolicyIR {

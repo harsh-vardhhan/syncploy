@@ -32,6 +32,9 @@ export interface TableStreamOptions {
   container?: ContainerOptions | boolean;
   logicalId?: string;
   functionName?: string;
+  eventSourceMappingLogicalId?: string;
+  mappingLogicalId?: string;
+  roleLogicalId?: string;
 }
 
 export interface TableStreamConsumer<T = any> {

@@ -56,6 +56,8 @@ export interface ApiOptions {
   container?: ContainerOptions | boolean;
   logicalId?: string;
   functionName?: string;
+  roleLogicalId?: string;
+  permissionLogicalId?: string;
 }
 
 export type ApiHandler<TReq = any, TRes = any> = (

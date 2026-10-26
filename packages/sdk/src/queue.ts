@@ -26,6 +26,9 @@ export interface ConsumerOptions {
   container?: ContainerOptions | boolean;
   logicalId?: string;
   functionName?: string;
+  eventSourceMappingLogicalId?: string;
+  mappingLogicalId?: string;
+  roleLogicalId?: string;
 }
 
 export interface QueueConsumer<T = any> {

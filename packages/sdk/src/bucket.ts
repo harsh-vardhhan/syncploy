@@ -126,7 +126,12 @@ export class Bucket {
   on(
     _event: "objectCreated" | "objectRemoved",
     _target: Queue,
-    _options?: { prefix?: string; suffix?: string }
+    _options?: {
+      prefix?: string;
+      suffix?: string;
+      ruleLogicalId?: string;
+      queuePolicyLogicalId?: string;
+    }
   ): void {
     // Compile-time event binding marker
   }

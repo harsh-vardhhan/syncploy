@@ -10,6 +10,7 @@ export interface DeliveryStreamOptions {
   compression?: "GZIP" | "ZIP" | "SNAPPY" | "UNCOMPRESSED";
   logicalId?: string;
   streamName?: string;
+  roleLogicalId?: string;
 }
 
 export class DeliveryStream {

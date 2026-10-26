@@ -186,6 +186,8 @@ export class Parser {
             const container = this.extractContainer(optionsObj.getProperty("container"));
             const logicalId = this.extractString(optionsObj.getProperty("logicalId"));
             const functionName = this.extractString(optionsObj.getProperty("functionName"));
+            const roleLogicalId = this.extractString(optionsObj.getProperty("roleLogicalId"));
+            const permissionLogicalId = this.extractString(optionsObj.getProperty("permissionLogicalId"));
 
             const handlerNode = args.length > 1 ? args[1] : undefined;
             const mutations = this.extractMutationsFromNode(
@@ -214,6 +216,8 @@ export class Parser {
               container,
               logicalId,
               functionName,
+              roleLogicalId,
+              permissionLogicalId,
               mutations,
             });
           }
@@ -233,6 +237,8 @@ export class Parser {
               let container: ContainerIR | undefined;
               let logicalId: string | undefined;
               let functionName: string | undefined;
+              let eventSourceMappingLogicalId: string | undefined;
+              let roleLogicalId: string | undefined;
 
               if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
                 const consumerOpts = args[0] as ObjectLiteralExpression;
@@ -245,6 +251,10 @@ export class Parser {
                 container = this.extractContainer(consumerOpts.getProperty("container"));
                 logicalId = this.extractString(consumerOpts.getProperty("logicalId"));
                 functionName = this.extractString(consumerOpts.getProperty("functionName"));
+                eventSourceMappingLogicalId =
+                  this.extractString(consumerOpts.getProperty("eventSourceMappingLogicalId")) ??
+                  this.extractString(consumerOpts.getProperty("mappingLogicalId"));
+                roleLogicalId = this.extractString(consumerOpts.getProperty("roleLogicalId"));
               }
 
               const handlerNode =
@@ -276,6 +286,8 @@ export class Parser {
                 container,
                 logicalId,
                 functionName,
+                eventSourceMappingLogicalId,
+                roleLogicalId,
                 mutations,
               });
             }
@@ -295,6 +307,8 @@ export class Parser {
               let container: ContainerIR | undefined;
               let logicalId: string | undefined;
               let functionName: string | undefined;
+              let eventSourceMappingLogicalId: string | undefined;
+              let roleLogicalId: string | undefined;
 
               if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
                 const streamOpts = args[0] as ObjectLiteralExpression;
@@ -313,6 +327,10 @@ export class Parser {
                 container = this.extractContainer(streamOpts.getProperty("container"));
                 logicalId = this.extractString(streamOpts.getProperty("logicalId"));
                 functionName = this.extractString(streamOpts.getProperty("functionName"));
+                eventSourceMappingLogicalId =
+                  this.extractString(streamOpts.getProperty("eventSourceMappingLogicalId")) ??
+                  this.extractString(streamOpts.getProperty("mappingLogicalId"));
+                roleLogicalId = this.extractString(streamOpts.getProperty("roleLogicalId"));
               }
 
               const handlerNode =
@@ -346,6 +364,8 @@ export class Parser {
                 container,
                 logicalId,
                 functionName,
+                eventSourceMappingLogicalId,
+                roleLogicalId,
                 mutations,
               });
             }
@@ -362,6 +382,9 @@ export class Parser {
               let container: ContainerIR | undefined;
               let logicalId: string | undefined;
               let functionName: string | undefined;
+              let subscriptionLogicalId: string | undefined;
+              let permissionLogicalId: string | undefined;
+              let roleLogicalId: string | undefined;
 
               if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
                 const subOpts = args[0] as ObjectLiteralExpression;
@@ -373,6 +396,9 @@ export class Parser {
                 container = this.extractContainer(subOpts.getProperty("container"));
                 logicalId = this.extractString(subOpts.getProperty("logicalId"));
                 functionName = this.extractString(subOpts.getProperty("functionName"));
+                subscriptionLogicalId = this.extractString(subOpts.getProperty("subscriptionLogicalId"));
+                permissionLogicalId = this.extractString(subOpts.getProperty("permissionLogicalId"));
+                roleLogicalId = this.extractString(subOpts.getProperty("roleLogicalId"));
               }
 
               const handlerNode =
@@ -403,6 +429,9 @@ export class Parser {
                 container,
                 logicalId,
                 functionName,
+                subscriptionLogicalId,
+                permissionLogicalId,
+                roleLogicalId,
                 mutations,
               });
             }
@@ -919,11 +948,13 @@ export class Parser {
             let compression: DeliveryStreamIR["compression"] = "GZIP";
             let logicalId: string | undefined;
             let customStreamName: string | undefined;
+            let roleLogicalId: string | undefined;
 
             if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
               const opts = args[1] as ObjectLiteralExpression;
               logicalId = this.extractString(opts.getProperty("logicalId"));
               customStreamName = this.extractString(opts.getProperty("streamName"));
+              roleLogicalId = this.extractString(opts.getProperty("roleLogicalId"));
               const destProp = opts.getProperty("destination");
               if (destProp && destProp.isKind(SyntaxKind.PropertyAssignment)) {
                 const destInit = destProp.getInitializer();
@@ -954,6 +985,7 @@ export class Parser {
               sourceFile: sourceFile.getFilePath(),
               logicalId,
               streamName: customStreamName,
+              roleLogicalId,
             });
           } else if (className === "Auth") {
             if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
@@ -1074,6 +1106,8 @@ export class Parser {
                 const targetQueueVar = args[1]?.getText() || "";
                 let prefix: string | undefined;
                 let suffix: string | undefined;
+                let ruleLogicalId: string | undefined;
+                let queuePolicyLogicalId: string | undefined;
 
                 if (args.length > 2 && args[2]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
                   const opts = args[2] as ObjectLiteralExpression;
@@ -1085,6 +1119,8 @@ export class Parser {
                   if (sProp && sProp.isKind(SyntaxKind.PropertyAssignment)) {
                     suffix = sProp.getInitializer()?.getText().replace(/['"]/g, "");
                   }
+                  ruleLogicalId = this.extractString(opts.getProperty("ruleLogicalId"));
+                  queuePolicyLogicalId = this.extractString(opts.getProperty("queuePolicyLogicalId"));
                 }
 
                 const sourceBucketName = varToBucketName[bucketVar] || bucketVar;
@@ -1103,6 +1139,8 @@ export class Parser {
                   targetQueueName,
                   prefix,
                   suffix,
+                  ruleLogicalId,
+                  queuePolicyLogicalId,
                 });
               }
             }

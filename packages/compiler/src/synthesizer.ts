@@ -577,7 +577,7 @@ export class Synthesizer {
       const relArtifactDir = path.relative(this.workDir, artifactDir || "");
       const apiGatewayPath = api.path.replace(/:([a-zA-Z0-9_]+)/g, "{$1}");
 
-      const roleKey = `Role${baseId}`;
+      const roleKey = api.roleLogicalId || `Role${baseId}`;
       resources[roleKey] = this.createLambdaRole(
         baseId,
         { tables: true, buckets: true, policies: api.policies },
@@ -630,7 +630,7 @@ export class Synthesizer {
 
       if (api.ingress === "function-url") {
         const urlKey = api.logicalId ? `${api.logicalId}Url` : `FunctionUrl${baseId}`;
-        const urlPermKey = api.logicalId ? `Permission${api.logicalId}Url` : `Permission${baseId}Url`;
+        const urlPermKey = api.permissionLogicalId || (api.logicalId ? `Permission${api.logicalId}Url` : `Permission${baseId}Url`);
 
         const corsProp: any = {
           AllowOrigins: ["*"],
@@ -715,13 +715,13 @@ export class Synthesizer {
     for (const consumer of graph.consumers) {
       const baseId = consumer.logicalId || this.sanitizeName(consumer.id);
       const funcKey = this.getFunctionLogicalId(consumer);
-      const mappingKey = `EventSourceMapping${baseId}`;
+      const mappingKey = consumer.eventSourceMappingLogicalId || `EventSourceMapping${baseId}`;
       const queueKey = this.getQueueLogicalId(consumer.queueName, graph);
 
       const artifactDir = lambdaArtifactDirs[consumer.id];
       const relArtifactDir = path.relative(this.workDir, artifactDir || "");
 
-      const roleKey = `Role${baseId}`;
+      const roleKey = consumer.roleLogicalId || `Role${baseId}`;
       resources[roleKey] = this.createLambdaRole(
         baseId,
         {
@@ -802,13 +802,13 @@ export class Synthesizer {
     for (const consumer of graph.tableStreams || []) {
       const baseId = consumer.logicalId || this.sanitizeName(consumer.id);
       const funcKey = this.getFunctionLogicalId(consumer);
-      const mappingKey = `EventSourceMapping${baseId}`;
+      const mappingKey = consumer.eventSourceMappingLogicalId || `EventSourceMapping${baseId}`;
       const tableKey = this.getTableLogicalId(consumer.tableName, graph);
 
       const artifactDir = lambdaArtifactDirs[consumer.id];
       const relArtifactDir = path.relative(this.workDir, artifactDir || "");
 
-      const roleKey = `Role${baseId}`;
+      const roleKey = consumer.roleLogicalId || `Role${baseId}`;
       resources[roleKey] = this.createLambdaRole(
         baseId,
         {
@@ -868,14 +868,14 @@ export class Synthesizer {
     for (const subscriber of graph.topicSubscribers || []) {
       const baseId = subscriber.logicalId || this.sanitizeName(subscriber.id);
       const funcKey = this.getFunctionLogicalId(subscriber);
-      const permKey = `Permission${baseId}Sns`;
-      const subKey = `Subscription${baseId}`;
+      const permKey = subscriber.permissionLogicalId || `Permission${baseId}Sns`;
+      const subKey = subscriber.subscriptionLogicalId || `Subscription${baseId}`;
       const topicKey = this.getTopicLogicalId(subscriber.topicName, graph);
 
       const artifactDir = lambdaArtifactDirs[subscriber.id];
       const relArtifactDir = path.relative(this.workDir, artifactDir || "");
 
-      const roleKey = `Role${baseId}`;
+      const roleKey = subscriber.roleLogicalId || `Role${baseId}`;
       resources[roleKey] = this.createLambdaRole(
         baseId,
         {
@@ -1029,8 +1029,8 @@ export class Synthesizer {
       const cleanQueue = this.sanitizeName(binding.targetQueueName);
       const bucketKey = this.getBucketLogicalId(binding.sourceBucketName, graph);
       const queueKey = this.getQueueLogicalId(binding.targetQueueName, graph);
-      const ruleKey = `EventRule${cleanBucket}To${cleanQueue}`;
-      const policyKey = `QueuePolicy${cleanQueue}EventBridge`;
+      const ruleKey = binding.ruleLogicalId || `EventRule${cleanBucket}To${cleanQueue}`;
+      const policyKey = binding.queuePolicyLogicalId || `QueuePolicy${cleanQueue}EventBridge`;
 
       const detailPattern: any = {
         bucket: { name: [{ Ref: bucketKey }] },
@@ -1089,7 +1089,7 @@ export class Synthesizer {
     for (const ds of graph.deliveryStreams || []) {
       const cleanName = this.sanitizeName(ds.name);
       const streamKey = this.getDeliveryStreamLogicalId(ds);
-      const roleKey = ds.logicalId ? `FirehoseRole${ds.logicalId}` : `FirehoseRole${cleanName}`;
+      const roleKey = ds.roleLogicalId || (ds.logicalId ? `FirehoseRole${ds.logicalId}` : `FirehoseRole${cleanName}`);
 
       const matchingBucket = graph.buckets.find(
         (b) => b.name === ds.destinationBucketName || b.id === ds.destinationBucketName || b.logicalId === ds.destinationBucketName
