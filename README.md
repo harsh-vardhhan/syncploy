@@ -308,11 +308,12 @@ The adopt engine parses the template, resolves physical names and parameters, an
 
 ---
 
-## 🏛️ Real-World Case Study: Production EHR Backend Migration
+## 🏛️ Real-World Case Study: EHR Annotation Platform Migration
 
-Syncploy has been battle-tested in mission-critical healthcare infrastructure. The production backend of **[harsh-vardhhan/EHR-backend](https://github.com/harsh-vardhhan/EHR-backend)**—a HIPAA-compliant Electronic Health Record (EHR) clinical annotation and OMOP CDM processing platform—was fully migrated from a 350+ line legacy AWS SAM template to Syncploy Infrastructure-from-Code with **zero downtime and zero stateful resource replacement**.
+Syncploy has been proven in live healthcare infrastructure. The **[EHR Annotation Platform](https://ehr-backend-frontend.vercel.app/)** ([GitHub: harsh-vardhhan/EHR-backend](https://github.com/harsh-vardhhan/EHR-backend))—a HIPAA-compliant Electronic Health Record clinical annotation and OMOP CDM processing platform—was fully migrated from a 350+ line legacy AWS SAM template to Syncploy Infrastructure-from-Code with **zero downtime and zero stateful resource replacement**.
 
-### 🌐 Live Production Verification
+### 🌐 Live Verification & Deployment
+- **Live Web Application**: [`https://ehr-backend-frontend.vercel.app/`](https://ehr-backend-frontend.vercel.app/)
 - **Stack Name**: `ehr-annotation-backend` (AWS Region: `ap-south-1`)
 - **Active Lambda Endpoint**: [`https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/`](https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/)
 - **API Health**: `GET /` &rarr; `HTTP 200 OK` (`{"status":"ok","framework":"elysia"}`)

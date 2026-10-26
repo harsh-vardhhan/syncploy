@@ -186,7 +186,7 @@ $ curl -s https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/
       <div className="text-center space-y-4 mb-16">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-purple-200 dark:border-purple-500/30 bg-purple-50 dark:bg-purple-950/30 text-xs font-semibold text-purple-700 dark:text-purple-300 shadow-sm">
           <Layers className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-          <span>PROVEN IN PRODUCTION</span>
+          <span>PROVEN IN LIVE</span>
           <span className="text-slate-400 dark:text-neutral-500">&bull;</span>
           <span className="text-slate-600 dark:text-neutral-400">HIPAA Clinical Pipeline</span>
         </div>
@@ -194,12 +194,12 @@ $ curl -s https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/
         <h2 className="text-3xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
           Real-World Showcase:{" "}
           <span className="bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 dark:from-purple-400 dark:via-indigo-400 dark:to-cyan-400 bg-clip-text text-transparent">
-            EHR Backend Migration
+            EHR Annotation Platform
           </span>
         </h2>
 
         <p className="max-w-3xl mx-auto text-base sm:text-lg text-slate-600 dark:text-neutral-400 leading-relaxed">
-          How <strong className="text-slate-900 dark:text-white font-semibold">EHR-backend</strong>—a production HIPAA-compliant
+          How the live HIPAA-compliant <strong className="text-slate-900 dark:text-white font-semibold">EHR Annotation Platform</strong>—a
           clinical extraction and OMOP Common Data Model pipeline—migrated from a 350+ line legacy AWS SAM template to
           Syncploy with <span className="text-emerald-600 dark:text-emerald-400 font-semibold">zero downtime</span>,{" "}
           <span className="text-emerald-600 dark:text-emerald-400 font-semibold">zero stateful replacements</span>, and{" "}
@@ -209,27 +209,27 @@ $ curl -s https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/
         {/* Live Status Pill */}
         <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
           <a
-            href="https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/"
+            href="https://ehr-backend-frontend.vercel.app/"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/40 text-xs font-semibold text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors shadow-xs"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 text-xs font-semibold text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition-all shadow-sm hover:scale-105 group"
           >
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
-            <span>Live in AWS ap-south-1</span>
-            <ExternalLink className="h-3 w-3" />
+            <span>Live App: ehr-backend-frontend.vercel.app</span>
+            <ExternalLink className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
           </a>
 
           <a
             href="https://github.com/harsh-vardhhan/EHR-backend"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] text-xs font-medium text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-[#1A1D28] transition-colors shadow-xs"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] text-xs font-medium text-slate-700 dark:text-neutral-300 hover:bg-slate-50 dark:hover:bg-[#1A1D28] transition-colors shadow-xs"
           >
             <Github className="h-3.5 w-3.5" />
-            <span>harsh-vardhhan/EHR-backend</span>
+            <span>GitHub Repository</span>
           </a>
         </div>
       </div>
@@ -435,7 +435,17 @@ $ curl -s https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/
             Read about zero-replacement AST parsing, ChangeSet audits, and automated least-privilege policies.
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            <a
+              href="https://ehr-backend-frontend.vercel.app/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-emerald-300 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm font-semibold transition-all shadow-xs"
+            >
+              <span>Launch Live App</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+
             <Link
               href="/docs/ehr-backend-case-study"
               className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold transition-all shadow-md shadow-indigo-600/20"

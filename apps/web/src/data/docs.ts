@@ -1111,26 +1111,27 @@ syncploy policy [dir] [options]
   // =========================================================================
   {
     slug: "ehr-backend-case-study",
-    title: "Case Study: EHR Clinical Pipeline",
+    title: "Case Study: EHR Annotation Platform",
     category: "Case Studies",
     description:
-      "How a production HIPAA-compliant Electronic Health Record system migrated from AWS SAM to Syncploy with zero downtime and zero data loss.",
+      "How the live HIPAA-compliant EHR Annotation Platform migrated from AWS SAM to Syncploy with zero downtime and zero data loss.",
     content: `
-# Case Study: Production EHR Backend Migration
+# Case Study: EHR Annotation Platform Migration
 
-> **11 AWS Services • Single-Table Clinical DynamoDB • 7-Year WORM Compliance • Zero Downtime • Zero Data Loss**
+> **11 AWS Services • Single-Table Clinical DynamoDB • 7-Year WORM Compliance • Proven in Live**
 
-Syncploy has been proven in mission-critical healthcare infrastructure. The production backend of **[harsh-vardhhan/EHR-backend](https://github.com/harsh-vardhhan/EHR-backend)**—a HIPAA-compliant Electronic Health Record (EHR) clinical annotation platform and OMOP Common Data Model (CDM) lakehouse—was fully migrated from a 350+ line legacy AWS SAM template to Syncploy Infrastructure-from-Code with **zero downtime, zero stateful resource recreation, and zero data loss**.
+Syncploy has been proven in live healthcare infrastructure with the **[EHR Annotation Platform](https://ehr-backend-frontend.vercel.app/)** ([GitHub: harsh-vardhhan/EHR-backend](https://github.com/harsh-vardhhan/EHR-backend))—a HIPAA-compliant Electronic Health Record clinical annotation platform and OMOP Common Data Model (CDM) lakehouse—was fully migrated from a 350+ line legacy AWS SAM template to Syncploy Infrastructure-from-Code with **zero downtime, zero stateful resource recreation, and zero data loss**.
 
 > [!NOTE]
 > The complete codebase, TypeScript infrastructure definitions, and GitHub Actions deployment pipelines are open-source and verifiable at [harsh-vardhhan/EHR-backend](https://github.com/harsh-vardhhan/EHR-backend).
 
 ---
 
-## 🌐 Live Production Verification
+## 🌐 Live Verification & Deployment
 
 The migrated system is actively handling live clinical workloads in AWS Region \`ap-south-1\` (Mumbai):
 
+- **Live Web Application**: [\`https://ehr-backend-frontend.vercel.app/\`](https://ehr-backend-frontend.vercel.app/)
 - **CloudFormation Stack**: \`ehr-annotation-backend\`
 - **Active Lambda Endpoint**: [\`https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/\`](https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/)
 - **Live Verified Endpoints**:
@@ -1382,7 +1383,7 @@ export const ehrBackendFunction = api(
 
 ## 🎯 Conclusion: The Future of Serverless IaC
 
-The EHR Backend migration proves that production teams do not need to choose between the safety of CloudFormation and the agility of TypeScript. Syncploy delivers:
+The EHR Annotation Platform migration proves that production teams do not need to choose between the safety of CloudFormation and the agility of TypeScript. Syncploy delivers:
 
 1. **Zero-replacement migration for existing brownfield stacks.**
 2. **Compile-time safety rails against infinite loops, timeout mismatches, and DoW spikes.**
