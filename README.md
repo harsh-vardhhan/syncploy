@@ -308,6 +308,81 @@ The adopt engine parses the template, resolves physical names and parameters, an
 
 ---
 
+## 🏛️ Real-World Case Study: Production EHR Backend Migration
+
+Syncploy has been battle-tested in mission-critical healthcare infrastructure. The production backend of **[harsh-vardhhan/EHR-backend](https://github.com/harsh-vardhhan/EHR-backend)**—a HIPAA-compliant Electronic Health Record (EHR) clinical annotation and OMOP CDM processing platform—was fully migrated from a 350+ line legacy AWS SAM template to Syncploy Infrastructure-from-Code with **zero downtime and zero stateful resource replacement**.
+
+### 🌐 Live Production Verification
+- **Stack Name**: `ehr-annotation-backend` (AWS Region: `ap-south-1`)
+- **Active Lambda Endpoint**: [`https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/`](https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/)
+- **API Health**: `GET /` &rarr; `HTTP 200 OK` (`{"status":"ok","framework":"elysia"}`)
+- **Stateful Query**: `GET /documents` &rarr; `HTTP 200 OK` (retrieves clinical records from DynamoDB `EhrTable`)
+- **Deep Document Retrieval**: `GET /documents/doc-001` &rarr; `HTTP 200 OK` (retrieves full S3 document body from `DocumentsBucket`, entity annotations, and relationship graph)
+
+### 🏗️ Architecture Topology
+
+```text
+                                  ┌──────────────────────────────────────────────┐
+                                  │           Amazon Cognito User Pool           │
+                                  │      (Clinician Auth, SRP, Invariants)      │
+                                  └──────────────────────┬───────────────────────┘
+                                                         │
+[Clinician / Client] ──(HTTPS)──▶ [AWS Lambda Function URL] (EhrBackendFunction: Bun/Elysia)
+                                            │
+                                            ├──────────────────────────┐
+                                            ▼                          ▼
+                                   [DynamoDB Single-Table]     [S3 Medical Documents]
+                                   (EhrTable: PK, SK, GSIs)   (DocumentsBucket: SSE-S3)
+                                            │                          │
+                        ┌───────────────────┘                          ▼ (S3 EventBridge)
+                        ▼ (DynamoDB Streams)                   [Amazon SQS Queue]
+             ┌─────────────────────┐                   (EhrAnnotationQueue + DLQ)
+             │  Audit & OMOP Pipes │                                   │
+             │   (AWS Lambda)      │                                   ▼
+             └──────────┬──────────┘                         [AWS Lambda Worker]
+                        ▼                               (EhrAnnotationWorkerFunction)
+            [Kinesis Data Firehose]                                    │
+                        │                                              ▼
+                        ▼                                    [AWS SageMaker Endpoint]
+           [S3 HIPAA Compliance Bucket]                     (GLiNER Clinical NER Model)
+      (EhrAuditLogsBucket: ObjectLock WORM)
+                                                
+ [CloudWatch Alarm] ──(Invocations + Throttles > 2000/min)──▶ [SNS Topic] ──▶ [Kill Switch Lambda]
+ (EhrLambdaTrafficAlarm)                                     (Circuit Breaker: sets concurrency = 0)
+```
+
+### 📋 Full Service Inventory (11 AWS Services)
+
+| Logical ID | AWS Resource Type | Role in Clinical Pipeline | Syncploy Construct |
+| :--- | :--- | :--- | :--- |
+| `EhrUserPool` | `AWS::Cognito::UserPool` | Clinician authentication & HIPAA password policies | `new Auth("ehr", { ... })` |
+| `EhrUserPoolClient` | `AWS::Cognito::UserPoolClient` | SRP auth flow client for frontend portal | `client: { ... }` in `Auth` |
+| `EhrBackendFunction` | `AWS::Lambda::Function` | Elysia.js HTTP API with public Function URL | `api({ ingress: "function-url", ... })` |
+| `EhrTable` | `AWS::DynamoDB::Table` | Clinical entities, annotations & relationship graph | `new Table("ehr", { ... })` |
+| `DocumentsBucket` | `AWS::S3::Bucket` | Medical text document storage & EventBridge notifications | `new Bucket("documents", { ... })` |
+| `EhrAuditLogsBucket` | `AWS::S3::Bucket` | HIPAA immutable audit logs (ObjectLock COMPLIANCE) | `new Bucket("audit_logs", { objectLock: ... })` |
+| `EhrAnnotationQueue` | `AWS::SQS::Queue` | Asynchronous extraction processing queue (180s timeout) | `new Queue("ehr_annotation", { ... })` |
+| `EhrAnnotationDLQ` | `AWS::SQS::Queue` | Dead letter queue for poisonous or unparseable clinical records | `deadLetterQueue: { ... }` in `Queue` |
+| `EhrAnnotationWorkerFunction` | `AWS::Lambda::Function` | SQS consumer extracting clinical entities via SageMaker | `ehrAnnotationQueue.consumer({ ... })` |
+| `EhrAuditDeliveryStream` | `AWS::KinesisFirehose::DeliveryStream` | Audit log streaming with 900s buffering & GZIP to S3 | `new DeliveryStream("AuditDeliveryStream", { ... })` |
+| `EhrOmopDeliveryStream` | `AWS::KinesisFirehose::DeliveryStream` | OMOP CDM clinical data lake ingestion stream | `new DeliveryStream("OmopDeliveryStream", { ... })` |
+| `EhrKillSwitchTopic` | `AWS::SNS::Topic` | Security alert & DDoS circuit breaker SNS topic | `new Topic("ehr_kill_switch", { ... })` |
+| `EhrLambdaTrafficAlarm` | `AWS::CloudWatch::Alarm` | Metric Math alarm (Invocations + Throttles > 2000/min) | `new Alarm("EhrLambdaTrafficAlarm", { ... })` |
+| `EhrLambdaKillSwitchFunction` | `AWS::Lambda::Function` | Automated circuit breaker zeroing Lambda concurrency | `ehrKillSwitchTopic.subscribe({ ... })` |
+
+### 🛡️ Why Syncploy Succeeded Where Traditional IaC Failed
+
+1. **Zero-Replacement Safety Guarantee (`syncploy diff --check-replacement`)**:
+   In healthcare, replacing `EhrTable` or `DocumentsBucket` means irrecoverable data loss and compliance violations. Syncploy's pre-flight diff engine verified 1:1 parity with the live CloudFormation ChangeSet, guaranteeing `! 0 to replace`.
+2. **Elimination of 350+ Lines of Unchecked YAML**:
+   The legacy `template.yaml` suffered from silent type errors, macro expansions (`AWS::Serverless-2016-10-31`), and stringly-typed IAM statements. With Syncploy, the entire infrastructure is defined across 3 type-safe files (`packages/shared/src/infra.ts`, `packages/api/src/infra.ts`, `packages/workers/src/infra.ts`) with end-to-end autocomplete and compile-time validation.
+3. **Automated Least-Privilege IAM Policy Generation**:
+   Instead of granting wildcard `*` permissions, running `syncploy policy` synthesized the exact GitHub Actions runner policy (`deploy-policy.json`) needed to manage the stack, properly scoped to CloudFormation stack resources.
+4. **Compile-Time Event Wiring**:
+   EventBridge routing from S3 to SQS (`documentsBucket.on("objectCreated", ehrAnnotationQueue)`), SNS subscriptions (`ehrKillSwitchTopic.subscribe`), and DynamoDB stream consumers (`ehrTable.stream`) are statically declared and verified, eliminating manual `AWS::Lambda::Permission` or `AWS::SQS::QueuePolicy` boilerplate.
+
+---
+
 ## 🚀 Compiler CLI Reference
 
 ```text

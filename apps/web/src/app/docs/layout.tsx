@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { DOCS_DATA } from "@/data/docs";
-import { BookOpen, Shield, Code, Terminal } from "lucide-react";
+import { BookOpen, Shield, Code, Terminal, Layers } from "lucide-react";
 
 export default function DocsLayout({
   children,
@@ -26,6 +26,8 @@ export default function DocsLayout({
       case "CLI & Operations":
       case "CLI Reference":
         return <Terminal className="h-4 w-4 text-amber-600 dark:text-amber-400" />;
+      case "Case Studies":
+        return <Layers className="h-4 w-4 text-purple-600 dark:text-purple-400" />;
       default:
         return null;
     }

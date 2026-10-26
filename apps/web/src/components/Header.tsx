@@ -47,6 +47,12 @@ export function Header() {
             Brownfield Adoption
           </Link>
           <Link
+            href="/docs/ehr-backend-case-study"
+            className="hover:text-slate-900 dark:hover:text-white transition-colors"
+          >
+            Case Study
+          </Link>
+          <Link
             href="/docs/construct-auth"
             className="hover:text-slate-900 dark:hover:text-white transition-colors"
           >
@@ -113,6 +119,13 @@ export function Header() {
               className="px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#12141C]"
             >
               Brownfield Adoption
+            </Link>
+            <Link
+              href="/docs/ehr-backend-case-study"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#12141C]"
+            >
+              Case Study
             </Link>
             <Link
               href="/docs/construct-auth"
