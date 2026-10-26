@@ -2,6 +2,7 @@
 
 import React from "react";
 import { CodeBlock } from "./CodeBlock";
+import { Mermaid } from "./Mermaid";
 import { Info, AlertTriangle, ShieldAlert, Sparkles, CheckCircle2 } from "lucide-react";
 
 interface MarkdownRendererProps {
@@ -39,6 +40,26 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
         i++;
       }
       i++; // skip closing ```
+
+      if (language === "mermaid") {
+        elements.push(
+          <div
+            key={`mermaid-${i}`}
+            className="my-8 rounded-2xl border border-slate-200 dark:border-[#232736] bg-slate-50/70 dark:bg-[#0E1017] p-4 sm:p-6 shadow-sm overflow-hidden"
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#1E2433] pb-3 mb-4 text-xs font-mono text-slate-500 dark:text-neutral-400">
+              <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-neutral-200">
+                <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                Architecture Diagram
+              </span>
+              <span className="text-[11px] uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Mermaid Live Flow</span>
+            </div>
+            <Mermaid chart={codeBuffer.join("\n")} />
+          </div>
+        );
+        continue;
+      }
+
       elements.push(
         <div key={`code-${i}`} className="my-6">
           <CodeBlock

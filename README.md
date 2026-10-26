@@ -321,34 +321,64 @@ Syncploy has been battle-tested in mission-critical healthcare infrastructure. T
 
 ### 🏗️ Architecture Topology
 
-```text
-                                  ┌──────────────────────────────────────────────┐
-                                  │           Amazon Cognito User Pool           │
-                                  │      (Clinician Auth, SRP, Invariants)      │
-                                  └──────────────────────┬───────────────────────┘
-                                                         │
-[Clinician / Client] ──(HTTPS)──▶ [AWS Lambda Function URL] (EhrBackendFunction: Bun/Elysia)
-                                            │
-                                            ├──────────────────────────┐
-                                            ▼                          ▼
-                                   [DynamoDB Single-Table]     [S3 Medical Documents]
-                                   (EhrTable: PK, SK, GSIs)   (DocumentsBucket: SSE-S3)
-                                            │                          │
-                        ┌───────────────────┘                          ▼ (S3 EventBridge)
-                        ▼ (DynamoDB Streams)                   [Amazon SQS Queue]
-             ┌─────────────────────┐                   (EhrAnnotationQueue + DLQ)
-             │  Audit & OMOP Pipes │                                   │
-             │   (AWS Lambda)      │                                   ▼
-             └──────────┬──────────┘                         [AWS Lambda Worker]
-                        ▼                               (EhrAnnotationWorkerFunction)
-            [Kinesis Data Firehose]                                    │
-                        │                                              ▼
-                        ▼                                    [AWS SageMaker Endpoint]
-           [S3 HIPAA Compliance Bucket]                     (GLiNER Clinical NER Model)
-      (EhrAuditLogsBucket: ObjectLock WORM)
-                                                
- [CloudWatch Alarm] ──(Invocations + Throttles > 2000/min)──▶ [SNS Topic] ──▶ [Kill Switch Lambda]
- (EhrLambdaTrafficAlarm)                                     (Circuit Breaker: sets concurrency = 0)
+```mermaid
+flowchart TD
+    subgraph Ingress["Ingress & Authentication"]
+        Client["Clinician Web Portal"]
+        Cognito["Amazon Cognito UserPool<br/><b>EhrUserPool</b> (SRP Invariants)"]
+    end
+
+    subgraph Compute["Elysia.js Backend Compute"]
+        FUrl["AWS Lambda Function URL<br/><b>EhrBackendFunction</b> (Bun/Elysia)"]
+        KillSwitch["DDoS Circuit Breaker<br/><b>EhrLambdaKillSwitchFunction</b>"]
+    end
+
+    subgraph Storage["Stateful Storage (0-Replacement)"]
+        Dynamo[("DynamoDB Single-Table<br/><b>EhrTable</b> (PK, SK, GSIs)")]
+        S3Docs[("S3 Medical Documents<br/><b>DocumentsBucket</b> (SSE-S3)")]
+    end
+
+    subgraph AsyncPipeline["Asynchronous Clinical Extraction"]
+        SQS["SQS Processing Queue<br/><b>EhrAnnotationQueue</b>"]
+        DLQ["SQS Dead Letter Queue<br/><b>EhrAnnotationDLQ</b>"]
+        Worker["Clinical NER Lambda<br/><b>EhrAnnotationWorkerFunction</b>"]
+        SageMaker["AWS SageMaker Endpoint<br/><b>GLiNER ReLex Model</b>"]
+    end
+
+    subgraph CompliancePipeline["HIPAA Audit & OMOP Data Lake"]
+        DDBStream["DynamoDB Streams<br/>(NEW_IMAGE)"]
+        FirehoseAudit["Kinesis Firehose<br/><b>EhrAuditDeliveryStream</b>"]
+        FirehoseOmop["Kinesis Firehose<br/><b>EhrOmopDeliveryStream</b>"]
+        S3Audit[("S3 HIPAA Audit Vault<br/><b>EhrAuditLogsBucket</b> (ObjectLock WORM)")]
+        S3Omop[("OMOP CDM Data Lake<br/><b>Parquet Clinical Lakehouse</b>")]
+    end
+
+    subgraph SafetyRails["Denial-of-Wallet Shield"]
+        CWAlarm["CloudWatch Metric Math<br/><b>EhrLambdaTrafficAlarm</b> (>2000 req/min)"]
+        SNSTopic["SNS Alert Topic<br/><b>EhrKillSwitchTopic</b>"]
+    end
+
+    Client -->|1. Authenticate SRP| Cognito
+    Client -->|2. HTTPS REST| FUrl
+    FUrl -->|3. Query Patient Encounters| Dynamo
+    FUrl -->|4. Store Clinical Documents| S3Docs
+
+    S3Docs -->|5. ObjectCreated Event| SQS
+    SQS -->|6. Batch Poll 180s Timeout| Worker
+    SQS -.->|Failed 3x Retries| DLQ
+    Worker -->|7. Infer Named Entities| SageMaker
+    Worker -->|8. Save Entity Graph| Dynamo
+
+    Dynamo -->|9. Mutation Stream| DDBStream
+    DDBStream -->|10. Stream Ingestion| FirehoseAudit
+    DDBStream -->|11. Extract OMOP Entities| FirehoseOmop
+    FirehoseAudit -->|12. 900s GZIP Buffer| S3Audit
+    FirehoseOmop -->|13. 900s GZIP Buffer| S3Omop
+
+    FUrl -.->|Track Invocations + Throttles| CWAlarm
+    CWAlarm -->|Trigger on DDoS Spikes| SNSTopic
+    SNSTopic -->|Trigger Emergency Shutdown| KillSwitch
+    KillSwitch -->|Set Concurrency = 0| FUrl
 ```
 
 ### 📋 Full Service Inventory (11 AWS Services)
