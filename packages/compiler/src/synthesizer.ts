@@ -582,7 +582,6 @@ export class Synthesizer {
       );
 
       const funcProps: any = {
-        FunctionName: this.resolvePhysicalName(api.functionName, { "Fn::Sub": `\${AWS::StackName}-${api.id}` }),
         Runtime: "nodejs20.x",
         Handler: "index.handler",
         Code: relArtifactDir,
@@ -590,6 +589,9 @@ export class Synthesizer {
         MemorySize: api.memory ?? 256,
         Role: { "Fn::GetAtt": [roleKey, "Arn"] },
       };
+      if (api.functionName) {
+        funcProps.FunctionName = this.resolvePhysicalName(api.functionName, undefined);
+      }
 
       const functionEnv = this.mergeEnvironment(envVars, api.environment);
       // Remove self-referential variables to prevent CloudFormation circular dependency
@@ -729,7 +731,6 @@ export class Synthesizer {
       );
 
       const funcProps: any = {
-        FunctionName: this.resolvePhysicalName(consumer.functionName, { "Fn::Sub": `\${AWS::StackName}-${consumer.id}` }),
         Runtime: "nodejs20.x",
         Handler: "index.handler",
         Code: relArtifactDir,
@@ -737,6 +738,9 @@ export class Synthesizer {
         MemorySize: consumer.memory ?? 256,
         Role: { "Fn::GetAtt": [roleKey, "Arn"] },
       };
+      if (consumer.functionName) {
+        funcProps.FunctionName = this.resolvePhysicalName(consumer.functionName, undefined);
+      }
 
       const consumerEnv = this.mergeEnvironment(envVars, consumer.environment);
 
@@ -813,7 +817,6 @@ export class Synthesizer {
       );
 
       const funcProps: any = {
-        FunctionName: this.resolvePhysicalName(consumer.functionName, { "Fn::Sub": `\${AWS::StackName}-${consumer.id}` }),
         Runtime: "nodejs20.x",
         Handler: "index.handler",
         Code: relArtifactDir,
@@ -821,6 +824,9 @@ export class Synthesizer {
         MemorySize: consumer.memory ?? 256,
         Role: { "Fn::GetAtt": [roleKey, "Arn"] },
       };
+      if (consumer.functionName) {
+        funcProps.FunctionName = this.resolvePhysicalName(consumer.functionName, undefined);
+      }
 
       const consumerEnv = this.mergeEnvironment(envVars, consumer.environment);
       if (Object.keys(consumerEnv).length > 0) {
@@ -876,7 +882,6 @@ export class Synthesizer {
       );
 
       const funcProps: any = {
-        FunctionName: this.resolvePhysicalName(subscriber.functionName, { "Fn::Sub": `\${AWS::StackName}-${subscriber.id}` }),
         Runtime: "nodejs20.x",
         Handler: "index.handler",
         Code: relArtifactDir,
@@ -884,6 +889,9 @@ export class Synthesizer {
         MemorySize: subscriber.memory ?? 256,
         Role: { "Fn::GetAtt": [roleKey, "Arn"] },
       };
+      if (subscriber.functionName) {
+        funcProps.FunctionName = this.resolvePhysicalName(subscriber.functionName, undefined);
+      }
 
       const subEnv = this.mergeEnvironment(envVars, subscriber.environment);
       if (Object.keys(subEnv).length > 0) {
