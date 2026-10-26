@@ -54,11 +54,11 @@ export function Hero() {
           {/* Copy command */}
           <button
             onClick={handleCopy}
-            className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3 px-4 py-3 rounded-xl border border-border bg-surface hover:bg-surface-hover font-mono text-xs sm:text-sm text-slate-800 dark:text-neutral-300 transition-colors shadow-sm"
+            className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3 px-4 py-3 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] hover:bg-slate-50 dark:hover:bg-[#1A1D28] font-mono text-xs sm:text-sm text-slate-800 dark:text-neutral-300 transition-colors shadow-sm"
           >
             <span className="text-indigo-600 dark:text-indigo-400 font-bold">$</span>
             <span className="font-medium">{installCmd}</span>
-            <span className="p-1 rounded bg-slate-200/60 dark:bg-surface-hover text-slate-600 dark:text-neutral-400">
+            <span className="p-1 rounded bg-slate-100 dark:bg-[#1F2433] text-slate-600 dark:text-neutral-400">
               {copied ? <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
             </span>
           </button>
@@ -66,25 +66,25 @@ export function Hero() {
 
         {/* Highlights row */}
         <div className="pt-8 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto text-left">
-          <div className="p-3.5 rounded-xl border border-border bg-surface/80 dark:bg-surface/40 shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
               <Shield className="h-3.5 w-3.5" /> Loop Shield
             </div>
             <div className="text-xs text-slate-600 dark:text-neutral-400">Static AST recursion & event cycle detection</div>
           </div>
-          <div className="p-3.5 rounded-xl border border-border bg-surface/80 dark:bg-surface/40 shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-cyan-700 dark:text-cyan-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
               <RefreshCw className="h-3.5 w-3.5" /> 0-Replacement
             </div>
             <div className="text-xs text-slate-600 dark:text-neutral-400">Brownfield SAM adoption with zero data loss</div>
           </div>
-          <div className="p-3.5 rounded-xl border border-border bg-surface/80 dark:bg-surface/40 shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-indigo-600 dark:text-indigo-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
               <Terminal className="h-3.5 w-3.5" /> Clean 4 Auth
             </div>
             <div className="text-xs text-slate-600 dark:text-neutral-400">HIPAA compliant Cognito & auto-wired env vars</div>
           </div>
-          <div className="p-3.5 rounded-xl border border-border bg-surface/80 dark:bg-surface/40 shadow-sm">
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-amber-600 dark:text-amber-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
               <Zap className="h-3.5 w-3.5" /> Least-Privilege
             </div>

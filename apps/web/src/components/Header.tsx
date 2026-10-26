@@ -9,7 +9,7 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md transition-colors duration-200">
+    <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-[#232736] bg-white/80 dark:bg-[#090A0F]/80 backdrop-blur-md transition-colors duration-200">
       <div className="max-w-7xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
@@ -61,7 +61,7 @@ export function Header() {
             href="https://github.com/harsh-vardhhan/syncploy"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-surface text-sm font-medium text-slate-700 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white hover:bg-surface-hover transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] text-sm font-medium text-slate-700 dark:text-neutral-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#1A1D28] transition-colors"
           >
             <Github className="h-4 w-4" />
             <span>GitHub</span>
@@ -89,12 +89,12 @@ export function Header() {
 
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-border bg-background px-4 pt-2 pb-6 space-y-4">
+        <div className="md:hidden border-b border-slate-200 dark:border-[#232736] bg-white dark:bg-[#090A0F] px-4 pt-2 pb-6 space-y-4">
           <nav className="flex flex-col space-y-3 text-sm font-medium text-slate-700 dark:text-neutral-300">
             <Link
               href="/docs"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#12141C]"
             >
               <BookOpen className="h-4 w-4 text-slate-400 dark:text-neutral-400" />
               Documentation
@@ -102,7 +102,7 @@ export function Header() {
             <Link
               href="/docs/safety-rails"
               onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#12141C]"
             >
               <Shield className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
               Safety Rails
@@ -110,25 +110,25 @@ export function Header() {
             <Link
               href="/docs/brownfield-adoption"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-lg hover:bg-surface"
+              className="px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#12141C]"
             >
               Brownfield Adoption
             </Link>
             <Link
               href="/docs/construct-auth"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-lg hover:bg-surface"
+              className="px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-[#12141C]"
             >
               Constructs
             </Link>
           </nav>
 
-          <div className="pt-3 border-t border-border flex items-center justify-between gap-3">
+          <div className="pt-3 border-t border-slate-200 dark:border-[#232736] flex items-center justify-between gap-3">
             <a
               href="https://github.com/harsh-vardhhan/syncploy"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-border bg-surface text-sm font-medium text-slate-700 dark:text-neutral-300"
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] text-sm font-medium text-slate-700 dark:text-neutral-300"
             >
               <Github className="h-4 w-4" />
               <span>GitHub</span>

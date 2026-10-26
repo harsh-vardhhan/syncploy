@@ -63,7 +63,7 @@ export function Features() {
   ];
 
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t border-border">
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t border-slate-200 dark:border-[#232736]">
       <div className="text-center space-y-3 mb-16">
         <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
           Engineered for Bulletproof Production
@@ -77,10 +77,10 @@ export function Features() {
         {features.map((f, i) => (
           <div
             key={i}
-            className="p-6 rounded-2xl border border-border bg-white dark:bg-surface/60 hover:bg-slate-50 dark:hover:bg-surface-hover hover:border-indigo-500/40 transition-all group flex flex-col justify-between shadow-sm"
+            className="p-6 rounded-2xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] hover:bg-slate-50 dark:hover:bg-[#1A1D28] hover:border-indigo-500/40 transition-all group flex flex-col justify-between shadow-sm"
           >
             <div>
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 dark:bg-background border border-border group-hover:scale-105 transition-transform mb-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 dark:bg-[#090A0F] border border-slate-200 dark:border-[#232736] group-hover:scale-105 transition-transform mb-4">
                 {f.icon}
               </div>
               <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">{f.title}</h3>

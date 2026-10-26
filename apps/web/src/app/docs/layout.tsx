@@ -52,7 +52,7 @@ export default function DocsLayout({
                         className={`block px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                           isActive
                             ? "bg-indigo-50 dark:bg-indigo-600/15 text-indigo-700 dark:text-indigo-300 font-semibold border-l-2 border-indigo-600 dark:border-indigo-500"
-                            : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-surface-hover/50"
+                            : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-[#181B26]"
                         }`}
                       >
                         {item.title}

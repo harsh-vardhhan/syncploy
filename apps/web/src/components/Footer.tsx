@@ -4,7 +4,7 @@ import { Terminal, Github } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-slate-50/80 dark:bg-background/50 transition-colors">
+    <footer className="border-t border-slate-200 dark:border-[#232736] bg-slate-50 dark:bg-[#090A0F] transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4 md:col-span-1">
@@ -59,7 +59,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-8 pt-8 border-t border-border flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 dark:text-neutral-500 gap-4">
+        <div className="mt-8 pt-8 border-t border-slate-200 dark:border-[#232736] flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 dark:text-neutral-500 gap-4">
           <p>&copy; {new Date().getFullYear()} Syncploy. Designed for AWS Serverless Engineers.</p>
           <p className="font-mono">Clean 4 Serverless Standard</p>
         </div>

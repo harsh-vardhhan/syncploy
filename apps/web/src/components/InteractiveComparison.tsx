@@ -213,7 +213,7 @@ export function InteractiveComparison() {
             className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm ${
               activeTab.id === tab.id
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-                : "border border-border bg-surface text-slate-700 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-surface-hover"
+                : "border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] text-slate-700 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-[#1A1D28]"
             }`}
           >
             {tab.name}
@@ -243,7 +243,7 @@ export function InteractiveComparison() {
       </div>
 
       {/* Benefit Bullets */}
-      <div className="mt-6 p-4 rounded-xl border border-border bg-surface/80 dark:bg-surface/40 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+      <div className="mt-6 p-4 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
         <div className="flex flex-wrap items-center gap-6 text-xs sm:text-sm text-slate-700 dark:text-neutral-300">
           {activeTab.benefits.map((b, i) => (
             <div key={i} className="flex items-center gap-2">

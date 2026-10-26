@@ -131,11 +131,11 @@ export default async function DocArticlePage({ params }: PageProps) {
       <div className="max-w-none">{renderContent(doc.content)}</div>
 
       {/* Navigation Footer */}
-      <div className="pt-10 border-t border-border flex items-center justify-between gap-4">
+      <div className="pt-10 border-t border-slate-200 dark:border-[#232736] flex items-center justify-between gap-4">
         {prevDoc ? (
           <Link
             href={`/docs/${prevDoc.slug}`}
-            className="flex items-center gap-2 text-sm text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white transition-colors p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover shadow-sm"
+            className="flex items-center gap-2 text-sm text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white transition-colors p-3 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] hover:bg-slate-50 dark:hover:bg-[#1A1D28] shadow-sm"
           >
             <ArrowLeft className="h-4 w-4" />
             <div className="text-left">
@@ -150,7 +150,7 @@ export default async function DocArticlePage({ params }: PageProps) {
         {nextDoc ? (
           <Link
             href={`/docs/${nextDoc.slug}`}
-            className="flex items-center gap-2 text-sm text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white transition-colors p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover ml-auto shadow-sm"
+            className="flex items-center gap-2 text-sm text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white transition-colors p-3 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] hover:bg-slate-50 dark:hover:bg-[#1A1D28] ml-auto shadow-sm"
           >
             <div className="text-right">
               <div className="text-[10px] text-slate-400 dark:text-neutral-500 uppercase font-semibold">Next</div>
