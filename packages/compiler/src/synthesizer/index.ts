@@ -167,6 +167,22 @@ export class Synthesizer {
       });
     }
 
+    // Add DynamoDB Stream permissions if stream consumers exist
+    if (graph.tableStreams && graph.tableStreams.length > 0) {
+      roleStatements.push({
+        Effect: "Allow",
+        Action: [
+          "dynamodb:GetRecords",
+          "dynamodb:GetShardIterator",
+          "dynamodb:DescribeStream",
+          "dynamodb:ListStreams",
+        ],
+        Resource: graph.tableStreams.map((s) => ({
+          "Fn::GetAtt": [this.getTableLogicalId(s.tableName, graph), "StreamArn"],
+        })),
+      });
+    }
+
     if (graph.topics && graph.topics.length > 0) {
       roleStatements.push({
         Effect: "Allow",
@@ -187,19 +203,18 @@ export class Synthesizer {
       });
     }
 
-    if (graph.auths && graph.auths.length > 0) {
+    // Add custom policy statements declared on APIs, Consumers, Streams, or Subscribers
+    const customStatements = [
+      ...graph.apis.flatMap((a) => a.policies || []),
+      ...graph.consumers.flatMap((c) => c.policies || []),
+      ...(graph.tableStreams || []).flatMap((s) => s.policies || []),
+      ...(graph.topicSubscribers || []).flatMap((sub) => sub.policies || []),
+    ];
+    for (const stmt of customStatements) {
       roleStatements.push({
-        Effect: "Allow",
-        Action: [
-          "cognito-idp:AdminGetUser",
-          "cognito-idp:AdminCreateUser",
-          "cognito-idp:AdminUpdateUserAttributes",
-          "cognito-idp:AdminDeleteUser",
-          "cognito-idp:ListUsers",
-        ],
-        Resource: graph.auths.map((a) => ({
-          "Fn::GetAtt": [this.getAuthLogicalId(a, graph), "Arn"],
-        })),
+        Effect: stmt.effect || "Allow",
+        Action: stmt.actions,
+        Resource: stmt.resources,
       });
     }
 
@@ -218,7 +233,7 @@ export class Synthesizer {
         },
         Policies: [
           {
-            PolicyName: "LambdaDefaultPolicy",
+            PolicyName: "SyncployExecutionPolicy",
             PolicyDocument: {
               Version: "2012-10-17",
               Statement: roleStatements,
