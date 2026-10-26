@@ -33,13 +33,15 @@ export function highlightCode(code: string, language: string = "typescript"): st
     langId = "bash";
   }
 
-  if (!grammar) {
-    grammar = Prism.languages.typescript || Prism.languages.javascript;
-    langId = "typescript";
+  const fallbackGrammar = Prism.languages.typescript || Prism.languages.javascript;
+  const activeGrammar = grammar || fallbackGrammar;
+
+  if (!activeGrammar) {
+    return escapeHtml(code);
   }
 
   try {
-    return Prism.highlight(code, grammar, langId);
+    return Prism.highlight(code, activeGrammar, langId);
   } catch {
     return escapeHtml(code);
   }

@@ -12,7 +12,7 @@
     "build": "bun --filter \"*\" build",
     "dev": "bun --filter \"*\" dev",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && bun --filter syncploy-web typecheck"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
