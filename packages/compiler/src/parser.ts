@@ -42,6 +42,19 @@ export class Parser {
     });
   }
 
+  private unwrapExpression(node: Node | undefined): Node | undefined {
+    if (!node) return undefined;
+    let curr = node;
+    while (
+      curr.isKind(SyntaxKind.AsExpression) ||
+      curr.isKind(SyntaxKind.TypeAssertion) ||
+      curr.isKind(SyntaxKind.ParenthesizedExpression)
+    ) {
+      curr = (curr as any).getExpression();
+    }
+    return curr;
+  }
+
   public parse(): ResourceGraph {
     this.project.addSourceFilesAtPaths([
       `${this.projectRoot}/**/*.ts`,
@@ -127,13 +140,14 @@ export class Parser {
             }
 
             const args = init.getArguments();
-            if (args.length === 0 || !args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+            const optionsArg = this.unwrapExpression(args[0]);
+            if (args.length === 0 || !optionsArg?.isKind(SyntaxKind.ObjectLiteralExpression)) {
               throw new Error(
                 `API endpoint '${varName}' in ${sourceFile.getFilePath()} must provide an options object.`
               );
             }
 
-            const optionsObj = args[0] as ObjectLiteralExpression;
+            const optionsObj = optionsArg as ObjectLiteralExpression;
             const pathProp = optionsObj.getProperty("path");
             if (!pathProp || !pathProp.isKind(SyntaxKind.PropertyAssignment)) {
               throw new Error(
@@ -240,8 +254,9 @@ export class Parser {
               let eventSourceMappingLogicalId: string | undefined;
               let roleLogicalId: string | undefined;
 
-              if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
-                const consumerOpts = args[0] as ObjectLiteralExpression;
+              const optArg = this.unwrapExpression(args[0]);
+              if (args.length > 0 && optArg?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                const consumerOpts = optArg as ObjectLiteralExpression;
                 batchSize = this.extractNumber(consumerOpts.getProperty("batchSize")) ?? 10;
                 timeout = this.extractDuration(consumerOpts.getProperty("timeout"));
                 concurrency = this.extractNumber(consumerOpts.getProperty("concurrency"));
@@ -310,8 +325,9 @@ export class Parser {
               let eventSourceMappingLogicalId: string | undefined;
               let roleLogicalId: string | undefined;
 
-              if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
-                const streamOpts = args[0] as ObjectLiteralExpression;
+              const optArg = this.unwrapExpression(args[0]);
+              if (args.length > 0 && optArg?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                const streamOpts = optArg as ObjectLiteralExpression;
                 batchSize = this.extractNumber(streamOpts.getProperty("batchSize")) ?? 100;
                 const posStr = this.extractString(streamOpts.getProperty("startingPosition"));
                 if (posStr === "TRIM_HORIZON") startingPosition = "TRIM_HORIZON";
@@ -386,8 +402,9 @@ export class Parser {
               let permissionLogicalId: string | undefined;
               let roleLogicalId: string | undefined;
 
-              if (args.length > 0 && args[0]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
-                const subOpts = args[0] as ObjectLiteralExpression;
+              const optArg = this.unwrapExpression(args[0]);
+              if (args.length > 0 && optArg?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                const subOpts = optArg as ObjectLiteralExpression;
                 timeout = this.extractDuration(subOpts.getProperty("timeout"));
                 concurrency = this.extractNumber(subOpts.getProperty("concurrency"));
                 memory = this.extractMemory(subOpts.getProperty("memory"));
@@ -950,8 +967,9 @@ export class Parser {
             let customStreamName: string | undefined;
             let roleLogicalId: string | undefined;
 
-            if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
-              const opts = args[1] as ObjectLiteralExpression;
+            const optArg = this.unwrapExpression(args[1]);
+            if (args.length > 1 && optArg?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+              const opts = optArg as ObjectLiteralExpression;
               logicalId = this.extractString(opts.getProperty("logicalId"));
               customStreamName = this.extractString(opts.getProperty("streamName"));
               roleLogicalId = this.extractString(opts.getProperty("roleLogicalId"));
@@ -1109,8 +1127,9 @@ export class Parser {
                 let ruleLogicalId: string | undefined;
                 let queuePolicyLogicalId: string | undefined;
 
-                if (args.length > 2 && args[2]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
-                  const opts = args[2] as ObjectLiteralExpression;
+                const optArg = this.unwrapExpression(args[2]);
+                if (args.length > 2 && optArg?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                  const opts = optArg as ObjectLiteralExpression;
                   const pProp = opts.getProperty("prefix");
                   if (pProp && pProp.isKind(SyntaxKind.PropertyAssignment)) {
                     prefix = pProp.getInitializer()?.getText().replace(/['"]/g, "");
