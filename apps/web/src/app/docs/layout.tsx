@@ -23,6 +23,7 @@ export default function DocsLayout({
         return <Code className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />;
       case "Compiler & Safety":
         return <Shield className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />;
+      case "CLI & Operations":
       case "CLI Reference":
         return <Terminal className="h-4 w-4 text-amber-600 dark:text-amber-400" />;
       default:
