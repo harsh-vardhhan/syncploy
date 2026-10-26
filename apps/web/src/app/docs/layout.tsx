@@ -18,13 +18,13 @@ export default function DocsLayout({
   const getCategoryIcon = (cat: string) => {
     switch (cat) {
       case "Getting Started":
-        return <BookOpen className="h-4 w-4 text-indigo-400" />;
+        return <BookOpen className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />;
       case "Core Constructs":
-        return <Code className="h-4 w-4 text-cyan-400" />;
+        return <Code className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />;
       case "Compiler & Safety":
-        return <Shield className="h-4 w-4 text-emerald-400" />;
+        return <Shield className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />;
       case "CLI Reference":
-        return <Terminal className="h-4 w-4 text-amber-400" />;
+        return <Terminal className="h-4 w-4 text-amber-600 dark:text-amber-400" />;
       default:
         return null;
     }
@@ -37,7 +37,7 @@ export default function DocsLayout({
         <div className="sticky top-24 space-y-8 pr-4 max-h-[calc(100vh-8rem)] overflow-y-auto">
           {categories.map((cat) => (
             <div key={cat} className="space-y-2">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-neutral-400 px-2">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-neutral-400 px-2">
                 {getCategoryIcon(cat)}
                 <span>{cat}</span>
               </div>
@@ -51,8 +51,8 @@ export default function DocsLayout({
                         href={href}
                         className={`block px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                           isActive
-                            ? "bg-indigo-600/15 text-indigo-300 font-semibold border-l-2 border-indigo-500"
-                            : "text-neutral-400 hover:text-white hover:bg-surface-hover/50"
+                            ? "bg-indigo-50 dark:bg-indigo-600/15 text-indigo-700 dark:text-indigo-300 font-semibold border-l-2 border-indigo-600 dark:border-indigo-500"
+                            : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-surface-hover/50"
                         }`}
                       >
                         {item.title}

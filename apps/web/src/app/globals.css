@@ -3,8 +3,19 @@
 @tailwind utilities;
 
 :root {
+  --background: #FFFFFF;
+  --foreground: #0F172A;
+  --surface: #F8FAFC;
+  --surface-hover: #F1F5F9;
+  --border: #E2E8F0;
+}
+
+.dark {
   --background: #090A0F;
   --foreground: #EDEDED;
+  --surface: #12141C;
+  --surface-hover: #1A1D28;
+  --border: #232736;
 }
 
 body {
@@ -12,6 +23,7 @@ body {
   background: var(--background);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   overflow-x: hidden;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Custom scrollbars */
@@ -20,12 +32,148 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #090A0F;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1F2433;
+  background: #CBD5E1;
   border-radius: 4px;
 }
+.dark ::-webkit-scrollbar-thumb {
+  background: #1F2433;
+}
 ::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
   background: #2D3449;
+}
+
+/* ==========================================================================
+   Syntax Highlighting (PrismJS) - Light & Dark Modes
+   ========================================================================== */
+
+/* Comments & Documentation */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #64748B;
+  font-style: italic;
+}
+.dark .token.comment,
+.dark .token.prolog,
+.dark .token.doctype,
+.dark .token.cdata {
+  color: #64748B;
+  font-style: italic;
+}
+
+/* Punctuation & Brackets */
+.token.punctuation {
+  color: #475569;
+}
+.dark .token.punctuation {
+  color: #94A3B8;
+}
+
+/* Keywords (import, export, const, return, async, new, if, type) */
+.token.keyword,
+.token.atrule {
+  color: #4F46E5;
+  font-weight: 600;
+}
+.dark .token.keyword,
+.dark .token.atrule {
+  color: #818CF8;
+  font-weight: 600;
+}
+
+/* Strings & Template Strings */
+.token.string,
+.token.char,
+.token.attr-value {
+  color: #059669;
+}
+.dark .token.string,
+.dark .token.char,
+.dark .token.attr-value {
+  color: #34D399;
+}
+
+/* Functions & Methods */
+.token.function {
+  color: #2563EB;
+}
+.dark .token.function {
+  color: #60A5FA;
+}
+
+/* Classes & Types */
+.token.class-name {
+  color: #0284C7;
+  font-weight: 600;
+}
+.dark .token.class-name {
+  color: #38BDF8;
+  font-weight: 600;
+}
+
+/* Numbers & Booleans */
+.token.number,
+.token.boolean,
+.token.constant {
+  color: #D97706;
+}
+.dark .token.number,
+.dark .token.boolean,
+.dark .token.constant {
+  color: #FBBF24;
+}
+
+/* Properties & Attributes */
+.token.property,
+.token.attr-name {
+  color: #0284C7;
+}
+.dark .token.property,
+.dark .token.attr-name {
+  color: #7DD3FC;
+}
+
+/* Operators (=, +, :, ->) */
+.token.operator {
+  color: #64748B;
+}
+.dark .token.operator {
+  color: #94A3B8;
+}
+
+/* YAML & JSON specific keys */
+.token.key.atrule,
+.token.key {
+  color: #4F46E5;
+  font-weight: 600;
+}
+.dark .token.key.atrule,
+.dark .token.key {
+  color: #818CF8;
+  font-weight: 600;
+}
+
+/* YAML tag / type */
+.token.tag {
+  color: #0284C7;
+}
+.dark .token.tag {
+  color: #38BDF8;
+}
+
+/* Variables & regex */
+.token.variable,
+.token.regex {
+  color: #EA580C;
+}
+.dark .token.variable,
+.dark .token.regex {
+  color: #FB923C;
 }

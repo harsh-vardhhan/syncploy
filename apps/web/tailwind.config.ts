@@ -10,11 +10,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "#090A0F",
-        foreground: "#EDEDED",
-        surface: "#12141C",
-        "surface-hover": "#1A1D28",
-        border: "#232736",
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        surface: "var(--surface)",
+        "surface-hover": "var(--surface-hover)",
+        border: "var(--border)",
         primary: {
           DEFAULT: "#6366F1",
           hover: "#4F46E5",

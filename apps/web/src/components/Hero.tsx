@@ -15,29 +15,29 @@ export function Hero() {
   };
 
   return (
-    <div className="relative pt-24 pb-16 md:pt-32 md:pb-24 overflow-hidden">
+    <div className="relative pt-20 pb-16 md:pt-32 md:pb-24 overflow-hidden">
       {/* Background radial gradient glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-indigo-600/20 via-cyan-500/10 to-transparent blur-3xl pointer-events-none -z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-indigo-500/10 via-cyan-500/10 to-transparent dark:from-indigo-600/20 dark:via-cyan-500/10 blur-3xl pointer-events-none -z-10" />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
         {/* Top Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-xs font-semibold text-indigo-300">
-          <Zap className="h-3.5 w-3.5 text-indigo-400" />
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-xs font-semibold text-indigo-700 dark:text-indigo-300 shadow-sm">
+          <Zap className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
           <span>Infrastructure-from-Code for TypeScript</span>
-          <span className="text-neutral-500">&bull;</span>
-          <span className="text-neutral-400">Pure AWS Serverless</span>
+          <span className="text-slate-400 dark:text-neutral-500">&bull;</span>
+          <span className="text-slate-600 dark:text-neutral-400">Pure AWS Serverless</span>
         </div>
 
         {/* Headline */}
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-[1.1]">
+        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
           Stop writing YAML. <br className="hidden sm:inline" />
-          <span className="bg-gradient-to-r from-indigo-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-indigo-600 via-cyan-600 to-emerald-600 dark:from-indigo-400 dark:via-cyan-400 dark:to-emerald-400 bg-clip-text text-transparent">
             Let the compiler synthesize AWS.
           </span>
         </h1>
 
         {/* Subtitle */}
-        <p className="max-w-2xl mx-auto text-lg sm:text-xl text-neutral-400 leading-relaxed">
+        <p className="max-w-2xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-neutral-400 leading-relaxed">
           Write pure TypeScript. Syncploy parses your application logic, detects recursive loops and denial-of-wallet vectors at compile-time, and synthesizes 1:1 CloudFormation templates with zero stateful replacements.
         </p>
 
@@ -54,41 +54,41 @@ export function Hero() {
           {/* Copy command */}
           <button
             onClick={handleCopy}
-            className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3 px-4 py-3 rounded-xl border border-border bg-surface hover:bg-surface-hover font-mono text-xs sm:text-sm text-neutral-300 transition-colors"
+            className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3 px-4 py-3 rounded-xl border border-border bg-surface hover:bg-surface-hover font-mono text-xs sm:text-sm text-slate-800 dark:text-neutral-300 transition-colors shadow-sm"
           >
-            <span className="text-indigo-400">$</span>
-            <span>{installCmd}</span>
-            <span className="p-1 rounded bg-surface-hover text-neutral-400">
-              {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+            <span className="text-indigo-600 dark:text-indigo-400 font-bold">$</span>
+            <span className="font-medium">{installCmd}</span>
+            <span className="p-1 rounded bg-slate-200/60 dark:bg-surface-hover text-slate-600 dark:text-neutral-400">
+              {copied ? <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
             </span>
           </button>
         </div>
 
         {/* Highlights row */}
         <div className="pt-8 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto text-left">
-          <div className="p-3.5 rounded-lg border border-border/60 bg-surface/40">
-            <div className="text-emerald-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
+          <div className="p-3.5 rounded-xl border border-border bg-surface/80 dark:bg-surface/40 shadow-sm">
+            <div className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
               <Shield className="h-3.5 w-3.5" /> Loop Shield
             </div>
-            <div className="text-xs text-neutral-400">Static AST recursion & event cycle detection</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Static AST recursion & event cycle detection</div>
           </div>
-          <div className="p-3.5 rounded-lg border border-border/60 bg-surface/40">
-            <div className="text-cyan-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
+          <div className="p-3.5 rounded-xl border border-border bg-surface/80 dark:bg-surface/40 shadow-sm">
+            <div className="text-cyan-700 dark:text-cyan-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
               <RefreshCw className="h-3.5 w-3.5" /> 0-Replacement
             </div>
-            <div className="text-xs text-neutral-400">Brownfield SAM adoption with zero data loss</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Brownfield SAM adoption with zero data loss</div>
           </div>
-          <div className="p-3.5 rounded-lg border border-border/60 bg-surface/40">
-            <div className="text-indigo-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
+          <div className="p-3.5 rounded-xl border border-border bg-surface/80 dark:bg-surface/40 shadow-sm">
+            <div className="text-indigo-600 dark:text-indigo-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
               <Terminal className="h-3.5 w-3.5" /> Clean 4 Auth
             </div>
-            <div className="text-xs text-neutral-400">HIPAA compliant Cognito & auto-wired env vars</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">HIPAA compliant Cognito & auto-wired env vars</div>
           </div>
-          <div className="p-3.5 rounded-lg border border-border/60 bg-surface/40">
-            <div className="text-amber-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
+          <div className="p-3.5 rounded-xl border border-border bg-surface/80 dark:bg-surface/40 shadow-sm">
+            <div className="text-amber-600 dark:text-amber-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
               <Zap className="h-3.5 w-3.5" /> Least-Privilege
             </div>
-            <div className="text-xs text-neutral-400">Automated CI/CD deploy policy generation</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Automated CI/CD deploy policy generation</div>
           </div>
         </div>
       </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Terminal, Shield, CheckCircle2, AlertTriangle, FileCode } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
+import { CodeBlock } from "./CodeBlock";
 
 interface TabOption {
   id: string;
@@ -9,6 +10,8 @@ interface TabOption {
   description: string;
   tsCode: string;
   cfnOutput: string;
+  outputLang: string;
+  outputFilename: string;
   benefits: string[];
 }
 
@@ -17,6 +20,8 @@ const TABS: TabOption[] = [
     id: "auth",
     name: "Cognito Auth",
     description: "First-class healthcare-compliant authentication with zero YAML.",
+    outputLang: "yaml",
+    outputFilename: "synthesized-template.yaml",
     tsCode: `import { Auth, api } from "@syncploy/sdk";
 
 // Single declaration with Clean 4 healthcare compliance
@@ -77,6 +82,8 @@ export const backendApi = api({ ingress: "function-url" }, async (req) => {
     id: "recursion",
     name: "Recursion Shield",
     description: "Compile-time detection of infinite Lambda-DynamoDB cycles.",
+    outputLang: "bash",
+    outputFilename: "compiler-audit.log",
     tsCode: `import { Table } from "@syncploy/sdk";
 
 export const patientTable = new Table("patients", {
@@ -115,6 +122,8 @@ export const badStreamWorker = patientTable.stream(
     id: "diff",
     name: "0-Replacement Diff",
     description: "Safely adopt brownfield SAM templates with zero data loss.",
+    outputLang: "bash",
+    outputFilename: "syncploy-diff.log",
     tsCode: `// Adopt existing SAM resources into TypeScript
 export const ehrTable = new Table("ehr", {
   logicalId: "EhrTable", // Preserves CloudFormation Logical ID
@@ -147,6 +156,8 @@ Diff Summary:
     id: "policy",
     name: "Least-Privilege IAM",
     description: "Generates optimal CI/CD deployment policies matching your AST.",
+    outputLang: "json",
+    outputFilename: "deploy-policy.json",
     tsCode: `// Automatically generated via:
 // $ syncploy policy . -s ehr-annotation-backend -o deploy-policy.json
 
@@ -179,29 +190,30 @@ Diff Summary:
 ];
 
 export function InteractiveComparison() {
-  const [activeTab, setActiveTab] = useState(TABS[0]!);
+  const [activeTab, setActiveTab] = useState<TabOption>(TABS[0]!);
 
   return (
-    <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-      <div className="text-center space-y-3 mb-10">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-          How the Syncploy Compiler Works
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+      {/* Section Header */}
+      <div className="text-center space-y-3 mb-12">
+        <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
+          One Language. Deterministic AWS Synthesis.
         </h2>
-        <p className="text-neutral-400 max-w-2xl mx-auto text-sm sm:text-base">
-          Switch tabs below to see how Syncploy translates concise TypeScript into resilient, secure, and production-tested AWS infrastructure.
+        <p className="text-slate-600 dark:text-neutral-400 max-w-2xl mx-auto text-base">
+          Explore how simple TypeScript constructs compile into production-grade CloudFormation with built-in healthcare compliance and safety rails.
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap justify-center gap-2 mb-8">
+      {/* Tabs Switcher */}
+      <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm ${
               activeTab.id === tab.id
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
-                : "border border-border bg-surface text-neutral-400 hover:text-white hover:bg-surface-hover"
+                : "border border-border bg-surface text-slate-700 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white hover:bg-surface-hover"
             }`}
           >
             {tab.name}
@@ -212,60 +224,30 @@ export function InteractiveComparison() {
       {/* Main Grid: TypeScript vs Compiler Output */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         {/* Left: TypeScript */}
-        <div className="rounded-2xl border border-border bg-surface/90 overflow-hidden shadow-2xl">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background/60">
-            <div className="flex items-center gap-2 text-xs font-mono text-neutral-400">
-              <FileCode className="h-4 w-4 text-indigo-400" />
-              <span>infrastructure.ts</span>
-            </div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-400 px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20">
-              Developer Code
-            </span>
-          </div>
-          <pre className="p-4 sm:p-5 text-xs sm:text-sm font-mono text-neutral-200 overflow-x-auto leading-relaxed bg-[#0b0d14]">
-            <code>{activeTab.tsCode}</code>
-          </pre>
-        </div>
+        <CodeBlock
+          code={activeTab.tsCode}
+          language="typescript"
+          filename="infrastructure.ts"
+          badge="Developer Code"
+          badgeColor="indigo"
+        />
 
         {/* Right: Compiler Output */}
-        <div className="rounded-2xl border border-border bg-surface/90 overflow-hidden shadow-2xl">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background/60">
-            <div className="flex items-center gap-2 text-xs font-mono text-neutral-400">
-              <Terminal className="h-4 w-4 text-cyan-400" />
-              <span>
-                {activeTab.id === "recursion"
-                  ? "Compiler Diagnostic Output"
-                  : activeTab.id === "policy"
-                  ? "deploy-policy.json"
-                  : "synthesized-template.yaml"}
-              </span>
-            </div>
-            <span
-              className={`text-[11px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border ${
-                activeTab.id === "recursion"
-                  ? "text-red-400 bg-red-500/10 border-red-500/20"
-                  : "text-cyan-400 bg-cyan-500/10 border-cyan-500/20"
-              }`}
-            >
-              {activeTab.id === "recursion" ? "Safety Shield" : "Compiler Synthesis"}
-            </span>
-          </div>
-          <pre
-            className={`p-4 sm:p-5 text-xs sm:text-sm font-mono overflow-x-auto leading-relaxed ${
-              activeTab.id === "recursion" ? "bg-[#14080a] text-red-200" : "bg-[#0b0d14] text-neutral-300"
-            }`}
-          >
-            <code>{activeTab.cfnOutput}</code>
-          </pre>
-        </div>
+        <CodeBlock
+          code={activeTab.cfnOutput}
+          language={activeTab.outputLang}
+          filename={activeTab.outputFilename}
+          badge={activeTab.id === "recursion" ? "Safety Shield" : "Compiler Synthesis"}
+          badgeColor={activeTab.id === "recursion" ? "red" : "cyan"}
+        />
       </div>
 
       {/* Benefit Bullets */}
-      <div className="mt-6 p-4 rounded-xl border border-border bg-surface/40 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-4 text-xs sm:text-sm text-neutral-300">
+      <div className="mt-6 p-4 rounded-xl border border-border bg-surface/80 dark:bg-surface/40 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-6 text-xs sm:text-sm text-slate-700 dark:text-neutral-300">
           {activeTab.benefits.map((b, i) => (
             <div key={i} className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>{b}</span>
             </div>
           ))}
