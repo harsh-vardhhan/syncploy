@@ -38,9 +38,9 @@ export function Features() {
     },
     {
       icon: <KeyRound className="h-6 w-6 text-amber-600 dark:text-amber-400" />,
-      title: "Clean 4 Healthcare Compliance",
+      title: "Enterprise Security Defaults",
       description:
-        "Built-in compliance defaults for HIPAA: immutable S3 ObjectLock audit trails, 12-char password enforcement, and admin-only Cognito registration.",
+        "Bank-grade security out of the box: immutable S3 ObjectLock audit trails, strict Cognito password policies, and zero public bucket exposures.",
     },
     {
       icon: <Boxes className="h-6 w-6 text-purple-600 dark:text-purple-400" />,

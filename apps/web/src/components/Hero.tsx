@@ -80,9 +80,9 @@ export function Hero() {
           </div>
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-indigo-600 dark:text-indigo-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
-              <Terminal className="h-3.5 w-3.5" /> Clean 4 Auth
+              <Terminal className="h-3.5 w-3.5" /> Type-Safe Auth
             </div>
-            <div className="text-xs text-slate-600 dark:text-neutral-400">HIPAA compliant Cognito & auto-wired env vars</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Cognito User Pools & auto-wired Lambda env vars</div>
           </div>
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-amber-600 dark:text-amber-400 text-xs font-semibold flex items-center gap-1.5 mb-1">

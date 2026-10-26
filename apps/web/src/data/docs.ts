@@ -81,7 +81,7 @@ The Syncploy compilation pipeline consists of 5 deterministic stages:
 ## Core Design Principles
 
 - **Pure AWS Serverless**: Compute and storage scale to zero ($0.00/mo idle cost). No VPC NAT gateways, no idle EC2 instances.
-- **Clean 4 Healthcare Standard**: HIPAA compliance defaults baked-in (immutable S3 ObjectLock audit trails, 12-char Cognito passwords, admin-only registration).
+- **Enterprise Security Standards**: Production security defaults baked-in (immutable S3 ObjectLock audit trails, strict Cognito authentication, AES-256 encryption).
 - **100% Ejection Freedom**: You own the output. At any time, export standard AWS SAM/CloudFormation templates and deploy via vanilla AWS CLI.
 `,
   },
@@ -390,11 +390,11 @@ export const docxConverter = api(
     slug: "construct-auth",
     title: "Auth (Amazon Cognito)",
     category: "Core Constructs",
-    description: "Clean 4 healthcare-compliant Cognito UserPool and UserPoolClient construct.",
+    description: "Production-ready Amazon Cognito UserPool and UserPoolClient construct.",
     content: `
 # Auth (Amazon Cognito)
 
-The \`Auth\` construct synthesizes \`AWS::Cognito::UserPool\` and \`AWS::Cognito::UserPoolClient\` with **Clean 4 Healthcare Compliance** defaults.
+The \`Auth\` construct synthesizes \`AWS::Cognito::UserPool\` and \`AWS::Cognito::UserPoolClient\` with **Enterprise Security** defaults.
 
 \`\`\`typescript
 import { Auth } from "@syncploy/sdk";

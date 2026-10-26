@@ -19,12 +19,12 @@ const TABS: TabOption[] = [
   {
     id: "auth",
     name: "Cognito Auth",
-    description: "First-class healthcare-compliant authentication with zero YAML.",
+    description: "Production-ready Amazon Cognito authentication with zero YAML.",
     outputLang: "yaml",
     outputFilename: "synthesized-template.yaml",
     tsCode: `import { Auth, api } from "@syncploy/sdk";
 
-// Single declaration with Clean 4 healthcare compliance
+// Single declaration with enterprise security defaults
 export const ehrAuth = new Auth("ehr", {
   logicalId: "EhrUserPool",
   adminOnly: true,              // Blocks self-signups
@@ -74,7 +74,7 @@ export const backendApi = api({ ingress: "function-url" }, async (req) => {
           COGNITO_CLIENT_ID: !Ref EhrUserPoolClient`,
     benefits: [
       "Auto-wires COGNITO_USER_POOL_ID and COGNITO_CLIENT_ID into Lambda",
-      "Enforces 12-char HIPAA passwords & PreventUserExistenceErrors",
+      "Enforces strong password policy & PreventUserExistenceErrors",
       "Protected as stateful resource in diff engine (prevents user wipeout)",
     ],
   },
@@ -200,7 +200,7 @@ export function InteractiveComparison() {
           One Language. Deterministic AWS Synthesis.
         </h2>
         <p className="text-slate-600 dark:text-neutral-400 max-w-2xl mx-auto text-base">
-          Explore how simple TypeScript constructs compile into production-grade CloudFormation with built-in healthcare compliance and safety rails.
+          Explore how simple TypeScript constructs compile into production-grade CloudFormation with built-in security defaults and safety rails.
         </p>
       </div>
 
