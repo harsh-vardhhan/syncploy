@@ -9,7 +9,7 @@ import { ArrowRight, Terminal, Github } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       <Hero />
       <CaseStudyShowcase />
       <InteractiveComparison />

@@ -6,7 +6,8 @@
   "workspaces": [
     "packages/*",
     "apps/*",
-    "examples/*"
+    "examples/*",
+    "plugins/*"
   ],
   "scripts": {
     "build": "bun --filter \"*\" build",

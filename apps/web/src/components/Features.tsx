@@ -5,9 +5,9 @@ import {
   GitCompare,
   FileCheck,
   Flame,
-  KeyRound,
   Boxes,
   Zap,
+  Bot,
 } from "lucide-react";
 
 export function Features() {
@@ -37,10 +37,10 @@ export function Features() {
         "Syncploy synthesizes minimal IAM deployment policies for GitHub Actions runners. Prunes dead services and scopes wildcards down to exact stack ARNs.",
     },
     {
-      icon: <KeyRound className="h-6 w-6 text-amber-600 dark:text-amber-400" />,
-      title: "Enterprise Security Defaults",
+      icon: <Bot className="h-6 w-6 text-sky-600 dark:text-sky-400" />,
+      title: "AI Agent Native (llms.txt)",
       description:
-        "Bank-grade security out of the box: immutable S3 ObjectLock audit trails, strict Cognito password policies, and zero public bucket exposures.",
+        "Official plugin and skill for Google Antigravity, Claude Code, and Cursor. Equips frontier models with deterministic AST validation and zero-hallucination runtime specs.",
     },
     {
       icon: <Boxes className="h-6 w-6 text-purple-600 dark:text-purple-400" />,

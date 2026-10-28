@@ -7,7 +7,9 @@ Syncploy is a static compiler and SDK for Pure AWS Serverless. Instead of mainta
 - GitHub: https://github.com/harsh-vardhhan/syncploy
 - npm: https://www.npmjs.com/package/@syncploy/sdk
 - Live Showcase: https://ehr-backend-frontend.vercel.app/
-- Complete Combined Documentation: https://syncploy-web.vercel.app/llms-full.txt
+- Website: https://www.syncploy.com/
+- LLMs Summary: https://www.syncploy.com/llms.txt
+- Complete Combined Documentation: https://www.syncploy.com/llms-full.txt
 
 ## Quick Start for AI Coding Agents
 

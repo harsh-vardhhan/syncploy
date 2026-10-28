@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Copy, Check, Terminal, Shield, Zap, RefreshCw } from "lucide-react";
+import { ArrowRight, Copy, Check, Terminal, Shield, Zap, RefreshCw, Bot } from "lucide-react";
 
 export function Hero() {
   const [copied, setCopied] = useState(false);
@@ -15,11 +15,11 @@ export function Hero() {
   };
 
   return (
-    <div className="relative pt-20 pb-16 md:pt-32 md:pb-24 overflow-hidden">
+    <div className="relative pt-6 sm:pt-8 md:pt-10 pb-14 md:pb-20 overflow-hidden">
       {/* Background radial gradient glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-indigo-500/10 via-cyan-500/10 to-transparent dark:from-indigo-600/20 dark:via-cyan-500/10 blur-3xl pointer-events-none -z-10" />
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-7">
         {/* Top Badges */}
         <div className="flex flex-wrap items-center justify-center gap-3">
           <a
@@ -39,6 +39,19 @@ export function Hero() {
               <svg className="h-3 w-3 fill-[#CB3837]" viewBox="0 0 24 24" role="img"><title>npm</title><path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/></svg>
               npm
             </span>
+          </a>
+
+          <a
+            href="/llms.txt"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-sky-300 dark:border-sky-500/30 bg-sky-50/80 dark:bg-sky-950/30 text-xs font-semibold text-sky-800 dark:text-sky-300 shadow-sm hover:scale-105 transition-all group"
+            title="Official Plugin for Antigravity & Claude Code with llms.txt Standard"
+          >
+            <Bot className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
+            <span>Agent Plugin: Antigravity &bull; Claude &bull; Cursor</span>
+            <span className="text-sky-400 dark:text-sky-600">&bull;</span>
+            <span className="font-mono text-[11px] font-bold text-sky-700 dark:text-sky-300 underline">llms.txt</span>
           </a>
 
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-xs font-semibold text-indigo-700 dark:text-indigo-300 shadow-sm">
@@ -136,10 +149,34 @@ export function Hero() {
             <svg className="h-3.5 w-3.5 fill-[#CB3837] shrink-0" viewBox="0 0 24 24" role="img"><title>npm</title><path d="M1.763 0C.786 0 0 .786 0 1.763v20.474C0 23.214.786 24 1.763 24h20.474c.977 0 1.763-.786 1.763-1.763V1.763C24 .786 23.214 0 22.237 0zM5.13 5.323l13.837.019-.009 13.836h-3.464l.01-10.382h-3.456L12.04 19.17H5.113z"/></svg>
             <span>Verified npm release: <span className="underline decoration-slate-400 dark:decoration-neutral-600 font-semibold text-slate-700 dark:text-neutral-300">@syncploy/sdk</span> (v0.1.7)</span>
           </a>
+
+          {/* AI Coding Agent Callout */}
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-500 dark:text-neutral-400">
+            <span className="inline-flex items-center gap-1.5 font-medium text-slate-700 dark:text-neutral-300">
+              <Bot className="h-3.5 w-3.5 text-indigo-500" /> AI Agent Ready:
+            </span>
+            <span className="px-2 py-0.5 rounded-md font-mono text-[11px] bg-slate-100 dark:bg-[#1A1D28] border border-slate-200 dark:border-[#232736] text-slate-700 dark:text-neutral-300">
+              Antigravity Plugin
+            </span>
+            <span className="px-2 py-0.5 rounded-md font-mono text-[11px] bg-slate-100 dark:bg-[#1A1D28] border border-slate-200 dark:border-[#232736] text-slate-700 dark:text-neutral-300">
+              Claude Code
+            </span>
+            <span className="px-2 py-0.5 rounded-md font-mono text-[11px] bg-slate-100 dark:bg-[#1A1D28] border border-slate-200 dark:border-[#232736] text-slate-700 dark:text-neutral-300">
+              Cursor
+            </span>
+            <a
+              href="/llms.txt"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 font-mono text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
+            >
+              /llms.txt &rarr;
+            </a>
+          </div>
         </div>
 
         {/* Highlights row */}
-        <div className="pt-8 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto text-left">
+        <div className="pt-6 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto text-left">
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
               <Shield className="h-3.5 w-3.5" /> Loop Shield
@@ -153,10 +190,10 @@ export function Hero() {
             <div className="text-xs text-slate-600 dark:text-neutral-400">Brownfield SAM adoption with zero data loss</div>
           </div>
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
-            <div className="text-indigo-600 dark:text-indigo-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
-              <Terminal className="h-3.5 w-3.5" /> Type-Safe Auth
+            <div className="text-sky-600 dark:text-sky-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
+              <Bot className="h-3.5 w-3.5" /> Agent Native
             </div>
-            <div className="text-xs text-slate-600 dark:text-neutral-400">Cognito User Pools & auto-wired Lambda env vars</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Built-in Antigravity & Claude Code plugin with llms.txt</div>
           </div>
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-amber-600 dark:text-amber-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
