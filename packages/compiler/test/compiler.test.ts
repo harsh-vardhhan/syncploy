@@ -957,6 +957,77 @@ export const worker = ordersTable.stream(async (event) => {
     });
   });
 
+  describe("Suppression Comments & Alias Resolution & Raw SDK Commands", () => {
+    const testDir = path.join(__dirname, ".tmp-test-app-advanced-guardrails");
+
+    beforeAll(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+    });
+
+    afterAll(async () => {
+      await fs.rm(testDir, { recursive: true, force: true });
+    });
+
+    it("respects // syncploy-ignore comments to suppress fatal ERR_RECURSIVE_LOOP", async () => {
+      const code = `
+import { Table } from "@syncploy/sdk";
+
+export const suppressedTable = new Table("suppressed-tbl", {
+  stream: "NEW_IMAGE",
+});
+
+// syncploy-ignore ERR_RECURSIVE_LOOP reason="conditional update with optimistic locking"
+export const loopWorker = suppressedTable.stream({ concurrency: 2 }, async (event) => {
+  await suppressedTable.put({ PK: "TEST", SK: "1" });
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+      const compiler = new Compiler(testDir);
+      const out = await compiler.build();
+      expect(out.templatePath).toBeDefined();
+    });
+
+    it("catches recursion through variable aliasing (const t = tbl; t.put)", async () => {
+      const code = `
+import { Table } from "@syncploy/sdk";
+
+export const aliasedTable = new Table("aliased-tbl", {
+  stream: "NEW_IMAGE",
+});
+
+const t = aliasedTable;
+
+export const aliasWorker = aliasedTable.stream({ concurrency: 2 }, async (event) => {
+  await t.put({ PK: "ALIAS#1" });
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+      const compiler = new Compiler(testDir);
+      await expect(compiler.build()).rejects.toThrow("Pre-flight validation failed with 1 error(s).");
+    });
+
+    it("catches recursion through raw AWS SDK PutItemCommand calls", async () => {
+      const code = `
+import { Table } from "@syncploy/sdk";
+
+export const rawSdkTable = new Table("raw-sdk-tbl", {
+  stream: "NEW_IMAGE",
+});
+
+export const rawWorker = rawSdkTable.stream({ concurrency: 2 }, async (event) => {
+  const dynamo: any = {};
+  await dynamo.send(new PutItemCommand({
+    TableName: rawSdkTable.tableName,
+    Item: { PK: { S: "RAW#1" } }
+  }));
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+      const compiler = new Compiler(testDir);
+      await expect(compiler.build()).rejects.toThrow("Pre-flight validation failed with 1 error(s).");
+    });
+  });
+
   describe("Cognito Auth Construct Synthesis & Environment Wiring", () => {
     const testDir = path.join(__dirname, ".tmp-test-app-auth");
 

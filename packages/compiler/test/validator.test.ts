@@ -470,7 +470,7 @@ describe("@syncploy/compiler - Pre-Flight AWS Platform Validator", () => {
       expect(result.valid).toBe(false);
       const mismatchErr = result.errors.find((e) => e.code === "ERR_SQS_TIMEOUT_MISMATCH");
       expect(mismatchErr).toBeDefined();
-      expect(mismatchErr?.message).toContain("is shorter than consumer 'orderWorker' timeout");
+      expect(mismatchErr?.message).toContain("is shorter than consumer 'orderWorker' effective timeout");
     });
 
     it("warns when an active queue has no deadLetterQueue configured", () => {
@@ -588,6 +588,93 @@ describe("@syncploy/compiler - Pre-Flight AWS Platform Validator", () => {
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.code === "ERR_DOW_UNRESERVED_CONCURRENCY")).toBe(true);
       expect(result.errors[0]?.message).toContain("[Strict Mode]");
+    });
+
+    it("evaluates effective defaults when queue visibilityTimeout is omitted", () => {
+      const graph = createEmptyGraph();
+      graph.queues.push({
+        id: "ordersQueue",
+        name: "orders",
+        sourceFile: "src/infra.ts",
+        // visibilityTimeout omitted -> AWS default 30s
+      });
+      graph.consumers.push({
+        id: "orderWorker",
+        queueName: "orders",
+        exportName: "orderWorker",
+        timeout: 60, // 60s > 30s default!
+        sourceFile: "src/infra.ts",
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.valid).toBe(false);
+      const err = result.errors.find((e) => e.code === "ERR_SQS_TIMEOUT_MISMATCH");
+      expect(err).toBeDefined();
+      expect(err?.message).toContain("30s (default)");
+    });
+
+    it("warns about unreserved concurrency even if Function URL has auth: true (eliminating false-negative bypass)", () => {
+      const graph = createEmptyGraph();
+      graph.apis.push({
+        id: "authFunctionUrl",
+        exportName: "authFunctionUrl",
+        sourceFile: "src/api.ts",
+        method: "POST",
+        path: "/secure",
+        ingress: "function-url",
+        auth: true, // auth: true should NOT silence DoW unreserved concurrency warning!
+        // concurrency: undefined
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_UNRESERVED_CONCURRENCY")).toBe(true);
+      expect(result.warnings.some((w) => w.code === "WARN_FUNCTION_URL_AUTH_UNSUPPORTED")).toBe(true);
+    });
+
+    it("warns when total stack reserved concurrency exceeds AWS default budget (900)", () => {
+      const graph = createEmptyGraph();
+      graph.apis.push({
+        id: "api1",
+        exportName: "api1",
+        sourceFile: "src/api.ts",
+        method: "GET",
+        path: "/1",
+        concurrency: 500,
+      });
+      graph.apis.push({
+        id: "api2",
+        exportName: "api2",
+        sourceFile: "src/api.ts",
+        method: "GET",
+        path: "/2",
+        concurrency: 450,
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_CONCURRENCY_BUDGET_EXCEEDED")).toBe(true);
+    });
+
+    it("suppresses warnings or errors when construct has matching suppression comment", () => {
+      const graph = createEmptyGraph();
+      graph.apis.push({
+        id: "suppressedApi",
+        exportName: "suppressedApi",
+        sourceFile: "src/api.ts",
+        method: "POST",
+        path: "/uncapped",
+        ingress: "function-url",
+        // concurrency: undefined
+        suppressions: {
+          WARN_DOW_UNRESERVED_CONCURRENCY: "Internal admin tool only",
+        },
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_UNRESERVED_CONCURRENCY")).toBe(false);
     });
 
     it("elevates DoW warnings to fatal errors when failOnDow is enabled", () => {

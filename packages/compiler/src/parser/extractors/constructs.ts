@@ -23,6 +23,7 @@ import {
   extractNumber,
   extractString,
   extractBoolean,
+  extractCommentSuppressions,
 } from "./ast-utils";
 
 export function extractTable(
@@ -211,6 +212,7 @@ export function extractTable(
       tableName: customTableName,
       retain,
       deletionPolicy,
+      suppressions: extractCommentSuppressions(decl),
     },
     tableName,
   };
@@ -294,6 +296,7 @@ export function extractBucket(
       bucketName: customBucketName,
       retain,
       deletionPolicy,
+      suppressions: extractCommentSuppressions(decl),
     },
     bucketName,
   };
@@ -356,6 +359,7 @@ export function extractQueue(
       sourceFile: sourceFile.getFilePath(),
       logicalId,
       queueName: customQueueName,
+      suppressions: extractCommentSuppressions(decl),
     },
     queueName,
   };

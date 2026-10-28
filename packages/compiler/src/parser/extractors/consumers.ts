@@ -21,6 +21,7 @@ import {
   extractEnvironment,
   extractPolicies,
   extractContainer,
+  extractCommentSuppressions,
 } from "./ast-utils";
 import { extractMutationsFromNode } from "./mutations";
 
@@ -104,6 +105,7 @@ export function extractQueueConsumer(
     eventSourceMappingLogicalId,
     roleLogicalId,
     mutations,
+    suppressions: extractCommentSuppressions(decl),
   };
 }
 
@@ -197,6 +199,7 @@ export function extractTableStream(
     eventSourceMappingLogicalId,
     roleLogicalId,
     mutations,
+    suppressions: extractCommentSuppressions(decl),
   };
 }
 
@@ -279,5 +282,6 @@ export function extractTopicSubscriber(
     permissionLogicalId,
     roleLogicalId,
     mutations,
+    suppressions: extractCommentSuppressions(decl),
   };
 }

@@ -26,19 +26,52 @@ export { formatDiagnostics } from "./formatter";
 
 export class GraphValidator implements ValidationContext {
   private diagnostics: Diagnostic[] = [];
+  private suppressionMap = new Map<string, Record<string, string>>();
 
   constructor(private options?: ValidationOptions) {}
 
+  private isSuppressed(code: string, constructId: string): boolean {
+    const supp = this.suppressionMap.get(constructId);
+    if (!supp) return false;
+    return supp["*"] !== undefined || supp[code] !== undefined;
+  }
+
   public addError(code: string, constructId: string, message: string, sourceFile?: string): void {
+    if (this.isSuppressed(code, constructId)) return;
     this.diagnostics.push({ code, constructId, message, sourceFile, severity: "error" });
   }
 
   public addWarning(code: string, constructId: string, message: string, sourceFile?: string): void {
+    if (this.isSuppressed(code, constructId)) return;
     this.diagnostics.push({ code, constructId, message, sourceFile, severity: "warning" });
   }
 
   public validate(graph: ResourceGraph): ValidationResult {
     this.diagnostics = [];
+    this.suppressionMap.clear();
+
+    // Index comment suppressions across all constructs in graph
+    for (const api of graph.apis) {
+      if (api.suppressions) this.suppressionMap.set(api.id, api.suppressions);
+    }
+    for (const c of graph.consumers) {
+      if (c.suppressions) this.suppressionMap.set(c.id, c.suppressions);
+    }
+    for (const s of graph.tableStreams) {
+      if (s.suppressions) this.suppressionMap.set(s.id, s.suppressions);
+    }
+    for (const sub of graph.topicSubscribers) {
+      if (sub.suppressions) this.suppressionMap.set(sub.id, sub.suppressions);
+    }
+    for (const t of graph.tables) {
+      if (t.suppressions) this.suppressionMap.set(t.id, t.suppressions);
+    }
+    for (const b of graph.buckets) {
+      if (b.suppressions) this.suppressionMap.set(b.id, b.suppressions);
+    }
+    for (const q of graph.queues) {
+      if (q.suppressions) this.suppressionMap.set(q.id, q.suppressions);
+    }
 
     validateLogicalIds(this, graph);
     validateApis(this, graph);

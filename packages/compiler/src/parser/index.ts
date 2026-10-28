@@ -119,6 +119,55 @@ export class Parser {
       }
     }
 
+    // Pass 1.5: Alias resolution (e.g. const t = myTable or const q = myQueue)
+    let aliasAdded = true;
+    while (aliasAdded) {
+      aliasAdded = false;
+      for (const sourceFile of this.project.getSourceFiles()) {
+        for (const decl of sourceFile.getVariableDeclarations()) {
+          const varName = decl.getName();
+          if (
+            context.varToTableName[varName] ||
+            context.varToBucketName[varName] ||
+            context.varToQueueName[varName] ||
+            context.varToTopicName[varName] ||
+            context.varToDeliveryStreamName[varName]
+          ) {
+            continue;
+          }
+
+          const init = decl.getInitializer();
+          if (!init) continue;
+
+          let targetVarName: string | undefined;
+          if (init.isKind(SyntaxKind.Identifier)) {
+            targetVarName = init.getText();
+          } else if (init.isKind(SyntaxKind.PropertyAccessExpression)) {
+            targetVarName = init.getName();
+          }
+
+          if (targetVarName) {
+            if (context.varToTableName[targetVarName]) {
+              context.varToTableName[varName] = context.varToTableName[targetVarName]!;
+              aliasAdded = true;
+            } else if (context.varToBucketName[targetVarName]) {
+              context.varToBucketName[varName] = context.varToBucketName[targetVarName]!;
+              aliasAdded = true;
+            } else if (context.varToQueueName[targetVarName]) {
+              context.varToQueueName[varName] = context.varToQueueName[targetVarName]!;
+              aliasAdded = true;
+            } else if (context.varToTopicName[targetVarName]) {
+              context.varToTopicName[varName] = context.varToTopicName[targetVarName]!;
+              aliasAdded = true;
+            } else if (context.varToDeliveryStreamName[targetVarName]) {
+              context.varToDeliveryStreamName[varName] = context.varToDeliveryStreamName[targetVarName]!;
+              aliasAdded = true;
+            }
+          }
+        }
+      }
+    }
+
     // Pass 2: Extract APIs, Consumers, Constructs, and Event Bindings
     for (const sourceFile of this.project.getSourceFiles()) {
       for (const decl of sourceFile.getVariableDeclarations()) {

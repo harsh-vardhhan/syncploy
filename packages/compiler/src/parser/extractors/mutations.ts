@@ -1,4 +1,4 @@
-import { Node, SourceFile, SyntaxKind } from "ts-morph";
+import { Node, SourceFile, SyntaxKind, ObjectLiteralExpression } from "ts-morph";
 import type { FunctionMutationsIR, BucketMutationIR } from "../../types";
 
 export function extractMutationsFromNode(
@@ -158,6 +158,176 @@ export function extractMutationsFromNode(
           if (streamName && ["put", "send", "putRecord", "putRecordBatch"].includes(methodName)) {
             if (!deliveryStreamsWritten.includes(streamName)) {
               deliveryStreamsWritten.push(streamName);
+            }
+          }
+        }
+
+        // Check Raw AWS SDK v3 Commands: client.send(new PutItemCommand(...))
+        if (methodName === "send") {
+          const args = call.getArguments();
+          if (args.length > 0) {
+            let cmdNode: Node = args[0]!;
+            if (cmdNode.isKind(SyntaxKind.AwaitExpression)) {
+              cmdNode = (cmdNode as any).getExpression();
+            }
+            if (cmdNode.isKind(SyntaxKind.Identifier)) {
+              const identName = cmdNode.getText();
+              const varDecl = currFile.getVariableDeclaration(identName);
+              if (varDecl?.getInitializer()) {
+                cmdNode = varDecl.getInitializer()!;
+              }
+            }
+
+            if (cmdNode.isKind(SyntaxKind.NewExpression)) {
+              const cmdName = cmdNode.getExpression().getText();
+              const cmdArgs = cmdNode.getArguments();
+              const inputObj =
+                cmdArgs.length > 0 && cmdArgs[0]?.isKind(SyntaxKind.ObjectLiteralExpression)
+                  ? (cmdArgs[0] as ObjectLiteralExpression)
+                  : undefined;
+
+              if (inputObj) {
+                // DynamoDB Write Commands
+                if (
+                  [
+                    "PutItemCommand",
+                    "UpdateItemCommand",
+                    "DeleteItemCommand",
+                    "BatchWriteItemCommand",
+                    "PutCommand",
+                    "UpdateCommand",
+                    "DeleteCommand",
+                  ].includes(cmdName)
+                ) {
+                  const tblProp = inputObj.getProperty("TableName");
+                  if (tblProp && tblProp.isKind(SyntaxKind.PropertyAssignment)) {
+                    const init = tblProp.getInitializer();
+                    let resolvedTbl: string | undefined;
+                    if (init?.isKind(SyntaxKind.StringLiteral)) {
+                      resolvedTbl = init.getLiteralValue();
+                    } else if (init) {
+                      const txt = init.getText();
+                      const base = txt.includes(".") ? txt.split(".")[0]! : txt;
+                      resolvedTbl = varToTableName[txt] || varToTableName[base];
+                    }
+                    if (resolvedTbl && !tablesWritten.includes(resolvedTbl)) {
+                      tablesWritten.push(resolvedTbl);
+                    }
+                  }
+                }
+
+                // DynamoDB TransactWriteItemsCommand
+                if (cmdName === "TransactWriteItemsCommand" || cmdName === "TransactWriteCommand") {
+                  const itemsProp = inputObj.getProperty("TransactItems");
+                  if (itemsProp && itemsProp.isKind(SyntaxKind.PropertyAssignment)) {
+                    const init = itemsProp.getInitializer();
+                    if (init && init.isKind(SyntaxKind.ArrayLiteralExpression)) {
+                      for (const elem of init.getElements()) {
+                        if (elem.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                          for (const p of elem.getProperties()) {
+                            if (p.isKind(SyntaxKind.PropertyAssignment)) {
+                              const subObj = p.getInitializer();
+                              if (subObj && subObj.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                                const tblP = subObj.getProperty("TableName");
+                                if (tblP && tblP.isKind(SyntaxKind.PropertyAssignment)) {
+                                  const tInit = tblP.getInitializer();
+                                  let resTbl: string | undefined;
+                                  if (tInit?.isKind(SyntaxKind.StringLiteral)) {
+                                    resTbl = tInit.getLiteralValue();
+                                  } else if (tInit) {
+                                    const txt = tInit.getText();
+                                    const base = txt.includes(".") ? txt.split(".")[0]! : txt;
+                                    resTbl = varToTableName[txt] || varToTableName[base];
+                                  }
+                                  if (resTbl && !tablesWritten.includes(resTbl)) {
+                                    tablesWritten.push(resTbl);
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+
+                // SQS SendMessageCommand
+                if (cmdName === "SendMessageCommand" || cmdName === "SendMessageBatchCommand") {
+                  const qProp = inputObj.getProperty("QueueUrl");
+                  if (qProp && qProp.isKind(SyntaxKind.PropertyAssignment)) {
+                    const init = qProp.getInitializer();
+                    let resolvedQ: string | undefined;
+                    if (init?.isKind(SyntaxKind.StringLiteral)) {
+                      resolvedQ = init.getLiteralValue();
+                    } else if (init) {
+                      const txt = init.getText();
+                      const base = txt.includes(".") ? txt.split(".")[0]! : txt;
+                      resolvedQ = varToQueueName[txt] || varToQueueName[base];
+                    }
+                    if (resolvedQ && !queuesSent.includes(resolvedQ)) {
+                      queuesSent.push(resolvedQ);
+                    }
+                  }
+                }
+
+                // S3 PutObjectCommand
+                if (cmdName === "PutObjectCommand") {
+                  const bProp = inputObj.getProperty("Bucket");
+                  let resolvedBkt: string | undefined;
+                  if (bProp && bProp.isKind(SyntaxKind.PropertyAssignment)) {
+                    const init = bProp.getInitializer();
+                    if (init?.isKind(SyntaxKind.StringLiteral)) {
+                      resolvedBkt = init.getLiteralValue();
+                    } else if (init) {
+                      const txt = init.getText();
+                      const base = txt.includes(".") ? txt.split(".")[0]! : txt;
+                      resolvedBkt = varToBucketName[txt] || varToBucketName[base];
+                    }
+                  }
+
+                  let prefix: string | undefined;
+                  const keyProp = inputObj.getProperty("Key");
+                  if (keyProp && keyProp.isKind(SyntaxKind.PropertyAssignment)) {
+                    const kInit = keyProp.getInitializer();
+                    if (kInit?.isKind(SyntaxKind.StringLiteral)) {
+                      const kVal = kInit.getLiteralValue();
+                      if (kVal.includes("/")) {
+                        prefix = kVal.substring(0, kVal.indexOf("/") + 1);
+                      }
+                    }
+                  }
+
+                  if (resolvedBkt) {
+                    const alreadyRecorded = bucketsWritten.some((b) => {
+                      if (typeof b === "string") return b === resolvedBkt && !prefix;
+                      return b.name === resolvedBkt && b.prefix === prefix;
+                    });
+                    if (!alreadyRecorded) {
+                      bucketsWritten.push(prefix ? { name: resolvedBkt, prefix } : resolvedBkt);
+                    }
+                  }
+                }
+
+                // SNS PublishCommand
+                if (cmdName === "PublishCommand") {
+                  const topProp = inputObj.getProperty("TopicArn");
+                  if (topProp && topProp.isKind(SyntaxKind.PropertyAssignment)) {
+                    const init = topProp.getInitializer();
+                    let resolvedTop: string | undefined;
+                    if (init?.isKind(SyntaxKind.StringLiteral)) {
+                      resolvedTop = init.getLiteralValue();
+                    } else if (init) {
+                      const txt = init.getText();
+                      const base = txt.includes(".") ? txt.split(".")[0]! : txt;
+                      resolvedTop = varToTopicName[txt] || varToTopicName[base];
+                    }
+                    if (resolvedTop && !topicsPublished.includes(resolvedTop)) {
+                      topicsPublished.push(resolvedTop);
+                    }
+                  }
+                }
+              }
             }
           }
         }

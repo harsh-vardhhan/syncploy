@@ -262,3 +262,33 @@ export function extractContainer(node: Node | undefined): ContainerIR | undefine
     workingDirectory,
   };
 }
+
+export function extractCommentSuppressions(node: Node | undefined): Record<string, string> | undefined {
+  if (!node) return undefined;
+
+  // Check node's own leading comment ranges, or its enclosing statement
+  let targetNode: Node = node;
+  if (node.isKind(SyntaxKind.VariableDeclaration)) {
+    const parent = node.getParent();
+    targetNode = parent?.getParent() || parent || node;
+  }
+
+  const ranges = targetNode.getLeadingCommentRanges();
+  const suppressions: Record<string, string> = {};
+
+  for (const range of ranges) {
+    const text = range.getText();
+    // Match // syncploy-ignore <CODE> reason="<REASON>" or /* syncploy-ignore ... */
+    const match = text.match(/syncploy-ignore\s+([A-Z0-9_*,\s]+?)(?:\s+reason=["']([^"']+)["'])?(?:\r?\n|\*\/|$)/i);
+    if (match) {
+      const rawCodes = match[1]!.trim();
+      const codes = rawCodes.split(/[,\s]+/).map((c) => c.trim()).filter(Boolean);
+      const reason = match[2] || "Suppressed by comment";
+      for (const code of codes) {
+        suppressions[code] = reason;
+      }
+    }
+  }
+
+  return Object.keys(suppressions).length > 0 ? suppressions : undefined;
+}

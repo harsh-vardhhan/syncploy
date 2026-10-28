@@ -2,7 +2,7 @@ import type { ResourceGraph } from "../../types";
 import type { ValidationContext } from "../types";
 
 export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGraph): void {
-  // A. SQS Queue Visibility Timeout vs Consumer Timeout & DLQ
+  // A. SQS Queue Visibility Timeout vs Consumer Timeout & DLQ (Evaluating Effective Defaults)
   for (const q of graph.queues) {
     const activeConsumers = graph.consumers.filter((c) => c.queueName === q.name);
 
@@ -15,36 +15,52 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
       );
     }
 
+    // Resolve effective defaults: AWS SQS defaults to 30s; Lambda consumers default to 30s
+    const effectiveQueueVisibility = q.visibilityTimeout ?? 30;
+
     for (const c of activeConsumers) {
-      if (q.visibilityTimeout !== undefined && c.timeout !== undefined) {
-        if (q.visibilityTimeout < c.timeout) {
-          ctx.addError(
-            "ERR_SQS_TIMEOUT_MISMATCH",
-            c.id,
-            `Queue '${q.name}' visibilityTimeout (${q.visibilityTimeout}s) is shorter than consumer '${c.id}' timeout (${c.timeout}s). SQS will redeliver in-flight messages before handler completes, causing cascading duplicate executions and runaway costs. Set queue visibilityTimeout to at least ${c.timeout}s (recommended: ${c.timeout * 6}s).`,
-            c.sourceFile
-          );
-        } else if (q.visibilityTimeout < c.timeout * 2) {
-          ctx.addWarning(
-            "WARN_SQS_VISIBILITY_TIMEOUT_SHORT",
-            c.id,
-            `Queue '${q.name}' visibilityTimeout (${q.visibilityTimeout}s) is close to consumer '${c.id}' timeout (${c.timeout}s). AWS recommends queue visibilityTimeout be at least 6x consumer timeout to prevent duplicate executions under processing delays.`,
-            c.sourceFile
-          );
-        }
+      const effectiveConsumerTimeout = c.timeout ?? 30;
+
+      if (effectiveQueueVisibility < effectiveConsumerTimeout) {
+        ctx.addError(
+          "ERR_SQS_TIMEOUT_MISMATCH",
+          c.id,
+          `Queue '${q.name}' effective visibilityTimeout (${effectiveQueueVisibility}s${q.visibilityTimeout === undefined ? " (default)" : ""}) is shorter than consumer '${c.id}' effective timeout (${effectiveConsumerTimeout}s${c.timeout === undefined ? " (default)" : ""}). SQS will redeliver in-flight messages before handler completes, causing cascading duplicate executions and runaway costs. Set queue visibilityTimeout to at least ${effectiveConsumerTimeout}s (recommended: ${effectiveConsumerTimeout * 6}s).`,
+          c.sourceFile
+        );
+      } else if (effectiveQueueVisibility < effectiveConsumerTimeout * 6) {
+        ctx.addWarning(
+          "WARN_SQS_VISIBILITY_TIMEOUT_SHORT",
+          c.id,
+          `Queue '${q.name}' effective visibilityTimeout (${effectiveQueueVisibility}s${q.visibilityTimeout === undefined ? " (default)" : ""}) is less than 6x consumer '${c.id}' effective timeout (${effectiveConsumerTimeout}s${c.timeout === undefined ? " (default)" : ""}). AWS recommends queue visibilityTimeout be at least 6x consumer timeout to prevent duplicate executions under processing delays.`,
+          c.sourceFile
+        );
       }
     }
   }
 
   // B. Public Routes & Function URLs Concurrency Guards
   for (const api of graph.apis) {
-    if (api.ingress === "function-url" && api.auth !== true && api.concurrency === undefined) {
-      ctx.addWarning(
-        "WARN_DOW_UNRESERVED_CONCURRENCY",
-        api.id,
-        `Public Function URL '${api.id}' (${api.method} ${api.path}) has no 'concurrency' limit. Under a DDoS attack or traffic surge, Lambda will scale to account limits (1,000+ executions) causing severe Denial-of-Wallet. Consider configuring 'concurrency: <number>'.`,
-        api.sourceFile
-      );
+    if (api.ingress === "function-url") {
+      // Warn if user assumes auth: true on Function URL protects against unauthenticated traffic
+      if (api.auth === true) {
+        ctx.addWarning(
+          "WARN_FUNCTION_URL_AUTH_UNSUPPORTED",
+          api.id,
+          `Function URL '${api.id}' has 'auth: true', but AWS Lambda Function URLs only support IAM authentication (AuthType: NONE synthesized). Without an API Gateway or custom middleware, this endpoint remains unauthenticated.`,
+          api.sourceFile
+        );
+      }
+
+      // Concurrency limit is required regardless of auth flag because Function URLs synthesize AuthType: NONE
+      if (api.concurrency === undefined) {
+        ctx.addWarning(
+          "WARN_DOW_UNRESERVED_CONCURRENCY",
+          api.id,
+          `Public Function URL '${api.id}' (${api.method} ${api.path}) has no 'concurrency' limit. Under a DDoS attack or traffic surge, Lambda will scale to account limits (1,000+ executions) causing severe Denial-of-Wallet. Consider configuring 'concurrency: <number>'.`,
+          api.sourceFile
+        );
+      }
     }
 
     if (
@@ -74,5 +90,28 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
         s.sourceFile
       );
     }
+  }
+
+  // D. Stack-Level Concurrency Budget Check (Default AWS Account Limit: 1,000)
+  let totalReservedConcurrency = 0;
+  for (const api of graph.apis) {
+    if (api.concurrency !== undefined) totalReservedConcurrency += api.concurrency;
+  }
+  for (const c of graph.consumers) {
+    if (c.concurrency !== undefined) totalReservedConcurrency += c.concurrency;
+  }
+  for (const s of graph.tableStreams) {
+    if (s.concurrency !== undefined) totalReservedConcurrency += s.concurrency;
+  }
+  for (const sub of graph.topicSubscribers) {
+    if (sub.concurrency !== undefined) totalReservedConcurrency += sub.concurrency;
+  }
+
+  if (totalReservedConcurrency > 900) {
+    ctx.addWarning(
+      "WARN_DOW_CONCURRENCY_BUDGET_EXCEEDED",
+      "Stack",
+      `Total reserved concurrency across all functions is ${totalReservedConcurrency}, exceeding the AWS default unreserved concurrency budget (900 of 1,000). CloudFormation deployments will fail unless you have requested an account Service Quota increase for Lambda concurrent executions.`
+    );
   }
 }

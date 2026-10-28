@@ -60,6 +60,7 @@ export interface ApiRouteIR {
   permissionLogicalId?: string | undefined;
   invokePermissionLogicalId?: string | undefined;
   mutations?: FunctionMutationsIR | undefined;
+  suppressions?: Record<string, string> | undefined;
 }
 
 export interface TableIndexIR {
@@ -83,6 +84,7 @@ export interface TableIR {
   retain?: boolean | undefined;
   deletionPolicy?: "Retain" | "Delete" | "Snapshot" | undefined;
   electroEntities?: string[] | undefined;
+  suppressions?: Record<string, string> | undefined;
 }
 
 export interface BucketIR {
@@ -105,6 +107,7 @@ export interface BucketIR {
   bucketName?: string | undefined;
   retain?: boolean | undefined;
   deletionPolicy?: "Retain" | "Delete" | "Snapshot" | undefined;
+  suppressions?: Record<string, string> | undefined;
 }
 
 export interface QueueIR {
@@ -120,6 +123,7 @@ export interface QueueIR {
   sourceFile: string;
   logicalId?: string | undefined;
   queueName?: string | undefined;
+  suppressions?: Record<string, string> | undefined;
 }
 
 export interface QueueConsumerIR {
@@ -141,6 +145,7 @@ export interface QueueConsumerIR {
   permissionLogicalId?: string | undefined;
   invokePermissionLogicalId?: string | undefined;
   mutations?: FunctionMutationsIR | undefined;
+  suppressions?: Record<string, string> | undefined;
 }
 
 export interface TableStreamConsumerIR {
@@ -164,6 +169,7 @@ export interface TableStreamConsumerIR {
   permissionLogicalId?: string | undefined;
   invokePermissionLogicalId?: string | undefined;
   mutations?: FunctionMutationsIR | undefined;
+  suppressions?: Record<string, string> | undefined;
 }
 
 export interface TopicIR {
@@ -193,6 +199,7 @@ export interface TopicSubscriberIR {
   permissionLogicalId?: string | undefined;
   roleLogicalId?: string | undefined;
   mutations?: FunctionMutationsIR | undefined;
+  suppressions?: Record<string, string> | undefined;
 }
 
 export interface AlarmMetricQueryIR {

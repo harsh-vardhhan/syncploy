@@ -16,6 +16,7 @@ import {
   extractEnvironment,
   extractPolicies,
   extractContainer,
+  extractCommentSuppressions,
 } from "./ast-utils";
 import { extractMutationsFromNode } from "./mutations";
 
@@ -135,5 +136,6 @@ export function extractApiRoute(
     permissionLogicalId,
     invokePermissionLogicalId,
     mutations,
+    suppressions: extractCommentSuppressions(decl),
   };
 }
