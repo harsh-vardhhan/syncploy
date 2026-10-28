@@ -41,6 +41,13 @@
         "@syncploy/sdk": "workspace:*",
       },
     },
+    "examples/order-processing": {
+      "name": "order-processing-app",
+      "version": "0.1.0",
+      "dependencies": {
+        "@syncploy/sdk": "workspace:*",
+      },
+    },
     "packages/cli": {
       "name": "syncploy",
       "version": "0.1.0",
@@ -616,6 +623,8 @@
     "object-hash": ["object-hash@3.0.0", "", {}, "sha512-RSn9F68PjH9HqtltsSnqYC1XXoWe9Bju5+213R98cNGttag9q9yAOTzdbsqvIa7aNm5WffBZFpWYr2aWrklWAw=="],
 
     "obliterator": ["obliterator@1.6.1", "", {}, "sha512-9WXswnqINnnhOG/5SLimUlzuU1hFJUc8zkwyD59Sd+dPOMf05PmnYG/d6Q7HZ+KmgkZJa1PxRso6QdM3sTNHig=="],
+
+    "order-processing-app": ["order-processing-app@workspace:examples/order-processing"],
 
     "package-manager-detector": ["package-manager-detector@1.9.0", "", {}, "sha512-zAMfbta9nPA8AKkA4WdmNAT8R8s6Dk0/xwPsqNnRidMFcLo1YkLuPDTgs2f64XdzS8vbLNnoJ+uUIkgbz7oRHA=="],
 
