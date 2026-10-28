@@ -83,7 +83,8 @@ export function extractQueueConsumer(
     context.varToTableName,
     context.varToBucketName,
     context.varToQueueName,
-    context.varToTopicName
+    context.varToTopicName,
+    context.varToDeliveryStreamName
   );
 
   return {
@@ -173,7 +174,8 @@ export function extractTableStream(
     context.varToTableName,
     context.varToBucketName,
     context.varToQueueName,
-    context.varToTopicName
+    context.varToTopicName,
+    context.varToDeliveryStreamName
   );
 
   return {
@@ -256,7 +258,8 @@ export function extractTopicSubscriber(
     context.varToTableName,
     context.varToBucketName,
     context.varToQueueName,
-    context.varToTopicName
+    context.varToTopicName,
+    context.varToDeliveryStreamName
   );
 
   return {

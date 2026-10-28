@@ -110,7 +110,8 @@ export function extractApiRoute(
     context.varToTableName,
     context.varToBucketName,
     context.varToQueueName,
-    context.varToTopicName
+    context.varToTopicName,
+    context.varToDeliveryStreamName
   );
 
   return {

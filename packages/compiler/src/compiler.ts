@@ -4,7 +4,7 @@ import { EntrypointGenerator } from "./entrypoint";
 import { Bundler } from "./bundler";
 import { Synthesizer } from "./synthesizer";
 import { GraphValidator, formatDiagnostics } from "./validator";
-import type { BuildOutput, ResourceGraph } from "./types";
+import type { BuildOutput, BuildOptions, ResourceGraph } from "./types";
 
 export class Compiler {
   private parser: Parser;
@@ -23,12 +23,12 @@ export class Compiler {
     return this.parser.parse();
   }
 
-  public async build(): Promise<BuildOutput> {
+  public async build(options?: BuildOptions): Promise<BuildOutput> {
     // 1. Parse AST
     const graph = await this.parse();
 
     // 2. Pre-flight static validation of AWS platform constraints
-    const validator = new GraphValidator();
+    const validator = new GraphValidator(options);
     const validation = validator.validate(graph);
 
     if (validation.warnings.length > 0) {

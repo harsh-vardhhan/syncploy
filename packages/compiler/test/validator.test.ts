@@ -570,5 +570,119 @@ describe("@syncploy/compiler - Pre-Flight AWS Platform Validator", () => {
       const result = validator.validate(graph);
       expect(result.warnings.some((w) => w.code === "WARN_DOW_STREAM_UNBOUNDED")).toBe(true);
     });
+
+    it("elevates warnings to fatal errors when strict mode is enabled", () => {
+      const graph = createEmptyGraph();
+      graph.apis.push({
+        id: "uncappedApi",
+        exportName: "uncappedApi",
+        sourceFile: "src/api.ts",
+        method: "POST",
+        path: "/upload",
+        ingress: "function-url",
+        auth: false,
+      });
+
+      const strictValidator = new GraphValidator({ strict: true });
+      const result = strictValidator.validate(graph);
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => e.code === "ERR_DOW_UNRESERVED_CONCURRENCY")).toBe(true);
+      expect(result.errors[0]?.message).toContain("[Strict Mode]");
+    });
+
+    it("elevates DoW warnings to fatal errors when failOnDow is enabled", () => {
+      const graph = createEmptyGraph();
+      graph.queues.push({
+        id: "q1",
+        name: "test-q",
+        sourceFile: "src/infra.ts",
+      });
+      graph.consumers.push({
+        id: "c1",
+        queueName: "test-q",
+        exportName: "c1",
+        sourceFile: "src/infra.ts",
+      });
+
+      const dowValidator = new GraphValidator({ failOnDow: true });
+      const result = dowValidator.validate(graph);
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => e.code === "ERR_DOW_MISSING_DLQ")).toBe(true);
+      expect(result.errors[0]?.message).toContain("[DoW Protection]");
+    });
+  });
+
+  describe("S3 Prefix-Aware Recursion Discrimination", () => {
+    it("allows non-overlapping S3 prefixes in same bucket (raw/ -> Queue -> processed/)", () => {
+      const graph = createEmptyGraph();
+      graph.buckets.push({
+        id: "b1",
+        name: "med-docs",
+        sourceFile: "src/infra.ts",
+      });
+      graph.queues.push({
+        id: "q1",
+        name: "med-proc-queue",
+        sourceFile: "src/infra.ts",
+      });
+      graph.bindings.push({
+        id: "med_docs_binding",
+        sourceBucketName: "med-docs",
+        event: "objectCreated",
+        targetQueueName: "med-proc-queue",
+        prefix: "raw/", // Only triggers on raw/
+      });
+      graph.consumers.push({
+        id: "medWorker",
+        queueName: "med-proc-queue",
+        exportName: "medWorker",
+        sourceFile: "src/infra.ts",
+        mutations: {
+          bucketsWritten: [{ name: "med-docs", prefix: "processed/" }], // Writes to disjoint prefix processed/
+        },
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.valid).toBe(true);
+      expect(result.errors.some((e) => e.code === "ERR_RECURSIVE_LOOP")).toBe(false);
+    });
+
+    it("detects recursive loop when worker writes back to the same prefix", () => {
+      const graph = createEmptyGraph();
+      graph.buckets.push({
+        id: "b1",
+        name: "med-docs",
+        sourceFile: "src/infra.ts",
+      });
+      graph.queues.push({
+        id: "q1",
+        name: "med-proc-queue",
+        sourceFile: "src/infra.ts",
+      });
+      graph.bindings.push({
+        id: "med_docs_binding",
+        sourceBucketName: "med-docs",
+        event: "objectCreated",
+        targetQueueName: "med-proc-queue",
+        prefix: "raw/",
+      });
+      graph.consumers.push({
+        id: "medWorker",
+        queueName: "med-proc-queue",
+        exportName: "medWorker",
+        sourceFile: "src/infra.ts",
+        mutations: {
+          bucketsWritten: [{ name: "med-docs", prefix: "raw/" }], // Writes back to trigger prefix!
+        },
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.valid).toBe(false);
+      const loopErr = result.errors.find((e) => e.code === "ERR_RECURSIVE_LOOP");
+      expect(loopErr).toBeDefined();
+      expect(loopErr?.message).toContain("med-docs");
+    });
   });
 });

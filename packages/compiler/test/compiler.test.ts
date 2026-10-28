@@ -918,6 +918,45 @@ export const badConsumer = recursiveTable.stream(async (event) => {
     });
   });
 
+  describe("Cross-Module AST Mutation Tracing & Strict Mode Build", () => {
+    const testDir = path.join(__dirname, ".tmp-test-app-cross-module");
+
+    beforeAll(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+      const dbCode = `
+import { Table } from "@syncploy/sdk";
+
+export const ordersTable = new Table("orders-cross-tbl", {
+  stream: "NEW_IMAGE",
+});
+
+export async function saveOrderRecord(record: any) {
+  // Write to table inside an imported helper function!
+  await ordersTable.put(record);
+}
+`;
+      const appCode = `
+import { ordersTable, saveOrderRecord } from "./db";
+
+export const worker = ordersTable.stream(async (event) => {
+  // Invokes imported function that writes back to ordersTable!
+  await saveOrderRecord({ PK: "ORDER#1" });
+});
+`;
+      await fs.writeFile(path.join(testDir, "db.ts"), dbCode);
+      await fs.writeFile(path.join(testDir, "app.ts"), appCode);
+    });
+
+    afterAll(async () => {
+      await fs.rm(testDir, { recursive: true, force: true });
+    });
+
+    it("traces mutations across imported module files to catch recursive loops", async () => {
+      const compiler = new Compiler(testDir);
+      await expect(compiler.build()).rejects.toThrow("Pre-flight validation failed with 1 error(s).");
+    });
+  });
+
   describe("Cognito Auth Construct Synthesis & Environment Wiring", () => {
     const testDir = path.join(__dirname, ".tmp-test-app-auth");
 

@@ -26,11 +26,17 @@ export interface ContainerIR {
   workingDirectory?: string | undefined;
 }
 
+export interface BucketMutationIR {
+  name: string;
+  prefix?: string | undefined;
+}
+
 export interface FunctionMutationsIR {
   tablesWritten?: string[] | undefined;
-  bucketsWritten?: string[] | undefined;
+  bucketsWritten?: (string | BucketMutationIR)[] | undefined;
   queuesSent?: string[] | undefined;
   topicsPublished?: string[] | undefined;
+  deliveryStreamsWritten?: string[] | undefined;
 }
 
 export interface ApiRouteIR {
@@ -323,4 +329,9 @@ export interface BuildOutput {
   distDir: string;
   templatePath: string;
   lambdaBundles: Record<string, string>; // apiId or consumerId -> bundlePath
+}
+
+export interface BuildOptions {
+  strict?: boolean | undefined;
+  failOnDow?: boolean | undefined;
 }

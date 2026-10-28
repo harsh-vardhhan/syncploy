@@ -29,7 +29,17 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
   }
 
   for (const b of graph.bindings || []) {
-    addEdge(`Bucket '${b.sourceBucketName}'`, `Queue '${b.targetQueueName}'`, b.id);
+    const bucketNode = b.prefix
+      ? `Bucket '${b.sourceBucketName}' [prefix: ${b.prefix}]`
+      : `Bucket '${b.sourceBucketName}'`;
+    addEdge(bucketNode, `Queue '${b.targetQueueName}'`, b.id);
+  }
+
+  for (const d of graph.deliveryStreams || []) {
+    const bucketNode = d.prefix
+      ? `Bucket '${d.destinationBucketName}' [prefix: ${d.prefix}]`
+      : `Bucket '${d.destinationBucketName}'`;
+    addEdge(`DeliveryStream '${d.name}'`, bucketNode, d.id, d.sourceFile);
   }
 
   // B. Mutation / Write Edges:
@@ -74,14 +84,42 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
     for (const tbl of fn.mutations?.tablesWritten || []) {
       addEdge(fn.nodeName, `Table '${tbl}'`, fn.id, fn.sourceFile);
     }
-    for (const bkt of fn.mutations?.bucketsWritten || []) {
-      addEdge(fn.nodeName, `Bucket '${bkt}'`, fn.id, fn.sourceFile);
+    for (const bktItem of fn.mutations?.bucketsWritten || []) {
+      const bktName = typeof bktItem === "string" ? bktItem : bktItem.name;
+      const writePrefix = typeof bktItem === "string" ? undefined : bktItem.prefix;
+
+      const relevantBindings = (graph.bindings || []).filter((b) => b.sourceBucketName === bktName);
+
+      if (relevantBindings.length === 0) {
+        addEdge(fn.nodeName, `Bucket '${bktName}'`, fn.id, fn.sourceFile);
+      } else {
+        for (const b of relevantBindings) {
+          const bindingNode = b.prefix
+            ? `Bucket '${b.sourceBucketName}' [prefix: ${b.prefix}]`
+            : `Bucket '${b.sourceBucketName}'`;
+
+          // If both writePrefix and binding.prefix are defined, check for prefix overlap
+          if (writePrefix && b.prefix) {
+            const normWrite = writePrefix.endsWith("/") ? writePrefix : writePrefix + "/";
+            const normBind = b.prefix.endsWith("/") ? b.prefix : b.prefix + "/";
+            if (!normWrite.startsWith(normBind) && !normBind.startsWith(normWrite)) {
+              // Disjoint prefixes: this write cannot trigger this binding!
+              continue;
+            }
+          }
+
+          addEdge(fn.nodeName, bindingNode, fn.id, fn.sourceFile);
+        }
+      }
     }
     for (const q of fn.mutations?.queuesSent || []) {
       addEdge(fn.nodeName, `Queue '${q}'`, fn.id, fn.sourceFile);
     }
     for (const top of fn.mutations?.topicsPublished || []) {
       addEdge(fn.nodeName, `Topic '${top}'`, fn.id, fn.sourceFile);
+    }
+    for (const d of fn.mutations?.deliveryStreamsWritten || []) {
+      addEdge(fn.nodeName, `DeliveryStream '${d}'`, fn.id, fn.sourceFile);
     }
 
     if (fn.policies) {
@@ -116,7 +154,17 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
         if (acts.some((a) => a === "s3:PutObject" || a === "s3:PutObjectAcl")) {
           for (const b of graph.buckets) {
             if (res.includes("*") || res.some((r) => r.includes(b.name) || (b.bucketName && r.includes(b.bucketName)))) {
-              addEdge(fn.nodeName, `Bucket '${b.name}'`, fn.id, fn.sourceFile);
+              const relevantBindings = (graph.bindings || []).filter((bin) => bin.sourceBucketName === b.name);
+              if (relevantBindings.length === 0) {
+                addEdge(fn.nodeName, `Bucket '${b.name}'`, fn.id, fn.sourceFile);
+              } else {
+                for (const bin of relevantBindings) {
+                  const nodeName = bin.prefix
+                    ? `Bucket '${bin.sourceBucketName}' [prefix: ${bin.prefix}]`
+                    : `Bucket '${bin.sourceBucketName}'`;
+                  addEdge(fn.nodeName, nodeName, fn.id, fn.sourceFile);
+                }
+              }
             }
           }
         }
@@ -125,6 +173,14 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
           for (const top of graph.topics || []) {
             if (res.includes("*") || res.some((r) => r.includes(top.name) || (top.topicName && r.includes(top.topicName)))) {
               addEdge(fn.nodeName, `Topic '${top.name}'`, fn.id, fn.sourceFile);
+            }
+          }
+        }
+
+        if (acts.some((a) => a.startsWith("firehose:PutRecord"))) {
+          for (const d of graph.deliveryStreams || []) {
+            if (res.includes("*") || res.some((r) => r.includes(d.name) || (d.streamName && r.includes(d.streamName)))) {
+              addEdge(fn.nodeName, `DeliveryStream '${d.name}'`, fn.id, fn.sourceFile);
             }
           }
         }

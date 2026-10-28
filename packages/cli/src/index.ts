@@ -16,7 +16,9 @@ program
   .command("build", { isDefault: true })
   .description("Compile TypeScript application into AWS CloudFormation and Lambda bundles")
   .argument("[dir]", "Project root directory", ".")
-  .action(async (dir) => {
+  .option("--strict", "Treat all pre-flight warnings as fatal errors")
+  .option("--fail-on-dow", "Treat Denial-of-Wallet and SQS timeout warnings as fatal errors")
+  .action(async (dir, options: { strict?: boolean; failOnDow?: boolean }) => {
     const projectRoot = path.resolve(process.cwd(), dir);
     const envPath = path.join(projectRoot, ".env");
     if (fs.existsSync(envPath) && typeof process.loadEnvFile === "function") {
@@ -87,7 +89,10 @@ program
       }
 
       console.log(pc.cyan("\nBundling Lambdas & synthesizing CloudFormation..."));
-      const output = await compiler.build();
+      const output = await compiler.build({
+        strict: options.strict,
+        failOnDow: options.failOnDow,
+      });
 
       const duration = (performance.now() - startTime).toFixed(1);
       console.log(pc.green(`\n✔ Build succeeded in ${pc.bold(`${duration}ms`)}`));

@@ -12,6 +12,11 @@ export interface ValidationResult {
   warnings: Diagnostic[];
 }
 
+export interface ValidationOptions {
+  strict?: boolean | undefined;
+  failOnDow?: boolean | undefined;
+}
+
 export interface ValidationContext {
   addError(code: string, constructId: string, message: string, sourceFile?: string): void;
   addWarning(code: string, constructId: string, message: string, sourceFile?: string): void;
