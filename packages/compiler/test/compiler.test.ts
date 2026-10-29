@@ -1621,4 +1621,84 @@ export const badUnresolvedTopicBudget = new Budget("badUnresolvedTopic", {
       }
     });
   });
+
+  describe("Cross-File Constants & Typed Subscription Targets", () => {
+    const testDir = path.join(tmpdir(), `syncploy-test-crossfile-${Date.now()}`);
+
+    beforeAll(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+      await fs.writeFile(
+        path.join(testDir, "config.ts"),
+        `
+export const CURRENCY = "EUR";
+export const BUDGET_AMOUNT = 250;
+export const SCOPED = true;
+export const CEILING_NAME = "shared-ceiling";
+`
+      );
+      await fs.writeFile(
+        path.join(testDir, "app.ts"),
+        `
+import { Topic, Queue, Budget } from "@syncploy/sdk";
+import { CURRENCY, BUDGET_AMOUNT, SCOPED, CEILING_NAME } from "./config";
+
+export const alerts = new Topic("alerts", {});
+
+export const budget = new Budget("crossFile", {
+  amount: BUDGET_AMOUNT,
+  unit: CURRENCY,
+  budgetName: CEILING_NAME,
+  filterByStack: SCOPED,
+  topic: alerts,
+});
+
+export const jobs = new Queue("jobs", {});
+export const worker = jobs.consumer({}, async () => {});
+export const dispatch = new Topic("dispatch", {
+  subscriptions: [{ protocol: "lambda", endpoint: worker }],
+});
+`
+      );
+    });
+
+    afterAll(async () => {
+      await fs.rm(testDir, { recursive: true, force: true });
+    });
+
+    it("resolves imported constants for every budget option", async () => {
+      const compiler = new Compiler(testDir);
+      const graph = await compiler.parse();
+      const budget = graph.budgets?.[0];
+      expect(budget).toBeDefined();
+      expect(budget!.amount).toBe(250);
+      expect(budget!.unit).toBe("EUR");
+      expect(budget!.budgetName).toBe("shared-ceiling");
+      expect(budget!.filterByStack).toBe(true);
+      expect(budget!.amount).not.toBe(100); // no silent default
+    });
+
+    it("emits clean, deployable resources for the resolved values", async () => {
+      const compiler = new Compiler(testDir);
+      const graph = await compiler.parse();
+      const validation = new (await import("../src/validator")).GraphValidator().validate(graph);
+      expect(validation.errors.map((e) => e.code)).toEqual([]);
+
+      const templatePath = await new Synthesizer(testDir).synthesize(graph, {});
+      const res = JSON.parse(await fs.readFile(templatePath, "utf-8")).Resources;
+
+      const budgetRes = res["StackBudget"];
+      expect(budgetRes).toBeDefined();
+      expect(budgetRes.Properties.Budget.BudgetLimit).toEqual({ Amount: 250, Unit: "EUR" });
+      expect(budgetRes.Properties.Budget.BudgetName).toBe("shared-ceiling");
+      expect(budgetRes.Properties.Budget.CostFilters.TagKeyValue[0]["Fn::Sub"]).toBe(
+        "user:StackName$${AWS::StackName}"
+      );
+
+      const dispatch = res["Topicdispatch"];
+      expect(dispatch.Properties.Subscription[0]).toEqual({
+        Protocol: "lambda",
+        Endpoint: { "Fn::GetAtt": ["Functionworker", "Arn"] },
+      });
+    });
+  });
 });

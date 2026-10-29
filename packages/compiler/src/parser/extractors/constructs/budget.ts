@@ -11,7 +11,7 @@ import {
   extractNumber,
   extractString,
   extractStringLiteral,
-  unwrapExpression,
+  resolveConstantInitializer,
 } from "../ast-utils";
 
 export function extractBudget(
@@ -30,8 +30,7 @@ export function extractBudget(
     if (args[0].isKind(SyntaxKind.StringLiteral)) {
       budgetId = args[0].getLiteralValue();
     } else if (args[0].isKind(SyntaxKind.Identifier)) {
-      const idDecl = sourceFile.getVariableDeclaration(args[0].getText());
-      const idInit = idDecl?.getInitializer();
+      const idInit = resolveConstantInitializer(args[0]);
       if (idInit && idInit.isKind(SyntaxKind.StringLiteral)) {
         budgetId = idInit.getLiteralValue();
       } else {
@@ -90,30 +89,16 @@ export function extractBudget(
     if (filterProp) {
       let initNode: any;
       if (filterProp.isKind(SyntaxKind.PropertyAssignment)) {
-        initNode = unwrapExpression(filterProp.getInitializer());
+        initNode = filterProp.getInitializer();
       } else if (filterProp.isKind(SyntaxKind.ShorthandPropertyAssignment)) {
         initNode = filterProp.getNameNode();
       }
-      if (initNode) {
-        const text = initNode.getText();
-        if (text === "true") {
-          filterByStack = true;
-        } else if (text === "false") {
-          filterByStack = false;
-        } else if (initNode.isKind(SyntaxKind.Identifier)) {
-          const decl = sourceFile.getVariableDeclaration(initNode.getText());
-          const declInit = unwrapExpression(decl?.getInitializer());
-          const declText = declInit?.getText();
-          if (declText === "true") {
-            filterByStack = true;
-          } else if (declText === "false") {
-            filterByStack = false;
-          } else {
-            filterByStackInvalid = true;
-          }
-        } else {
-          filterByStackInvalid = true;
-        }
+      const resolved = resolveConstantInitializer(initNode);
+      const resolvedText = resolved?.getText();
+      if (resolvedText === "true") {
+        filterByStack = true;
+      } else if (resolvedText === "false") {
+        filterByStack = false;
       } else {
         filterByStackInvalid = true;
       }

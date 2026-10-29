@@ -6,13 +6,22 @@ import type { Duration, MemorySize, PolicyStatement } from "./types";
 
 export type TopicProtocol = "email" | "email-json" | "sms" | "sqs" | "lambda" | "https" | "http" | "firehose";
 
-export interface ConstructTarget {
-  readonly _kind: string;
+/**
+ * A construct the compiler can synthesize into a Lambda function target.
+ * Restricted to the actual function-bearing constructs so that passing a
+ * table, bucket, budget, etc. is a compile-time error rather than a
+ * validation error.
+ */
+export interface FunctionTarget {
+  readonly _kind: "api" | "queue_consumer" | "table_stream" | "topic_subscriber";
 }
+
+/** @deprecated Use {@link FunctionTarget}. */
+export type ConstructTarget = FunctionTarget;
 
 export interface TopicSubscription {
   protocol: TopicProtocol;
-  endpoint: Queue | DeliveryStream | ConstructTarget | string;
+  endpoint: Queue | DeliveryStream | FunctionTarget | string;
 }
 
 export interface TopicOptions {

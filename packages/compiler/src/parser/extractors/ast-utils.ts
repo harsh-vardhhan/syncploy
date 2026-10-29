@@ -23,6 +23,39 @@ export function unwrapExpression(node: Node | undefined): Node | undefined {
   return curr;
 }
 
+/**
+ * Follows identifier references to their static initializer, across files and
+ * import aliases. Returns the resolved initializer node (literal, expression,
+ * etc.) or undefined when the value cannot be statically determined.
+ */
+export function resolveConstantInitializer(
+  node: Node | undefined,
+  seen: Set<string> = new Set()
+): Node | undefined {
+  const unwrapped = unwrapExpression(node);
+  if (!unwrapped || !unwrapped.isKind(SyntaxKind.Identifier)) return unwrapped;
+
+  const name = unwrapped.getText();
+  const key = `${unwrapped.getSourceFile().getFilePath()}::${name}`;
+  if (seen.has(key) || seen.size > 10) return undefined;
+  seen.add(key);
+
+  let decl: Node | undefined;
+  try {
+    const symbol = unwrapped.getSymbol();
+    const target = symbol?.isAlias() ? symbol.getAliasedSymbol() : symbol;
+    decl = target?.getDeclarations().find((d) => d.isKind(SyntaxKind.VariableDeclaration));
+  } catch {
+    decl = undefined;
+  }
+  if (!decl) {
+    decl = unwrapped.getSourceFile().getVariableDeclaration(name);
+  }
+  if (!decl) return undefined;
+
+  return resolveConstantInitializer((decl as any).getInitializer(), seen);
+}
+
 export function parseDurationString(str: string): number {
   const sMatch = str.match(/^(\d+)s$/);
   if (sMatch) return parseInt(sMatch[1]!, 10);
@@ -85,9 +118,7 @@ export function extractNumber(propNode: Node | undefined): number | undefined {
     return (init as any).getLiteralValue();
   }
   if (init.isKind(SyntaxKind.Identifier)) {
-    const sourceFile = init.getSourceFile();
-    const decl = sourceFile.getVariableDeclaration(init.getText());
-    const declInit = unwrapExpression(decl?.getInitializer());
+    const declInit = resolveConstantInitializer(init);
     if (declInit && declInit.isKind(SyntaxKind.NumericLiteral)) {
       return (declInit as any).getLiteralValue();
     }
@@ -146,9 +177,7 @@ export function extractStringLiteral(node: Node | undefined): string | undefined
     return (target as any).getLiteralValue();
   }
   if (target.isKind(SyntaxKind.Identifier)) {
-    const sourceFile = target.getSourceFile();
-    const decl = sourceFile.getVariableDeclaration(target.getText());
-    const declInit = unwrapExpression(decl?.getInitializer());
+    const declInit = resolveConstantInitializer(target);
     if (
       declInit &&
       (declInit.isKind(SyntaxKind.StringLiteral) ||
@@ -173,9 +202,7 @@ export function extractString(node: Node | undefined): string | undefined {
     return (target as any).getLiteralValue();
   }
   if (target.isKind(SyntaxKind.Identifier)) {
-    const sourceFile = target.getSourceFile();
-    const decl = sourceFile.getVariableDeclaration(target.getText());
-    const declInit = unwrapExpression(decl?.getInitializer());
+    const declInit = resolveConstantInitializer(target);
     if (
       declInit &&
       (declInit.isKind(SyntaxKind.StringLiteral) ||
