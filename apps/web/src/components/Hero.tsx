@@ -16,18 +16,29 @@ import {
 
 export function Hero() {
   const [copied, setCopied] = useState(false);
-  const [billCounter, setBillCounter] = useState(14280.5);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [billCounter, setBillCounter] = useState(1284.5);
   const installCmd = "bun add @syncploy/sdk";
 
   // Automated background ticker showing the runaway bill risk on standard AWS
   useEffect(() => {
     const interval = setInterval(() => {
       setBillCounter((prev) =>
-        prev > 88000 ? 14280.5 : prev + Math.floor(Math.random() * 85 + 25)
+        prev > 48000 ? 1284.5 : prev + Math.floor(Math.random() * 85 + 25)
       );
-    }, 100);
+    }, 90);
     return () => clearInterval(interval);
   }, []);
+
+  // Continuous CSS 3D card-flip animation: alternates between Standard AWS & Syncploy every 4 seconds
+  useEffect(() => {
+    if (isPaused) return;
+    const interval = setInterval(() => {
+      setIsFlipped((prev) => !prev);
+    }, 4200);
+    return () => clearInterval(interval);
+  }, [isPaused]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(installCmd);
@@ -177,107 +188,186 @@ export function Hero() {
             </div>
           </div>
 
-          {/* Right Column: First-Fold Dual Credit Card Graphic (No Clicks Needed) */}
+          {/* Right Column: First-Fold 3D Auto-Flipping Credit Card UI (Both Scenarios via CSS) */}
           <div className="lg:col-span-5 flex flex-col items-center justify-center pt-8 lg:pt-0">
-            <div className="relative w-full max-w-[390px] sm:max-w-[430px] pt-8 sm:pt-10 pb-2">
-              {/* Card 1: Standard AWS (The Risk) - Angled & Offset in Background */}
+            {/* Mode Indicator & Auto-Cycle Control */}
+            <div className="w-full max-w-[420px] flex items-center justify-between mb-2 px-1 text-xs">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFlipped(false);
+                    setIsPaused(true);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs transition-all ${
+                    !isFlipped
+                      ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 shadow-xs scale-105"
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                  }`}
+                >
+                  <Flame className="h-3.5 w-3.5 text-rose-500 animate-pulse" />
+                  <span>Standard AWS (The Risk)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsFlipped(true);
+                    setIsPaused(true);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs transition-all ${
+                    isFlipped
+                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shadow-xs scale-105"
+                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
+                  }`}
+                >
+                  <Shield className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>Syncploy (Vault Locked)</span>
+                </button>
+              </div>
+
+              <span
+                className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono text-slate-400 dark:text-slate-500"
+                title="Cards alternate automatically every 4 seconds"
+              >
+                <RefreshCw
+                  className={`h-2.5 w-2.5 ${isPaused ? "" : "animate-spin"}`}
+                  style={{ animationDuration: "4s" }}
+                />
+                <span>{isPaused ? "Paused" : "Auto-cycling"}</span>
+              </span>
+            </div>
+
+            {/* 3D Perspective Card Container */}
+            <div
+              className="relative w-full max-w-[420px] [perspective:1200px]"
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+            >
               <div
                 style={{
-                  animation: "card-overheat 3s infinite ease-in-out",
+                  transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
                 }}
-                className="absolute -top-1 sm:-top-2 -right-2 sm:-right-4 w-[90%] sm:w-[93%] rounded-2xl p-4 sm:p-5 border text-white transform rotate-3 sm:rotate-4 bg-gradient-to-tr from-rose-950 via-slate-900 to-rose-950 border-rose-500/70 shadow-2xl shadow-rose-950/70 z-0"
+                className="relative w-full transition-transform duration-700 [transform-style:preserve-3d]"
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-rose-500 animate-ping" />
-                    <span className="text-[10px] font-mono font-bold tracking-wider text-rose-300 uppercase">
-                      Standard AWS &bull; The Risk
-                    </span>
-                  </div>
-                  <div className="font-mono text-xs font-bold text-rose-300 flex items-center gap-1">
-                    <span>AWS CLOUD</span>
-                    <Flame className="h-3.5 w-3.5 text-rose-400 animate-bounce" />
-                  </div>
-                </div>
-
-                <div className="flex items-baseline justify-between">
-                  <div>
-                    <div className="text-[9px] font-mono text-slate-400 uppercase tracking-wider">
-                      Runaway Spend
+                {/* Side A: Standard AWS (The Risk) - Glowing Overheat Animation */}
+                <div
+                  style={{
+                    animation: !isFlipped ? "card-overheat 2.5s infinite ease-in-out" : "none",
+                  }}
+                  className="w-full rounded-2xl p-5 sm:p-6 border text-white transition-all [backface-visibility:hidden] bg-gradient-to-tr from-rose-950 via-slate-900 to-rose-950 border-rose-400 dark:border-rose-500/80 shadow-2xl shadow-rose-600/30"
+                >
+                  {/* Header & Chip */}
+                  <div className="relative flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-7 rounded-md bg-rose-500/20 border border-rose-400/60 flex items-center justify-center shadow-xs">
+                        <Flame className="h-4 w-4 text-rose-400 animate-pulse" />
+                      </div>
+                      <span className="text-[10px] font-mono tracking-widest text-rose-300 uppercase font-bold">
+                        UNCAPPED RISK
+                      </span>
                     </div>
-                    <div className="font-mono text-2xl sm:text-3xl font-black text-rose-400 tracking-tight animate-pulse">
+                    <div className="font-mono text-xs font-bold text-rose-200 flex items-center gap-1.5">
+                      <span>AWS CLOUD</span>
+                      <Flame className="h-4 w-4 text-rose-400 animate-bounce" />
+                    </div>
+                  </div>
+
+                  {/* Runaway Spend Ticker */}
+                  <div className="relative space-y-1 mb-5 text-left">
+                    <div className="text-[10px] font-mono text-slate-300 uppercase tracking-widest flex items-center justify-between">
+                      <span>Runaway Live Spend</span>
+                      <span className="text-[10px] font-mono text-rose-400 font-bold animate-pulse">+$148.00 / min</span>
+                    </div>
+                    <div className="font-mono text-3xl sm:text-4xl font-black text-rose-400 tracking-tight animate-pulse">
                       ${billCounter.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <span className="text-xs font-mono font-normal text-slate-400 ml-2">USD</span>
                     </div>
                   </div>
-                  <span className="text-[9px] font-mono font-bold text-rose-400 border border-rose-500/40 bg-rose-950/70 px-2 py-0.5 rounded-full">
-                    UNBOUNDED
-                  </span>
-                </div>
-              </div>
 
-              {/* Card 2: With Syncploy (Vault Locked) - Prominent in Foreground */}
-              <div
-                style={{
-                  animation: "vault-lock 0.8s ease-out forwards",
-                }}
-                className="relative z-10 w-full rounded-2xl p-5 sm:p-6 border text-white transform -rotate-1 bg-gradient-to-tr from-slate-900 via-emerald-950 to-slate-900 border-emerald-400 dark:border-cyan-500/80 shadow-2xl shadow-emerald-500/20 backdrop-blur-md"
-              >
-                {/* Ambient Card Gloss */}
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
-
-                {/* Card Header & Chip */}
-                <div className="relative flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-6 rounded-md bg-amber-400/90 border border-amber-300 flex items-center justify-center shadow-xs">
-                      <div className="w-4 h-3.5 border border-amber-600/60 rounded-xs bg-amber-400/40" />
+                  {/* Card Footer */}
+                  <div className="relative flex items-center justify-between text-[11px] font-mono text-slate-300 pt-2 border-t border-white/10 text-left">
+                    <div>
+                      <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Cardholder</span>
+                      <span className="text-white font-semibold">DEV ACCOUNT #9482</span>
                     </div>
-                    <span className="text-[10px] font-mono tracking-widest text-emerald-300 uppercase font-bold">
-                      Zero-DoW Shield
-                    </span>
-                  </div>
-                  <div className="font-mono text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                    <span>AWS CLOUD</span>
-                    <Lock className="h-4 w-4 text-emerald-400" />
-                  </div>
-                </div>
-
-                {/* Card Number / Spend Ticker */}
-                <div className="relative space-y-0.5 mb-4 text-left">
-                  <div className="text-[10px] font-mono text-slate-300 uppercase tracking-widest flex items-center justify-between">
-                    <span>Month-To-Date Spend</span>
-                    <span className="text-[10px] font-mono text-emerald-400 font-semibold">$0.00 / idle</span>
-                  </div>
-                  <div className="font-mono text-3xl sm:text-4xl font-black text-emerald-400 tracking-tight">
-                    $0.42 <span className="text-xs font-mono font-normal text-slate-300">USD</span>
+                    <div className="text-right">
+                      <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Limit Status</span>
+                      <span className="font-bold text-rose-400 animate-pulse">
+                        CRITICAL: UNBOUNDED
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Card Footer */}
-                <div className="relative flex items-center justify-between text-[11px] font-mono text-slate-300 pt-2 border-t border-white/10 text-left">
-                  <div>
-                    <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Cardholder</span>
-                    <span className="text-white font-semibold">DEV ACCOUNT #9482</span>
+                {/* Side B: With Syncploy (Vault Locked) - Vault-Lock Cyan Glow Animation */}
+                <div
+                  style={{
+                    animation: isFlipped ? "vault-lock 0.8s ease-out forwards" : "none",
+                  }}
+                  className="absolute inset-0 w-full rounded-2xl p-5 sm:p-6 border text-white transition-all [backface-visibility:hidden] [transform:rotateY(180deg)] bg-gradient-to-tr from-slate-900 via-emerald-950 to-slate-900 border-emerald-400 dark:border-cyan-500/80 shadow-2xl shadow-emerald-500/20 backdrop-blur-md"
+                >
+                  {/* Ambient Card Gloss */}
+                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
+
+                  {/* Header & Golden EMV Chip */}
+                  <div className="relative flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-7 rounded-md bg-amber-400/90 border border-amber-300 flex items-center justify-center shadow-xs">
+                        <div className="w-5 h-4 border border-amber-600/60 rounded-xs bg-amber-400/40" />
+                      </div>
+                      <span className="text-[10px] font-mono tracking-widest text-emerald-300 uppercase font-bold">
+                        EMV SECURE &bull; ZERO-DOW
+                      </span>
+                    </div>
+                    <div className="font-mono text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                      <span>AWS CLOUD</span>
+                      <Lock className="h-4 w-4 text-emerald-400" />
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Limit Status</span>
-                    <span className="font-bold text-cyan-400">
-                      VAULT SEALED (MAX $4.80)
-                    </span>
+
+                  {/* Hard-Capped Spend */}
+                  <div className="relative space-y-1 mb-5 text-left">
+                    <div className="text-[10px] font-mono text-slate-300 uppercase tracking-widest flex items-center justify-between">
+                      <span>Month-To-Date Spend</span>
+                      <span className="text-[10px] font-mono text-emerald-400 font-bold">$0.00 / idle</span>
+                    </div>
+                    <div className="font-mono text-3xl sm:text-4xl font-black text-emerald-400 tracking-tight">
+                      $0.42
+                      <span className="text-xs font-mono font-normal text-slate-400 ml-2">USD</span>
+                    </div>
+                  </div>
+
+                  {/* Card Footer */}
+                  <div className="relative flex items-center justify-between text-[11px] font-mono text-slate-300 pt-2 border-t border-white/10 text-left">
+                    <div>
+                      <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Cardholder</span>
+                      <span className="text-white font-semibold">DEV ACCOUNT #9482</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Limit Status</span>
+                      <span className="font-bold text-cyan-400">
+                        VAULT SEALED (MAX $4.80)
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Comparison Sub-Pills */}
-              <div className="mt-3.5 grid grid-cols-2 gap-2 text-[11px] font-mono">
-                <div className="p-2 rounded-xl border border-rose-200 dark:border-rose-900/40 bg-rose-50/70 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 text-left flex items-center gap-1.5">
-                  <Flame className="h-3.5 w-3.5 shrink-0 text-rose-500" />
-                  <span className="truncate font-semibold">Standard: $10k+ risk</span>
-                </div>
-                <div className="p-2 rounded-xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/70 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 text-left flex items-center gap-1.5">
-                  <Shield className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
-                  <span className="truncate font-semibold">Syncploy: $4.80 max cap</span>
-                </div>
-              </div>
+            {/* Dynamic Explanatory Caption that syncs with current side */}
+            <div className="mt-3.5 text-center text-xs font-mono h-8 flex items-center justify-center">
+              {isFlipped ? (
+                <span className="text-emerald-700 dark:text-emerald-400 font-semibold inline-flex items-center justify-center gap-1.5 transition-all">
+                  <Shield className="h-3.5 w-3.5 shrink-0" />
+                  <span>Zero-DoW Shield: Tarjan SCC &amp; concurrency bounds cap max burn at $4.80.</span>
+                </span>
+              ) : (
+                <span className="text-rose-600 dark:text-rose-400 font-semibold inline-flex items-center justify-center gap-1.5 transition-all">
+                  <Flame className="h-3.5 w-3.5 shrink-0" />
+                  <span>Standard AWS: Uncapped Lambda concurrency can drain bank limits overnight.</span>
+                </span>
+              )}
             </div>
           </div>
         </div>
