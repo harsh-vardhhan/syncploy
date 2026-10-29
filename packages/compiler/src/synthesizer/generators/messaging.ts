@@ -22,10 +22,48 @@ export function generateTopics(
       topicProps["FifoTopic"] = true;
     }
     if (topic.subscriptions && topic.subscriptions.length > 0) {
-      topicProps["Subscription"] = topic.subscriptions.map((s) => ({
-        Protocol: s.protocol,
-        Endpoint: s.endpoint,
-      }));
+      topicProps["Subscription"] = topic.subscriptions.map((s) => {
+        let endpointVal: any = s.endpoint;
+        if (s.protocol === "sqs") {
+          const matchingQueue = (graph.queues || []).find(
+            (q) => q.name === s.endpoint || q.id === s.endpoint || q.logicalId === s.endpoint
+          );
+          if (matchingQueue) {
+            const qLogicalId = getQueueLogicalId(matchingQueue, graph);
+            endpointVal = { "Fn::GetAtt": [qLogicalId, "Arn"] };
+
+            // Synthesize AWS::SQS::QueuePolicy allowing SNS to publish to this Queue
+            const policyKey = `QueuePolicy${qLogicalId}From${resourceKey}`;
+            resources[policyKey] = {
+              Type: "AWS::SQS::QueuePolicy",
+              Properties: {
+                Queues: [{ Ref: qLogicalId }],
+                PolicyDocument: {
+                  Version: "2012-10-17",
+                  Statement: [
+                    {
+                      Sid: `AllowSNS${resourceKey}ToPublish`,
+                      Effect: "Allow",
+                      Principal: { Service: "sns.amazonaws.com" },
+                      Action: "sqs:SendMessage",
+                      Resource: { "Fn::GetAtt": [qLogicalId, "Arn"] },
+                      Condition: {
+                        ArnEquals: {
+                          "aws:SourceArn": { Ref: resourceKey },
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            };
+          }
+        }
+        return {
+          Protocol: s.protocol,
+          Endpoint: endpointVal,
+        };
+      });
     }
     topicProps["Tags"] = [
       { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },

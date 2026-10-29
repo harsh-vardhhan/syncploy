@@ -36,7 +36,7 @@ export function extractBudget(
     }
   }
 
-  let amount = 100;
+  let amount: number | undefined;
   let unit = "USD";
   let topicName: string | undefined;
   let threshold: number | undefined;
@@ -48,7 +48,7 @@ export function extractBudget(
     const opts = args[1] as ObjectLiteralExpression;
     logicalId = extractString(opts.getProperty("logicalId"));
     customBudgetName = extractString(opts.getProperty("budgetName"));
-    amount = extractNumber(opts.getProperty("amount")) ?? 100;
+    amount = extractNumber(opts.getProperty("amount"));
     unit = extractString(opts.getProperty("unit")) || "USD";
     threshold = extractNumber(opts.getProperty("threshold")) ?? 80;
 

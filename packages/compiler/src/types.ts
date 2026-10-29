@@ -324,7 +324,7 @@ export interface ElectroEntityIR {
 
 export interface BudgetIR {
   id: string;
-  amount: number;
+  amount?: number | undefined;
   unit?: string | undefined;
   topicName?: string | undefined;
   threshold?: number | undefined;

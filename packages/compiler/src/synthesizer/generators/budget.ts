@@ -8,18 +8,29 @@ export function generateBudget(
   const budgetList = graph.budgets || (graph.budget ? [graph.budget] : []);
   if (budgetList.length === 0) return;
 
+  const usedKeys = new Set<string>();
+
   for (const budget of budgetList) {
-    const budgetKey =
+    let budgetKey =
       budget.logicalId ||
       (budgetList.length === 1 ? "StackBudget" : `Budget${sanitizeName(budget.id)}`);
+    if (usedKeys.has(budgetKey)) {
+      let idx = 2;
+      while (usedKeys.has(`${budgetKey}${idx}`)) {
+        idx++;
+      }
+      budgetKey = `${budgetKey}${idx}`;
+    }
+    usedKeys.add(budgetKey);
+
     const threshold = budget.threshold ?? 80;
 
     const budgetInner: any = {
       BudgetName: budget.budgetName || {
         "Fn::Sub":
           budgetList.length === 1
-            ? "${AWS::StackName}-budget"
-            : `\${AWS::StackName}-${budget.id}-budget`,
+            ? "${AWS::StackName}-${AWS::Region}-budget"
+            : `\${AWS::StackName}-\${AWS::Region}-${budget.id}-budget`,
       },
       BudgetType: "COST",
       TimeUnit: "MONTHLY",
@@ -49,6 +60,7 @@ export function generateBudget(
         );
 
     if (targetTopic) {
+      const topicLogicalId = getTopicLogicalId(targetTopic);
       budgetProps.NotificationsWithSubscribers = [
         {
           Notification: {
@@ -60,11 +72,42 @@ export function generateBudget(
           Subscribers: [
             {
               SubscriptionType: "SNS",
-              Address: { Ref: getTopicLogicalId(targetTopic) },
+              Address: { Ref: topicLogicalId },
             },
           ],
         },
       ];
+
+      // Synthesize AWS::SNS::TopicPolicy granting budgets.amazonaws.com permission to publish to the topic
+      const topicPolicyKey = `TopicPolicy${topicLogicalId}ForBudgets`;
+      if (!resources[topicPolicyKey]) {
+        resources[topicPolicyKey] = {
+          Type: "AWS::SNS::TopicPolicy",
+          Properties: {
+            Topics: [{ Ref: topicLogicalId }],
+            PolicyDocument: {
+              Version: "2012-10-17",
+              Statement: [
+                {
+                  Sid: "AWSBudgetsSNSPublishingPermissions",
+                  Effect: "Allow",
+                  Principal: { Service: "budgets.amazonaws.com" },
+                  Action: "sns:Publish",
+                  Resource: { Ref: topicLogicalId },
+                  Condition: {
+                    StringEquals: {
+                      "aws:SourceAccount": { Ref: "AWS::AccountId" },
+                    },
+                    ArnLike: {
+                      "aws:SourceArn": { "Fn::Sub": "arn:aws:budgets::${AWS::AccountId}:budget/*" },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        };
+      }
     }
 
     resources[budgetKey] = {

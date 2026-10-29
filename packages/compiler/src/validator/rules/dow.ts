@@ -61,13 +61,22 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
           api.sourceFile
         );
       }
+
+      if (api.throttle !== undefined) {
+        ctx.addWarning(
+          "WARN_FUNCTION_URL_THROTTLE_UNSUPPORTED",
+          api.id,
+          `Function URL '${api.id}' (${api.method} ${api.path}) has 'throttle' configured, but AWS Lambda Function URLs do not support API Gateway HTTP stage throttling. Use 'concurrency: <number>' to cap execution concurrency, or switch to 'ingress: "api-gateway"'.`,
+          api.sourceFile
+        );
+      }
     } else {
-      // API Gateway route concurrency & throttling guard
-      if (api.concurrency === undefined && api.throttle === undefined) {
+      // API Gateway route concurrency guard
+      if (api.concurrency === undefined) {
         ctx.addWarning(
           "WARN_DOW_UNRESERVED_CONCURRENCY",
           api.id,
-          `API Gateway route '${api.id}' (${api.method} ${api.path}) has neither 'concurrency' nor 'throttle' configured. Under a DDoS attack or traffic surge, Lambda will scale to account limits (1,000+ executions) causing severe Denial-of-Wallet. Consider configuring 'concurrency: <number>' or 'throttle: { rateLimit, burstLimit }'.`,
+          `API Gateway route '${api.id}' (${api.method} ${api.path}) has no Lambda 'concurrency' cap. While stage throttling caps request rate, unreserved Lambda concurrency can scale to account limits during traffic surges. Consider configuring 'concurrency: <number>'.`,
           api.sourceFile
         );
       }
@@ -143,9 +152,49 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
     );
   }
 
-  // E. Budget Cost Allocation Tag Activation Notice
+  // E. Budget Safety Rails (Static Amount, Notifications, and Cost Allocation Tags)
   const budgetList = graph.budgets || (graph.budget ? [graph.budget] : []);
+  const seenBudgetIds = new Set<string>();
+
   for (const b of budgetList) {
+    if (seenBudgetIds.has(b.id)) {
+      ctx.addError(
+        "ERR_DUPLICATE_BUDGET_ID",
+        b.id,
+        `Duplicate budget ID '${b.id}' declared. Each Budget must have a unique identifier.`,
+        b.sourceFile
+      );
+    }
+    seenBudgetIds.add(b.id);
+
+    if (b.amount === undefined || isNaN(b.amount) || b.amount <= 0) {
+      ctx.addError(
+        "ERR_BUDGET_INVALID_AMOUNT",
+        b.id,
+        `Budget '${b.id}' must declare a static positive 'amount' in options (e.g. amount: 100). Dynamic or missing budget limits cannot be synthesized into CloudFormation.`,
+        b.sourceFile
+      );
+    }
+
+    const hasExplicitTopic =
+      b.topicName &&
+      (graph.topics || []).some((t) => t.name === b.topicName || t.id === b.topicName);
+    const hasFallbackTopic = (graph.topics || []).some(
+      (t) =>
+        t.name.toLowerCase().includes("alert") ||
+        t.name.toLowerCase().includes("kill") ||
+        t.name.toLowerCase().includes("alarm")
+    );
+
+    if (!hasExplicitTopic && !hasFallbackTopic) {
+      ctx.addWarning(
+        "WARN_DOW_BUDGET_NO_NOTIFICATION",
+        b.id,
+        `Budget '${b.id}' has no notification topic configured. An unnotified budget cannot alert anyone on budget overruns. Configure 'topic: myAlertTopic'.`,
+        b.sourceFile
+      );
+    }
+
     if (b.filterByStack) {
       ctx.addWarning(
         "WARN_DOW_BUDGET_TAG_ACTIVATION",

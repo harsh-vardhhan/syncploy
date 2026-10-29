@@ -178,10 +178,12 @@ Resources:
 ## 🛡️ Core Architectural Capabilities
 
 ### 1. Compile-Time Recursion Shield (<1ms)
-Static AST analysis traces database mutations and message dispatches across your handlers. Detects infinite event cycles before code reaches AWS:
+Static AST analysis traces database mutations, queue dispatches, topic publishes, and HTTP requests across your handlers using Tarjan's Strongly Connected Components algorithm ($O(V+E)$ linear time). Detects and halts infinite event cycles before code reaches AWS:
 - Direct loops: `Table -> Stream Consumer -> Table.put`
 - Queue loops: `Queue -> Consumer -> Queue.send`
 - Multi-hop cycles: `Bucket -> EventBridge -> Queue -> Consumer -> Bucket.upload`
+- Cross-service loops: `Topic -> SQS Queue -> Consumer -> Topic.publish`
+- Self-suppression audit trail: `// syncploy-ignore ERR_RECURSIVE_LOOP reason="..."` on any participating construct cleanly suppresses the cycle while logging the reason in CI diagnostics.
 
 ### 2. Zero-Replacement Brownfield Diff Engine (`syncploy diff`)
 CloudFormation updates can silently destroy and recreate stateful resources when properties drift. Syncploy's pre-flight diff engine matches against live AWS stacks and aborts CI with `--check-replacement` if any database or bucket would be destroyed.
@@ -192,10 +194,12 @@ Eliminates trial-and-error IAM authoring and wildcard `*` permissions. Syncploy 
 ### 4. ElectroDB First-Class Integration
 Natively understands ElectroDB entities. Infers Single-Table primary keys, composite sort keys, and unions all Global Secondary Indexes (GSIs) across entity definitions automatically without redundant table declarations.
 
-### 5. Denial-of-Wallet (DoW) & Concurrency Audits
-- Validates that SQS queue `visibilityTimeout` is $\ge 6\times$ consumer timeout to halt retry duplicate execution storms.
-- Warns when public Function URLs or stream consumers lack concurrency caps.
-- Enforces Dead Letter Queue (DLQ) redrive policies on all active consumer queues.
+### 5. Denial-of-Wallet (DoW) & Edge Safety Guards
+- **Edge Throttling Ceiling**: Synthesizes a safe default 1000 rps / 2000 burst ceiling on HTTP API stages to cap DDoS throughput, customizable per route via `throttle: { rateLimit, burstLimit }`.
+- **Lambda Concurrency Guards**: Flags public Function URLs and API routes lacking explicit `concurrency: <number>` caps.
+- **Queue & Stream Timeouts**: Validates that queue `visibilityTimeout` is $\ge 6\times$ consumer timeout to eliminate retry storms.
+- **Dead Letter Queues**: Enforces DLQs on active queues and stream consumers (`onFailure`).
+- **Cost Budget Backstop**: Declare `new Budget("monthlyBudget", { amount: 100, topic: alertTopic, filterByStack: true })` to synthesize an `AWS::Budgets::Budget` with stack-wide cost filters and automated `AWS::SNS::TopicPolicy` subscriber permissions.
 
 ### 6. Container & ESM Packaging
 Compile handlers into treeshaken, minified Node 20 ESM bundles via `esbuild`, or build native Alpine Docker container images via Bun and the AWS Lambda Web Adapter.

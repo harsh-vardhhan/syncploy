@@ -45,6 +45,13 @@ export function extractTopic(
           if (el.isKind(SyntaxKind.ObjectLiteralExpression)) {
             const proto = extractString(el.getProperty("protocol")) || "email";
             let endp = extractString(el.getProperty("endpoint")) || "";
+            if (!endp) {
+              const epProp = el.getProperty("endpoint");
+              if (epProp && epProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const initText = epProp.getInitializer()?.getText() || "";
+                endp = initText.replace(/['"]/g, "");
+              }
+            }
             if (proto === "sqs" && context?.varToQueueName) {
               const baseVar = endp.includes(".") ? endp.split(".")[0]! : endp;
               endp = context.varToQueueName[baseVar] || context.varToQueueName[endp] || endp;

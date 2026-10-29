@@ -315,8 +315,11 @@ export const monthlyBudget = new Budget("monthlyBudget", {
     const budgetRes = res["StackBudget"];
     expect(budgetRes).toBeDefined();
     expect(budgetRes.Type).toBe("AWS::Budgets::Budget");
+    expect(budgetRes.Properties.Budget.BudgetName["Fn::Sub"]).toBe("${AWS::StackName}-${AWS::Region}-budget");
     expect(budgetRes.Properties.Budget.BudgetLimit.Amount).toBe(100);
     expect(budgetRes.Properties.Budget.CostFilters.TagKeyValue[0]["Fn::Sub"]).toBe("user:StackName$${AWS::StackName}");
+    expect(res["TopicPolicyTopicalertsForBudgets"]).toBeDefined();
+    expect(res["TopicPolicyTopicalertsForBudgets"].Type).toBe("AWS::SNS::TopicPolicy");
 
     // 6. Stack Tags on synthesized resources
     expect(tableRes.Properties.Tags).toBeDefined();
@@ -1356,6 +1359,92 @@ export const criticalBudget = new Budget(criticalId, {
       expect(template.Resources["BudgetcriticalBudget"]).toBeDefined();
       expect(template.Resources["BudgetwarningBudget"].Properties.Budget.BudgetLimit.Amount).toBe(50);
       expect(template.Resources["BudgetcriticalBudget"].Properties.Budget.BudgetLimit.Amount).toBe(100);
+    });
+  });
+
+  describe("Deployable SNS -> SQS Subscription and Topic Policy", () => {
+    const testDir = path.join(tmpdir(), `syncploy-test-sns-sqs-${Date.now()}`);
+
+    beforeAll(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+      const code = `
+import { Queue, Topic } from "@syncploy/sdk";
+
+export const jobsQueue = new Queue("jobs", {
+  visibilityTimeout: "60s",
+});
+
+export const eventsTopic = new Topic("events", {
+  subscriptions: [
+    { protocol: "sqs", endpoint: jobsQueue.queueUrl },
+  ],
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+    });
+
+    afterAll(async () => {
+      await fs.rm(testDir, { recursive: true, force: true });
+    });
+
+    it("synthesizes GetAtt Arn for SQS endpoint and emits QueuePolicy for sns.amazonaws.com", async () => {
+      const compiler = new Compiler(testDir);
+      const out = await compiler.build();
+      const template = JSON.parse(await fs.readFile(out.templatePath, "utf-8"));
+      const res = template.Resources;
+
+      // 1. Check Topic Subscription Endpoint is GetAtt Arn, not bare string
+      const topic = res["Topicevents"];
+      expect(topic).toBeDefined();
+      expect(topic.Properties.Subscription).toBeDefined();
+      expect(topic.Properties.Subscription[0].Protocol).toBe("sqs");
+      expect(topic.Properties.Subscription[0].Endpoint).toEqual({
+        "Fn::GetAtt": ["Queuejobs", "Arn"],
+      });
+
+      // 2. Check QueuePolicy for SNS is synthesized
+      const queuePolicy = res["QueuePolicyQueuejobsFromTopicevents"];
+      expect(queuePolicy).toBeDefined();
+      expect(queuePolicy.Type).toBe("AWS::SQS::QueuePolicy");
+      expect(queuePolicy.Properties.PolicyDocument.Statement[0].Principal.Service).toBe("sns.amazonaws.com");
+      expect(queuePolicy.Properties.PolicyDocument.Statement[0].Action).toBe("sqs:SendMessage");
+    });
+  });
+
+  describe("Function URL Throttle & Budget Validation Guardrails", () => {
+    const testDir = path.join(tmpdir(), `syncploy-test-dow-guardrails-${Date.now()}`);
+
+    beforeAll(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+      const code = `
+import { api, Budget } from "@syncploy/sdk";
+
+export const funcUrl = api({
+  path: "/webhook",
+  ingress: "function-url",
+  throttle: { rateLimit: 10, burstLimit: 20 },
+}, async () => ({ ok: true }));
+
+export const badBudget = new Budget("badBudget", {
+  amount: 0,
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+    });
+
+    afterAll(async () => {
+      await fs.rm(testDir, { recursive: true, force: true });
+    });
+
+    it("flags WARN_FUNCTION_URL_THROTTLE_UNSUPPORTED, ERR_BUDGET_INVALID_AMOUNT, and WARN_DOW_BUDGET_NO_NOTIFICATION", async () => {
+      const compiler = new Compiler(testDir);
+      const graph = await compiler.parse();
+      const validator = new (await import("../src/validator")).GraphValidator();
+      const validation = validator.validate(graph);
+
+      expect(validation.warnings.some((w) => w.code === "WARN_FUNCTION_URL_THROTTLE_UNSUPPORTED")).toBe(true);
+      expect(validation.errors.some((e) => e.code === "ERR_BUDGET_INVALID_AMOUNT")).toBe(true);
+      expect(validation.warnings.some((w) => w.code === "WARN_DOW_BUDGET_NO_NOTIFICATION")).toBe(true);
     });
   });
 });

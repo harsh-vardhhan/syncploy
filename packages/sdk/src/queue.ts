@@ -54,6 +54,11 @@ export class Queue {
     return process.env[envKey] || process.env[this.name] || this.name;
   }
 
+  public get queueArn(): string {
+    const envKey = `SYNCPLOY_QUEUE_${this.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_ARN`;
+    return process.env[envKey] || `arn:aws:sqs:*:*:${this.name}`;
+  }
+
   public getClient(): SQSClient {
     if (!this.sqsClient) {
       const endpoint =
