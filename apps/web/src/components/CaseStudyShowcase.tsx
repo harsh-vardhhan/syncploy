@@ -20,26 +20,26 @@ export function CaseStudyShowcase() {
     <section id="showcase" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 border-t border-slate-200 dark:border-[#232736]">
       {/* Section Header */}
       <div className="text-center space-y-4 mb-14">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-purple-200 dark:border-purple-500/30 bg-purple-50 dark:bg-purple-950/30 text-xs font-semibold text-purple-700 dark:text-purple-300 shadow-sm">
-          <Layers className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-          <span>PROVEN IN LIVE</span>
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-emerald-300 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/30 text-xs font-semibold text-emerald-800 dark:text-emerald-300 shadow-sm">
+          <Layers className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+          <span>PROVEN IN LIVE PRODUCTION</span>
           <span className="text-slate-400 dark:text-neutral-500">&bull;</span>
-          <span className="text-slate-600 dark:text-neutral-400">HIPAA Clinical Pipeline</span>
+          <span className="text-slate-600 dark:text-neutral-400">$0.42/MO TOTAL AWS BILL</span>
         </div>
 
         <h2 className="text-3xl sm:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight">
           Real-World Showcase:{" "}
-          <span className="bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 dark:from-purple-400 dark:via-indigo-400 dark:to-cyan-400 bg-clip-text text-transparent">
-            EHR Annotation Platform Migration
+          <span className="bg-gradient-to-r from-emerald-600 via-cyan-600 to-indigo-600 dark:from-emerald-400 dark:via-cyan-400 dark:to-indigo-400 bg-clip-text text-transparent">
+            A Public AI Platform Running for $0.42/mo
           </span>
         </h2>
 
         <p className="max-w-3xl mx-auto text-base sm:text-lg text-slate-600 dark:text-neutral-400 leading-relaxed">
-          How the live HIPAA-compliant <strong className="text-slate-900 dark:text-white font-semibold">EHR Annotation Platform</strong>—a
-          clinical extraction and OMOP Common Data Model pipeline—migrated from a 600+ line legacy AWS SAM template to
-          Syncploy with <span className="text-emerald-600 dark:text-emerald-400 font-semibold">zero downtime</span>,{" "}
-          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">zero stateful replacements</span>, and{" "}
-          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">zero data loss</span>.
+          How the live HIPAA-compliant <strong className="text-slate-900 dark:text-white font-semibold">EHR Annotation Platform</strong> handles
+          public clinical file extraction, asynchronous OCR queues, and DynamoDB querying in live production — with{" "}
+          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">zero fear of bot scrapers or DDoS</span>,{" "}
+          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">$0.00 idle server cost</span>, and{" "}
+          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">a $4.80 max theoretical monthly liability</span>.
         </p>
 
         {/* Live Status Pill & Repo */}
@@ -72,47 +72,47 @@ export function CaseStudyShowcase() {
 
       {/* 4 Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-        <div className="p-5 rounded-2xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
-          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-2">
+        <div className="p-5 rounded-2xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/10 shadow-sm">
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-2">
             <Layers className="h-4 w-4" />
-            <span>Scale</span>
+            <span>Live Monthly Spend</span>
           </div>
-          <div className="text-3xl font-extrabold text-slate-900 dark:text-white">11 Services</div>
-          <div className="text-xs text-slate-500 dark:text-neutral-400 mt-1">
-            DynamoDB, S3, SQS, SNS, Firehose, Cognito, SageMaker, EventBridge, IAM, CloudWatch, Lambda
+          <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">$0.42 / mo</div>
+          <div className="text-xs text-slate-600 dark:text-neutral-400 mt-1">
+            Across 11 AWS services. Zero idle EC2 servers, zero NAT gateways, scales to absolute zero.
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/30 dark:bg-emerald-950/10 shadow-sm">
-          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-2">
+        <div className="p-5 rounded-2xl border border-cyan-200 dark:border-cyan-900/40 bg-cyan-50/30 dark:bg-cyan-950/10 shadow-sm">
+          <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-2">
             <ShieldCheck className="h-4 w-4" />
+            <span>DDoS Blast Radius</span>
+          </div>
+          <div className="text-3xl font-extrabold text-cyan-600 dark:text-cyan-400">$4.80 Max</div>
+          <div className="text-xs text-slate-600 dark:text-neutral-400 mt-1">
+            Even under a continuous 10M-request bot attack, concurrency caps mathematically prevent bill spikes.
+          </div>
+        </div>
+
+        <div className="p-5 rounded-2xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
+          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-2">
+            <Terminal className="h-4 w-4" />
             <span>Data Safety</span>
           </div>
-          <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">0 Replaced</div>
-          <div className="text-xs text-slate-600 dark:text-neutral-400 mt-1">
-            100% preservation of DynamoDB tables & S3 ObjectLock compliance buckets
+          <div className="text-3xl font-extrabold text-slate-900 dark:text-white">0 Replaced</div>
+          <div className="text-xs text-slate-500 dark:text-neutral-400 mt-1">
+            100% preservation of DynamoDB tables &amp; S3 ObjectLock compliance buckets with zero data loss.
           </div>
         </div>
 
         <div className="p-5 rounded-2xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
           <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 text-xs font-semibold uppercase tracking-wider mb-2">
-            <Terminal className="h-4 w-4" />
-            <span>Ergonomics</span>
-          </div>
-          <div className="text-3xl font-extrabold text-slate-900 dark:text-white">45% Less Code</div>
-          <div className="text-xs text-slate-500 dark:text-neutral-400 mt-1">
-            600+ lines of brittle SAM YAML macros collapsed into ~300 lines of TypeScript
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
-          <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 text-xs font-semibold uppercase tracking-wider mb-2">
             <Activity className="h-4 w-4" />
-            <span>Performance</span>
+            <span>Cold Starts</span>
           </div>
           <div className="text-3xl font-extrabold text-slate-900 dark:text-white">&lt;50ms</div>
           <div className="text-xs text-slate-500 dark:text-neutral-400 mt-1">
-            Sub-50ms compute latency via Bun/Elysia container with direct Function URL ingress
+            Sub-50ms latency via Bun container with direct Function URL ingress ($0 API Gateway fee).
           </div>
         </div>
       </div>
@@ -217,10 +217,10 @@ export function CaseStudyShowcase() {
                   </span>
                 </div>
                 <div className="text-xs font-semibold text-slate-900 dark:text-white">
-                  Live Function URL Ingress
+                  Live Function URL &amp; DoW Capping
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-neutral-400 leading-relaxed">
-                  Wired public invocation permissions and Elysia environment configs. Verified active compute latency under 50ms with zero downtime.
+                  Configured public Function URL ingress with <code className="text-[10px] font-mono">concurrency: 5</code> and SQS DLQ redrive policies. Sub-50ms latency in production with a $0.42/mo real bill.
                 </p>
               </div>
             </div>

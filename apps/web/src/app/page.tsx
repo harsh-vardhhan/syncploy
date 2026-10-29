@@ -1,5 +1,7 @@
 import React from "react";
 import { Hero } from "@/components/Hero";
+import { DeveloperSleepComparison } from "@/components/DeveloperSleepComparison";
+import { AwsCostExplorerMock } from "@/components/AwsCostExplorerMock";
 import { DenialOfWalletShowcase } from "@/components/DenialOfWalletShowcase";
 import { CaseStudyShowcase } from "@/components/CaseStudyShowcase";
 import { InteractiveComparison } from "@/components/InteractiveComparison";
@@ -12,6 +14,8 @@ export default function Home() {
   return (
     <div className="space-y-8">
       <Hero />
+      <DeveloperSleepComparison />
+      <AwsCostExplorerMock />
       <DenialOfWalletShowcase />
       <CaseStudyShowcase />
       <InteractiveComparison />

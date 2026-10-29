@@ -22,6 +22,13 @@ export function Hero() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-7">
         {/* Top Badges */}
         <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-rose-300 dark:border-rose-500/30 bg-rose-50/80 dark:bg-rose-950/30 text-xs font-semibold text-rose-800 dark:text-rose-300 shadow-sm">
+            <Shield className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+            <span>Zero-DoW Shield</span>
+            <span className="text-rose-400 dark:text-rose-600">&bull;</span>
+            <span className="text-slate-700 dark:text-neutral-300">Never Fear Your AWS Bill Again</span>
+          </div>
+
           <a
             href="https://www.npmjs.com/package/@syncploy/sdk"
             target="_blank"
@@ -54,13 +61,6 @@ export function Hero() {
             <span className="font-mono text-[11px] font-bold text-sky-700 dark:text-sky-300 underline">llms.txt</span>
           </a>
 
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-500/10 text-xs font-semibold text-indigo-700 dark:text-indigo-300 shadow-sm">
-            <Zap className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-            <span>Zero YAML CloudFormation</span>
-            <span className="text-slate-400 dark:text-neutral-500">&bull;</span>
-            <span className="text-slate-600 dark:text-neutral-400">Pure TypeScript</span>
-          </div>
-
           <Link
             href="#showcase"
             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-purple-200 dark:border-purple-500/30 bg-purple-50/80 dark:bg-purple-950/30 text-xs font-semibold text-purple-700 dark:text-purple-300 shadow-sm hover:scale-105 transition-all group"
@@ -69,7 +69,7 @@ export function Hero() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
             </span>
-            <span>Proven in Live: EHR Annotation Platform</span>
+            <span>Live in Prod: $0.42/mo EHR Platform</span>
             <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
@@ -104,16 +104,16 @@ export function Hero() {
           </div>
 
           <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
-            The Terraform for <br className="hidden sm:inline" />
-            <span className="bg-gradient-to-r from-indigo-600 via-cyan-600 to-emerald-600 dark:from-indigo-400 dark:via-cyan-400 dark:to-emerald-400 bg-clip-text text-transparent">
-              AWS Serverless.
+            Build on AWS. <br className="hidden sm:inline" />
+            <span className="bg-gradient-to-r from-rose-600 via-indigo-600 to-emerald-600 dark:from-rose-400 dark:via-indigo-400 dark:to-emerald-400 bg-clip-text text-transparent">
+              Sleep Through the Night.
             </span>
           </h1>
         </div>
 
         {/* Subtitle */}
-        <p className="max-w-2xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-neutral-400 leading-relaxed">
-          Type-safe infrastructure with <strong className="text-slate-900 dark:text-white font-semibold">compile-time Denial-of-Wallet immunity</strong>. Zero YAML, static event recursion shields, edge rate limits, and mathematical cost ceilings straight from your TypeScript code.
+        <p className="max-w-3xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-neutral-400 leading-relaxed">
+          Stop paying the PaaS tax out of fear of AWS. Syncploy is the pure TypeScript framework for AWS Serverless with <strong className="text-slate-900 dark:text-white font-semibold">compile-time Denial-of-Wallet immunity</strong>. Statically eliminate infinite loops, uncapped DDoS bills, and poison-pill retries before your code ever touches the cloud.
         </p>
 
         {/* CTA buttons & Copy Pill */}
@@ -181,19 +181,19 @@ export function Hero() {
             <div className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
               <Shield className="h-3.5 w-3.5" /> Zero-DoW Shield
             </div>
-            <div className="text-xs text-slate-600 dark:text-neutral-400">Compile-time Tarjan SCC loop & retry storm prevention</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Tarjan SCC cycle &amp; poison-pill retry prevention in 0.7ms</div>
+          </div>
+          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
+            <div className="text-purple-600 dark:text-purple-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
+              <Zap className="h-3.5 w-3.5" /> $0.00 Idle Bill
+            </div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Pure serverless. Zero NAT gateways, zero idle EC2 zombies</div>
           </div>
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-cyan-700 dark:text-cyan-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
               <Zap className="h-3.5 w-3.5" /> Cost Ceilings
             </div>
-            <div className="text-xs text-slate-600 dark:text-neutral-400">Default edge rate limits & reserved concurrency caps</div>
-          </div>
-          <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
-            <div className="text-sky-600 dark:text-sky-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
-              <Bot className="h-3.5 w-3.5" /> Agent Native
-            </div>
-            <div className="text-xs text-slate-600 dark:text-neutral-400">Built-in Antigravity & Claude Code plugin with llms.txt</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Default edge rate limits &amp; reserved concurrency bounds</div>
           </div>
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-amber-600 dark:text-amber-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
