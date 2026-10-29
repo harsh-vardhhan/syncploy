@@ -112,7 +112,8 @@ export function extractApiRoute(
     context.varToBucketName,
     context.varToQueueName,
     context.varToTopicName,
-    context.varToDeliveryStreamName
+    context.varToDeliveryStreamName,
+    context.knownApis
   );
 
   return {

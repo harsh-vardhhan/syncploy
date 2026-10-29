@@ -1,5 +1,5 @@
 import type { ResourceGraph } from "../types";
-import type { Diagnostic, ValidationResult, ValidationContext, ValidationOptions } from "./types";
+import type { Diagnostic, SuppressedDiagnostic, ValidationResult, ValidationContext, ValidationOptions } from "./types";
 import { formatDiagnostics } from "./formatter";
 import { validateLogicalIds } from "./rules/common";
 import {
@@ -26,28 +26,48 @@ export { formatDiagnostics } from "./formatter";
 
 export class GraphValidator implements ValidationContext {
   private diagnostics: Diagnostic[] = [];
+  private suppressions: SuppressedDiagnostic[] = [];
   private suppressionMap = new Map<string, Record<string, string>>();
 
   constructor(private options?: ValidationOptions) {}
 
-  private isSuppressed(code: string, constructId: string): boolean {
+  private checkSuppression(
+    code: string,
+    constructId: string,
+    message: string,
+    sourceFile?: string,
+    severity: "error" | "warning" = "warning"
+  ): boolean {
     const supp = this.suppressionMap.get(constructId);
     if (!supp) return false;
-    return supp["*"] !== undefined || supp[code] !== undefined;
+    const reason = supp[code] ?? supp["*"];
+    if (reason !== undefined) {
+      this.suppressions.push({
+        code,
+        constructId,
+        message,
+        sourceFile,
+        severity,
+        reason,
+      });
+      return true;
+    }
+    return false;
   }
 
   public addError(code: string, constructId: string, message: string, sourceFile?: string): void {
-    if (this.isSuppressed(code, constructId)) return;
+    if (this.checkSuppression(code, constructId, message, sourceFile, "error")) return;
     this.diagnostics.push({ code, constructId, message, sourceFile, severity: "error" });
   }
 
   public addWarning(code: string, constructId: string, message: string, sourceFile?: string): void {
-    if (this.isSuppressed(code, constructId)) return;
+    if (this.checkSuppression(code, constructId, message, sourceFile, "warning")) return;
     this.diagnostics.push({ code, constructId, message, sourceFile, severity: "warning" });
   }
 
   public validate(graph: ResourceGraph): ValidationResult {
     this.diagnostics = [];
+    this.suppressions = [];
     this.suppressionMap.clear();
 
     // Index comment suppressions across all constructs in graph
@@ -103,7 +123,11 @@ export class GraphValidator implements ValidationContext {
       }
     } else if (this.options?.failOnDow) {
       for (const w of warnings) {
-        if (w.code.startsWith("WARN_DOW_") || w.code.startsWith("WARN_SQS_")) {
+        if (
+          w.code.startsWith("WARN_DOW_") ||
+          w.code.startsWith("WARN_SQS_") ||
+          w.code.startsWith("WARN_FUNCTION_URL_")
+        ) {
           errors.push({
             ...w,
             code: w.code.replace("WARN_", "ERR_"),
@@ -127,6 +151,7 @@ export class GraphValidator implements ValidationContext {
                   e.code.endsWith(w.code.replace("WARN_", ""))
               )
           ),
+      suppressions: this.suppressions,
     };
   }
 }

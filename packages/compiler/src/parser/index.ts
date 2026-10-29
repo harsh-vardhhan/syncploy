@@ -34,6 +34,7 @@ import {
 } from "./extractors/constructs";
 import { extractEventBinding } from "./extractors/events";
 import { enrichTablesWithElectroEntities } from "./extractors/electrodb-enricher";
+import { unwrapExpression } from "./extractors/ast-utils";
 
 export * from "./types";
 export * from "./extractors/ast-utils";
@@ -84,13 +85,36 @@ export class Parser {
       varToDeliveryStreamName: {},
       varToAuthName: {},
       varToEntity: {},
+      knownApis: [],
     };
 
     // Pass 1: Pre-populate variable-to-resource-name mappings across all project files
     for (const sourceFile of this.project.getSourceFiles()) {
       for (const decl of sourceFile.getVariableDeclarations()) {
         const init = decl.getInitializer();
-        if (!init || !init.isKind(SyntaxKind.NewExpression)) continue;
+        if (!init) continue;
+
+        if (init.isKind(SyntaxKind.CallExpression)) {
+          const callExpr = init.getExpression();
+          if (callExpr.getText() === "api") {
+            const callArgs = init.getArguments();
+            const firstArg = unwrapExpression(callArgs[0]);
+            let apiPath = "/";
+            if (firstArg?.isKind(SyntaxKind.StringLiteral)) {
+              apiPath = firstArg.getLiteralValue();
+            } else if (firstArg?.isKind(SyntaxKind.ObjectLiteralExpression)) {
+              const pProp = (firstArg as any).getProperty("path");
+              if (pProp && pProp.isKind(SyntaxKind.PropertyAssignment)) {
+                const pInit = pProp.getInitializer();
+                if (pInit?.isKind(SyntaxKind.StringLiteral)) apiPath = pInit.getLiteralValue();
+              }
+            }
+            context.knownApis.push({ id: decl.getName(), path: apiPath });
+          }
+          continue;
+        }
+
+        if (!init.isKind(SyntaxKind.NewExpression)) continue;
         const expr = init.getExpression();
         const className = expr.getText();
         const args = init.getArguments();
@@ -124,7 +148,7 @@ export class Parser {
     while (aliasAdded) {
       aliasAdded = false;
       for (const sourceFile of this.project.getSourceFiles()) {
-        for (const decl of sourceFile.getVariableDeclarations()) {
+        for (const decl of sourceFile.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
           const varName = decl.getName();
           if (
             context.varToTableName[varName] ||

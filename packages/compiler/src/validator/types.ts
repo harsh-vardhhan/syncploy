@@ -6,10 +6,15 @@ export interface Diagnostic {
   severity: "error" | "warning";
 }
 
+export interface SuppressedDiagnostic extends Diagnostic {
+  reason?: string | undefined;
+}
+
 export interface ValidationResult {
   valid: boolean;
   errors: Diagnostic[];
   warnings: Diagnostic[];
+  suppressions?: SuppressedDiagnostic[] | undefined;
 }
 
 export interface ValidationOptions {

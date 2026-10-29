@@ -697,6 +697,87 @@ describe("@syncploy/compiler - Pre-Flight AWS Platform Validator", () => {
       expect(result.errors.some((e) => e.code === "ERR_DOW_MISSING_DLQ")).toBe(true);
       expect(result.errors[0]?.message).toContain("[DoW Protection]");
     });
+
+    it("elevates WARN_FUNCTION_URL_AUTH_UNSUPPORTED to fatal error when failOnDow is enabled", () => {
+      const graph = createEmptyGraph();
+      graph.apis.push({
+        id: "insecureUrl",
+        exportName: "insecureUrl",
+        sourceFile: "src/infra.ts",
+        method: "POST",
+        path: "/webhook",
+        ingress: "function-url",
+        auth: true,
+      });
+
+      const dowValidator = new GraphValidator({ failOnDow: true });
+      const result = dowValidator.validate(graph);
+      expect(result.valid).toBe(false);
+      expect(result.errors.some((e) => e.code === "ERR_FUNCTION_URL_AUTH_UNSUPPORTED")).toBe(true);
+      expect(result.errors.some((e) => e.message.includes("[DoW Protection]"))).toBe(true);
+    });
+
+    it("warns when API Gateway route has unreserved concurrency", () => {
+      const graph = createEmptyGraph();
+      graph.apis.push({
+        id: "publicApi",
+        exportName: "publicApi",
+        sourceFile: "src/infra.ts",
+        method: "GET",
+        path: "/items",
+        ingress: "api-gateway",
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_UNRESERVED_CONCURRENCY")).toBe(true);
+      expect(result.warnings[0]?.message).toContain("API Gateway route");
+    });
+
+    it("warns when active DynamoDB stream consumer lacks retryAttempts cap", () => {
+      const graph = createEmptyGraph();
+      graph.tables.push({
+        id: "t1",
+        name: "events",
+        partitionKey: { name: "id", type: "string" },
+        sourceFile: "src/infra.ts",
+      });
+      graph.tableStreams.push({
+        id: "eventWorker",
+        tableName: "events",
+        exportName: "eventWorker",
+        sourceFile: "src/infra.ts",
+        enabled: true,
+        // retryAttempts: undefined
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_STREAM_RETRY_UNLIMITED")).toBe(true);
+    });
+
+    it("records audit trail of suppressed diagnostics with reasons", () => {
+      const graph = createEmptyGraph();
+      graph.apis.push({
+        id: "suppressedEndpoint",
+        exportName: "suppressedEndpoint",
+        sourceFile: "src/api.ts",
+        method: "POST",
+        path: "/admin",
+        ingress: "function-url",
+        suppressions: {
+          WARN_DOW_UNRESERVED_CONCURRENCY: "Private VPN only",
+        },
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_UNRESERVED_CONCURRENCY")).toBe(false);
+      expect(result.suppressions).toBeDefined();
+      expect(result.suppressions?.length).toBe(1);
+      expect(result.suppressions?.[0]?.code).toBe("WARN_DOW_UNRESERVED_CONCURRENCY");
+      expect(result.suppressions?.[0]?.reason).toBe("Private VPN only");
+    });
   });
 
   describe("S3 Prefix-Aware Recursion Discrimination", () => {
@@ -770,6 +851,124 @@ describe("@syncploy/compiler - Pre-Flight AWS Platform Validator", () => {
       const loopErr = result.errors.find((e) => e.code === "ERR_RECURSIVE_LOOP");
       expect(loopErr).toBeDefined();
       expect(loopErr?.message).toContain("med-docs");
+    });
+
+    it("detects SNS -> SQS -> Lambda -> SNS recursion loop", () => {
+      const graph = createEmptyGraph();
+      graph.topics.push({
+        id: "alertTopic",
+        name: "alerts",
+        sourceFile: "src/infra.ts",
+        subscriptions: [{ protocol: "sqs", endpoint: "alertQueue" }],
+      });
+      graph.queues.push({
+        id: "alertQueue",
+        name: "alertQueue",
+        sourceFile: "src/infra.ts",
+      });
+      graph.consumers.push({
+        id: "alertWorker",
+        queueName: "alertQueue",
+        exportName: "alertWorker",
+        sourceFile: "src/infra.ts",
+        mutations: {
+          topicsPublished: ["alerts"], // Worker on queue publishes back to the topic!
+        },
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.valid).toBe(false);
+      const loopErr = result.errors.find((e) => e.code === "ERR_RECURSIVE_LOOP");
+      expect(loopErr).toBeDefined();
+      expect(loopErr?.message).toContain("Topic 'alerts'");
+      expect(loopErr?.message).toContain("Queue 'alertQueue'");
+    });
+
+    it("detects HTTP self-invocation cycle in API handler", () => {
+      const graph = createEmptyGraph();
+      graph.apis.push({
+        id: "reentrantApi",
+        exportName: "reentrantApi",
+        sourceFile: "src/infra.ts",
+        method: "POST",
+        path: "/process",
+        ingress: "api-gateway",
+        concurrency: 5,
+        mutations: {
+          httpInvoked: ["reentrantApi"], // Handler invokes its own API endpoint
+        },
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.valid).toBe(false);
+      const loopErr = result.errors.find((e) => e.code === "ERR_RECURSIVE_LOOP");
+      expect(loopErr).toBeDefined();
+      expect(loopErr?.message).toContain("API 'reentrantApi' -> API Handler 'reentrantApi' -> API 'reentrantApi'");
+    });
+
+    it("enumerates all distinct cycles when cycles share a node", () => {
+      const graph = createEmptyGraph();
+      graph.tables.push({
+        id: "sharedTable",
+        name: "shared-table",
+        partitionKey: { name: "id", type: "string" },
+        sourceFile: "src/infra.ts",
+      });
+      graph.queues.push({
+        id: "queueA",
+        name: "queue-a",
+        sourceFile: "src/infra.ts",
+      });
+      graph.queues.push({
+        id: "queueB",
+        name: "queue-b",
+        sourceFile: "src/infra.ts",
+      });
+
+      // Consumer A: Queue A -> writes to Queue A (Cycle 1)
+      graph.consumers.push({
+        id: "workerA",
+        queueName: "queue-a",
+        exportName: "workerA",
+        sourceFile: "src/infra.ts",
+        mutations: {
+          queuesSent: ["queue-a"],
+          tablesWritten: ["shared-table"],
+        },
+      });
+
+      // Stream Consumer: Shared Table -> writes to Queue B
+      graph.tableStreams.push({
+        id: "streamWorker",
+        tableName: "shared-table",
+        exportName: "streamWorker",
+        sourceFile: "src/infra.ts",
+        mutations: {
+          queuesSent: ["queue-b"],
+        },
+      });
+
+      // Consumer B: Queue B -> writes back to Shared Table (Cycle 2)
+      graph.consumers.push({
+        id: "workerB",
+        queueName: "queue-b",
+        exportName: "workerB",
+        sourceFile: "src/infra.ts",
+        mutations: {
+          tablesWritten: ["shared-table"],
+        },
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.valid).toBe(false);
+      const loopErrors = result.errors.filter((e) => e.code === "ERR_RECURSIVE_LOOP");
+      // Must discover BOTH Cycle 1 (queue-a -> workerA -> queue-a) AND Cycle 2 (shared-table -> streamWorker -> queue-b -> workerB -> shared-table)
+      expect(loopErrors.length).toBeGreaterThanOrEqual(2);
+      expect(loopErrors.some((e) => e.message.includes("Queue 'queue-a'"))).toBe(true);
+      expect(loopErrors.some((e) => e.message.includes("Table 'shared-table'"))).toBe(true);
     });
   });
 });

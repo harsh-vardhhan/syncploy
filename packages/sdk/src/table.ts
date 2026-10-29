@@ -26,6 +26,9 @@ export interface TableStreamOptions {
   enabled?: boolean;
   timeout?: Duration;
   concurrency?: number;
+  retryAttempts?: number;
+  bisectOnFunctionError?: boolean;
+  onFailure?: string;
   memory?: MemorySize;
   policies?: PolicyStatement[];
   environment?: Record<string, string>;

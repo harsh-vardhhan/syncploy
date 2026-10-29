@@ -34,6 +34,11 @@ export function generateApiGateway(
       ApiId: { Ref: "HttpApi" },
       StageName: "$default",
       AutoDeploy: true,
+      DefaultRouteSettings: {
+        DetailedMetricsEnabled: true,
+        ThrottlingBurstLimit: 100,
+        ThrottlingRateLimit: 50,
+      },
     },
   };
 

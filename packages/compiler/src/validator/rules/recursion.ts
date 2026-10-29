@@ -28,6 +28,23 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
     addEdge(`Topic '${sub.topicName}'`, `Topic Subscriber '${sub.id}'`, sub.id, sub.sourceFile);
   }
 
+  for (const topic of graph.topics || []) {
+    for (const sub of topic.subscriptions || []) {
+      if (sub.protocol === "sqs") {
+        const ep = sub.endpoint;
+        const matchedQueue = graph.queues.find(
+          (q) => q.name === ep || q.queueName === ep || q.id === ep
+        );
+        const queueNode = matchedQueue ? `Queue '${matchedQueue.name}'` : `Queue '${ep}'`;
+        addEdge(`Topic '${topic.name}'`, queueNode, topic.id, topic.sourceFile);
+      }
+    }
+  }
+
+  for (const api of graph.apis) {
+    addEdge(`API '${api.id}'`, `API Handler '${api.id}'`, api.id, api.sourceFile);
+  }
+
   for (const b of graph.bindings || []) {
     const bucketNode = b.prefix
       ? `Bucket '${b.sourceBucketName}' [prefix: ${b.prefix}]`
@@ -73,7 +90,7 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
     })),
     ...graph.apis.map((api) => ({
       id: api.id,
-      nodeName: `API '${api.id}'`,
+      nodeName: `API Handler '${api.id}'`,
       mutations: api.mutations,
       policies: api.policies,
       sourceFile: api.sourceFile,
@@ -83,6 +100,9 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
   for (const fn of allFunctions) {
     for (const tbl of fn.mutations?.tablesWritten || []) {
       addEdge(fn.nodeName, `Table '${tbl}'`, fn.id, fn.sourceFile);
+    }
+    for (const invokedApi of fn.mutations?.httpInvoked || []) {
+      addEdge(fn.nodeName, `API '${invokedApi}'`, fn.id, fn.sourceFile);
     }
     for (const bktItem of fn.mutations?.bucketsWritten || []) {
       const bktName = typeof bktItem === "string" ? bktItem : bktItem.name;
@@ -188,9 +208,6 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
     }
   }
 
-  const visited = new Set<string>();
-  const recStack = new Set<string>();
-  const path: { node: string; constructId: string; sourceFile?: string | undefined }[] = [];
   const seenCycles = new Set<string>();
 
   const normalizeCycle = (nodes: string[]): string => {
@@ -205,41 +222,42 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
     return rotated.join(" -> ");
   };
 
-  const dfs = (node: string, currentConstructId: string, currentSourceFile?: string) => {
-    visited.add(node);
-    recStack.add(node);
-    path.push({ node, constructId: currentConstructId, sourceFile: currentSourceFile });
-
-    const neighbors = adj.get(node) || [];
-    for (const edge of neighbors) {
-      if (!visited.has(edge.target)) {
-        dfs(edge.target, edge.constructId, edge.sourceFile);
-      } else if (recStack.has(edge.target)) {
-        const startIndex = path.findIndex((p) => p.node === edge.target);
-        if (startIndex !== -1) {
-          const cycleSegment = path.slice(startIndex).map((p) => p.node).concat(edge.target);
-          const normalized = normalizeCycle(cycleSegment);
-          if (!seenCycles.has(normalized)) {
-            seenCycles.add(normalized);
-            const cycleStr = cycleSegment.join(" -> ");
-            ctx.addError(
-              "ERR_RECURSIVE_LOOP",
-              edge.constructId,
-              `Infinite recursion loop detected: ${cycleStr}. This event-driven cycle causes continuous self-amplifying Lambda invocations and exponential Denial-of-Wallet.`,
-              edge.sourceFile
-            );
-          }
-        }
+  const findCycles = (
+    current: string,
+    currentConstructId: string,
+    currentSourceFile: string | undefined,
+    currentPath: { node: string; constructId: string; sourceFile?: string | undefined }[]
+  ) => {
+    const cycleIndex = currentPath.findIndex((p) => p.node === current);
+    if (cycleIndex !== -1) {
+      const cycleSegment = currentPath.slice(cycleIndex).map((p) => p.node).concat(current);
+      const normalized = normalizeCycle(cycleSegment);
+      if (!seenCycles.has(normalized)) {
+        seenCycles.add(normalized);
+        const cycleStr = cycleSegment.join(" -> ");
+        ctx.addError(
+          "ERR_RECURSIVE_LOOP",
+          currentConstructId,
+          `Infinite recursion loop detected: ${cycleStr}. This event-driven cycle causes continuous self-amplifying Lambda invocations and exponential Denial-of-Wallet.`,
+          currentSourceFile
+        );
       }
+      return;
     }
 
-    path.pop();
-    recStack.delete(node);
+    if (currentPath.length >= 20) return; // Prevent runaway search depth on cyclic graphs
+
+    const nextPath: { node: string; constructId: string; sourceFile?: string | undefined }[] = [
+      ...currentPath,
+      { node: current, constructId: currentConstructId, sourceFile: currentSourceFile },
+    ];
+    const neighbors = adj.get(current) || [];
+    for (const edge of neighbors) {
+      findCycles(edge.target, edge.constructId, edge.sourceFile, nextPath);
+    }
   };
 
   for (const startNode of adj.keys()) {
-    if (!visited.has(startNode)) {
-      dfs(startNode, startNode);
-    }
+    findCycles(startNode, startNode, undefined, []);
   }
 }

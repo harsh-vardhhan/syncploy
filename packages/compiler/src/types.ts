@@ -37,6 +37,7 @@ export interface FunctionMutationsIR {
   queuesSent?: string[] | undefined;
   topicsPublished?: string[] | undefined;
   deliveryStreamsWritten?: string[] | undefined;
+  httpInvoked?: string[] | undefined;
 }
 
 export interface ApiRouteIR {
@@ -158,6 +159,9 @@ export interface TableStreamConsumerIR {
   enabled?: boolean | undefined;
   timeout?: number | undefined;
   concurrency?: number | undefined;
+  retryAttempts?: number | undefined;
+  bisectOnFunctionError?: boolean | undefined;
+  onFailureQueueName?: string | undefined;
   memory?: number | undefined;
   policies?: PolicyStatementIR[] | undefined;
   environment?: Record<string, string> | undefined;

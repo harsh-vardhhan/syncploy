@@ -138,6 +138,8 @@ export function generateStreamConsumers(
       StartingPosition: consumer.startingPosition || "LATEST",
       BatchSize: consumer.batchSize ?? 100,
       FunctionResponseTypes: ["ReportBatchItemFailures"],
+      MaximumRetryAttempts: consumer.retryAttempts ?? 3,
+      BisectBatchOnFunctionError: consumer.bisectOnFunctionError ?? true,
     };
 
     if (consumer.enabled !== undefined) {

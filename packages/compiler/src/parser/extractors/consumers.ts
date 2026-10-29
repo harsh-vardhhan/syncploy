@@ -85,7 +85,8 @@ export function extractQueueConsumer(
     context.varToBucketName,
     context.varToQueueName,
     context.varToTopicName,
-    context.varToDeliveryStreamName
+    context.varToDeliveryStreamName,
+    context.knownApis
   );
 
   return {
@@ -130,6 +131,9 @@ export function extractTableStream(
   let enabled: boolean | undefined;
   let timeout: number | undefined;
   let concurrency: number | undefined;
+  let retryAttempts: number | undefined;
+  let bisectOnFunctionError: boolean | undefined;
+  let onFailureQueueName: string | undefined;
   let memory: number | undefined;
   let policies: PolicyStatementIR[] | undefined;
   let environment: Record<string, string> | undefined;
@@ -151,6 +155,14 @@ export function extractTableStream(
     }
     timeout = extractDuration(streamOpts.getProperty("timeout"));
     concurrency = extractNumber(streamOpts.getProperty("concurrency"));
+    retryAttempts =
+      extractNumber(streamOpts.getProperty("retryAttempts")) ??
+      extractNumber(streamOpts.getProperty("maximumRetryAttempts"));
+    const bisectProp = streamOpts.getProperty("bisectOnFunctionError");
+    if (bisectProp && bisectProp.isKind(SyntaxKind.PropertyAssignment)) {
+      bisectOnFunctionError = bisectProp.getInitializer()?.getText() !== "false";
+    }
+    onFailureQueueName = extractString(streamOpts.getProperty("onFailure"));
     memory = extractMemory(streamOpts.getProperty("memory"));
     policies = extractPolicies(streamOpts.getProperty("policies"));
     environment = extractEnvironment(streamOpts.getProperty("environment"));
@@ -177,7 +189,8 @@ export function extractTableStream(
     context.varToBucketName,
     context.varToQueueName,
     context.varToTopicName,
-    context.varToDeliveryStreamName
+    context.varToDeliveryStreamName,
+    context.knownApis
   );
 
   return {
@@ -190,6 +203,9 @@ export function extractTableStream(
     enabled,
     timeout,
     concurrency,
+    retryAttempts,
+    bisectOnFunctionError,
+    onFailureQueueName,
     memory,
     policies,
     environment,
@@ -262,7 +278,8 @@ export function extractTopicSubscriber(
     context.varToBucketName,
     context.varToQueueName,
     context.varToTopicName,
-    context.varToDeliveryStreamName
+    context.varToDeliveryStreamName,
+    context.knownApis
   );
 
   return {

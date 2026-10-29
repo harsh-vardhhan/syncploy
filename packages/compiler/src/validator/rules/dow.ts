@@ -61,6 +61,16 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
           api.sourceFile
         );
       }
+    } else {
+      // API Gateway route concurrency guard
+      if (api.concurrency === undefined) {
+        ctx.addWarning(
+          "WARN_DOW_UNRESERVED_CONCURRENCY",
+          api.id,
+          `API Gateway route '${api.id}' (${api.method} ${api.path}) has no 'concurrency' limit. Under a DDoS attack or traffic surge, Lambda will scale to account limits (1,000+ executions) causing severe Denial-of-Wallet. Consider configuring 'concurrency: <number>'.`,
+          api.sourceFile
+        );
+      }
     }
 
     if (
@@ -80,13 +90,22 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
     }
   }
 
-  // C. DynamoDB Stream Unbounded Concurrency
+  // C. DynamoDB Stream Unbounded Concurrency & Retries
   for (const s of graph.tableStreams) {
     if (s.concurrency === undefined) {
       ctx.addWarning(
         "WARN_DOW_STREAM_UNBOUNDED",
         s.id,
         `DynamoDB stream consumer '${s.id}' for table '${s.tableName}' has no 'concurrency' cap. Heavy table write bursts can split shards and spawn uncontrolled parallel Lambda instances. Consider configuring 'concurrency: <number>'.`,
+        s.sourceFile
+      );
+    }
+
+    if (s.enabled !== false && s.retryAttempts === undefined && !s.onFailureQueueName) {
+      ctx.addWarning(
+        "WARN_DOW_STREAM_RETRY_UNLIMITED",
+        s.id,
+        `Active DynamoDB stream consumer '${s.id}' for table '${s.tableName}' has no explicit 'retryAttempts' cap or 'onFailure' DLQ destination. Poison-pill records will retry continuously for up to 24 hours, blocking shard processing and incurring severe DoW costs. Configure 'retryAttempts: 3' or 'bisectOnFunctionError: true'.`,
         s.sourceFile
       );
     }

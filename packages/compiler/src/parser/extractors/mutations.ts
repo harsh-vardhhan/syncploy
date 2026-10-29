@@ -8,7 +8,8 @@ export function extractMutationsFromNode(
   varToBucketName: Record<string, string>,
   varToQueueName: Record<string, string>,
   varToTopicName: Record<string, string>,
-  varToDeliveryStreamName?: Record<string, string>
+  varToDeliveryStreamName?: Record<string, string>,
+  knownApis?: { id: string; path: string }[]
 ): FunctionMutationsIR | undefined {
   if (!handlerNode) return undefined;
 
@@ -32,6 +33,7 @@ export function extractMutationsFromNode(
   const queuesSent: string[] = [];
   const topicsPublished: string[] = [];
   const deliveryStreamsWritten: string[] = [];
+  const httpInvoked: string[] = [];
 
   // Traverse targetNode and any referenced helper functions/variables (local + imported)
   const nodesToScan: Node[] = [targetNode];
@@ -83,6 +85,32 @@ export function extractMutationsFromNode(
                 }
               }
               break;
+            }
+          }
+        }
+      }
+
+      // Check HTTP invocations (fetch, axios, http, etc.)
+      const isFetch = expr.isKind(SyntaxKind.Identifier) && expr.getText() === "fetch";
+      const isAxiosOrHttp =
+        expr.isKind(SyntaxKind.PropertyAccessExpression) &&
+        ["get", "post", "put", "patch", "delete", "request"].includes(expr.getName());
+
+      if ((isFetch || isAxiosOrHttp) && knownApis && knownApis.length > 0) {
+        const callArgs = call.getArguments();
+        if (callArgs.length > 0) {
+          const urlArg = callArgs[0]!;
+          const urlText = urlArg.getText();
+          for (const api of knownApis) {
+            const normPath = api.path === "/" ? "/" : api.path;
+            if (
+              urlText.includes(api.id) ||
+              (normPath !== "/" && urlText.includes(normPath)) ||
+              (urlArg.isKind(SyntaxKind.StringLiteral) && urlArg.getLiteralValue() === normPath)
+            ) {
+              if (!httpInvoked.includes(api.id)) {
+                httpInvoked.push(api.id);
+              }
             }
           }
         }
@@ -381,7 +409,8 @@ export function extractMutationsFromNode(
     bucketsWritten.length === 0 &&
     queuesSent.length === 0 &&
     topicsPublished.length === 0 &&
-    deliveryStreamsWritten.length === 0
+    deliveryStreamsWritten.length === 0 &&
+    httpInvoked.length === 0
   ) {
     return undefined;
   }
@@ -392,5 +421,6 @@ export function extractMutationsFromNode(
     queuesSent: queuesSent.length > 0 ? queuesSent : undefined,
     topicsPublished: topicsPublished.length > 0 ? topicsPublished : undefined,
     deliveryStreamsWritten: deliveryStreamsWritten.length > 0 ? deliveryStreamsWritten : undefined,
+    httpInvoked: httpInvoked.length > 0 ? httpInvoked : undefined,
   };
 }

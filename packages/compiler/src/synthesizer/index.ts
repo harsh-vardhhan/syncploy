@@ -37,6 +37,7 @@ import {
 import { generateTopics, generateBindings, generateFirehose } from "./generators/messaging";
 import { generateAlarms } from "./generators/alarms";
 import { generateAuth } from "./generators/auth";
+import { generateBudget } from "./generators/budget";
 import { buildCommonEnvironment } from "./generators/environment";
 
 export * from "./logical-ids";
@@ -281,6 +282,9 @@ export class Synthesizer {
 
     // 15. Cognito User Pools & User Pool Clients
     generateAuth(graph, resources, outputs);
+
+    // 16. AWS Cost Guardrail (AWS::Budgets::Budget)
+    generateBudget(graph, resources);
 
     const template = {
       AWSTemplateFormatVersion: "2010-09-09",

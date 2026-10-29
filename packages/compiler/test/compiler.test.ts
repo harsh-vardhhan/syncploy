@@ -290,6 +290,12 @@ export const alertSubscriber = alertTopic.subscribe(
     expect(tableRes.Properties.GlobalSecondaryIndexes.length).toBe(1);
     expect(tableRes.Properties.GlobalSecondaryIndexes[0].IndexName).toBe("GSI1Index");
 
+    // Edge Controls & Budget Safeguards
+    expect(res["HttpApiStage"].Properties.DefaultRouteSettings.ThrottlingBurstLimit).toBe(100);
+    expect(res["HttpApiStage"].Properties.DefaultRouteSettings.ThrottlingRateLimit).toBe(50);
+    expect(res["StackBudget"]).toBeDefined();
+    expect(res["StackBudget"].Properties.Budget.BudgetLimit.Amount).toBe(100);
+
     // 2. Bucket with EventBridge & Versioning
     const bucketRes = res["Bucketdocuments"];
     expect(bucketRes.Properties.VersioningConfiguration.Status).toBe("Enabled");
@@ -1020,6 +1026,37 @@ export const rawWorker = rawSdkTable.stream({ concurrency: 2 }, async (event) =>
     TableName: rawSdkTable.tableName,
     Item: { PK: { S: "RAW#1" } }
   }));
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+      const compiler = new Compiler(testDir);
+      await expect(compiler.build()).rejects.toThrow("Pre-flight validation failed with 1 error(s).");
+    });
+
+    it("catches recursion through handler-local variable aliasing", async () => {
+      const code = `
+import { Table } from "@syncploy/sdk";
+
+export const localTable = new Table("local-tbl", {
+  stream: "NEW_IMAGE",
+});
+
+export const localWorker = localTable.stream({ concurrency: 2 }, async (event) => {
+  const innerAlias = localTable;
+  await innerAlias.put({ PK: "INNER#1" });
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+      const compiler = new Compiler(testDir);
+      await expect(compiler.build()).rejects.toThrow("Pre-flight validation failed with 1 error(s).");
+    });
+
+    it("catches recursion through HTTP self-invocation in API route handler", async () => {
+      const code = `
+import { api } from "@syncploy/sdk";
+
+export const loopApi = api({ path: "/orders", method: "POST", concurrency: 5 }, async (req) => {
+  await fetch("/orders", { method: "POST" });
 });
 `;
       await fs.writeFile(path.join(testDir, "app.ts"), code);

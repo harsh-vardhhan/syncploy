@@ -8,4 +8,5 @@ export interface ParseContext {
   varToDeliveryStreamName: Record<string, string>;
   varToAuthName: Record<string, string>;
   varToEntity: Record<string, ElectroEntityIR>;
+  knownApis: { id: string; path: string }[];
 }
