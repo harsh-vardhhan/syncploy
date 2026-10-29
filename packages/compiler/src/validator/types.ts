@@ -1,5 +1,9 @@
+import type { RuleCode } from "./rules-catalog";
+
+export type DiagnosticCode = RuleCode | (string & {});
+
 export interface Diagnostic {
-  code: string;
+  code: DiagnosticCode;
   message: string;
   constructId: string;
   sourceFile?: string | undefined;
@@ -24,14 +28,14 @@ export interface ValidationOptions {
 
 export interface ValidationContext {
   addError(
-    code: string,
+    code: DiagnosticCode,
     constructId: string,
     message: string,
     sourceFile?: string,
     candidateConstructIds?: string[]
   ): void;
   addWarning(
-    code: string,
+    code: DiagnosticCode,
     constructId: string,
     message: string,
     sourceFile?: string,

@@ -543,3 +543,15 @@ export function getRulesByLayer(layer: RuleLayer): RuleDefinition[] {
 export function getAllRules(): RuleDefinition[] {
   return Object.values(RULES_CATALOG);
 }
+
+// ✨ Modern TypeScript Enum Alternative:
+// Provides both a compile-time string literal union (type RuleCode)
+// AND an immutable runtime namespace object (const RuleCode.WARN_...)
+export type RuleCode = keyof typeof RULES_CATALOG;
+
+export const RuleCode = Object.freeze(
+  (Object.keys(RULES_CATALOG) as (keyof typeof RULES_CATALOG)[]).reduce((acc, k) => {
+    acc[k] = k;
+    return acc;
+  }, {} as Record<RuleCode, RuleCode>)
+);
