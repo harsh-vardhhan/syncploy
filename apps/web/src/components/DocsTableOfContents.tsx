@@ -172,8 +172,8 @@ export function DocsTableOfContents({
       {/* Desktop Sticky Right Sidebar (visible on xl+) */}
       <aside className="w-72 shrink-0 hidden xl:block self-stretch">
         <div className="sticky top-24 space-y-6 max-h-[calc(100vh-7rem)] overflow-y-auto pr-2 pb-12">
-          {/* Section 1: On this page */}
-          {headings.length > 0 && (
+          {/* Section 1: On this page (hidden on safety-rails for clean rule-first sidebar) */}
+          {!isSafetyRails && headings.length > 0 && (
             <div className="space-y-2.5">
               <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-neutral-500">
                 <List className="h-3.5 w-3.5" />
@@ -212,7 +212,7 @@ export function DocsTableOfContents({
 
           {/* Section 2: Denial-of-Wallet Rules Quick Navigator (for safety-rails) */}
           {isSafetyRails && (
-            <div className="pt-4 border-t border-slate-200 dark:border-[#232736] space-y-3">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-neutral-400">
                   <ShieldAlert className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
@@ -266,8 +266,8 @@ export function DocsTableOfContents({
                 ))}
               </div>
 
-              {/* Scrollable Compact Rules List */}
-              <div className="space-y-1 max-h-[360px] overflow-y-auto pr-1">
+              {/* Scrollable Compact Rules List with dynamic viewport height */}
+              <div className="space-y-1 max-h-[calc(100vh-15rem)] overflow-y-auto pr-1">
                 {filteredRules.map((rule) => {
                   const dotColor =
                     rule.severity === "error"
