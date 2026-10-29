@@ -56,12 +56,12 @@ export default async function DocArticlePage({ params }: PageProps) {
     slug === "safety-rails"
       ? [
           ...rawHeadings,
-          { title: "4. Interactive Rule Explorer", id: "rule-explorer" },
+          { title: "6. Interactive Rule Explorer", id: "rule-explorer" },
         ]
       : rawHeadings;
 
   return (
-    <div className="flex flex-col xl:flex-row gap-8 items-start w-full">
+    <div className="flex flex-col xl:flex-row gap-8 w-full">
       <article className="flex-1 min-w-0 max-w-4xl space-y-8">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-neutral-400">

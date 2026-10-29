@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   ShieldAlert,
   AlertTriangle,
@@ -59,6 +59,36 @@ export function RuleExplorer() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [activeTabs, setActiveTabs] = useState<Record<string, "bad" | "good">>({});
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  // Listen for sidebar rule navigation to ensure target rule is not filtered out
+  useEffect(() => {
+    const handleNavigate = () => {
+      setSelectedLayer("all");
+      setSelectedSeverity("all");
+      setSearchQuery("");
+    };
+    window.addEventListener("syncploy:navigate-rule", handleNavigate);
+    return () => window.removeEventListener("syncploy:navigate-rule", handleNavigate);
+  }, []);
+
+  // Handle direct hash navigation on initial page load
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash) {
+      const hash = window.location.hash.replace("#", "");
+      if (hash && hash !== "rule-explorer") {
+        setTimeout(() => {
+          const el = document.getElementById(hash);
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+            el.classList.add("ring-2", "ring-indigo-500", "dark:ring-indigo-400");
+            setTimeout(() => {
+              el.classList.remove("ring-2", "ring-indigo-500", "dark:ring-indigo-400");
+            }, 2000);
+          }
+        }, 300);
+      }
+    }
+  }, []);
 
   const allRules = useMemo(() => Object.values(RULES_CATALOG), []);
 

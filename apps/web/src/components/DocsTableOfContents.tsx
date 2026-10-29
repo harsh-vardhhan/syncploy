@@ -74,17 +74,30 @@ export function DocsTableOfContents({
   }, [allRules, selectedLayer, searchQuery]);
 
   const handleRuleClick = (anchor: string) => {
-    const el = document.getElementById(anchor);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-      window.history.replaceState(null, "", `#${anchor}`);
-
-      // Temporary pulse animation
-      el.classList.add("ring-2", "ring-indigo-500", "dark:ring-indigo-400");
-      setTimeout(() => {
-        el.classList.remove("ring-2", "ring-indigo-500", "dark:ring-indigo-400");
-      }, 2000);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("syncploy:navigate-rule", { detail: { anchor } })
+      );
     }
+
+    setTimeout(() => {
+      const el = document.getElementById(anchor);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        window.history.replaceState(null, "", `#${anchor}`);
+
+        // Temporary pulse animation
+        el.classList.add("ring-2", "ring-indigo-500", "dark:ring-indigo-400");
+        setTimeout(() => {
+          el.classList.remove("ring-2", "ring-indigo-500", "dark:ring-indigo-400");
+        }, 2000);
+      } else {
+        const explorer = document.getElementById("rule-explorer");
+        if (explorer) {
+          explorer.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }
+    }, 60);
     setMobileDrawerOpen(false);
   };
 
@@ -157,8 +170,8 @@ export function DocsTableOfContents({
       )}
 
       {/* Desktop Sticky Right Sidebar (visible on xl+) */}
-      <aside className="w-72 shrink-0 hidden xl:block">
-        <div className="sticky top-24 space-y-6 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2">
+      <aside className="w-72 shrink-0 hidden xl:block self-stretch">
+        <div className="sticky top-24 space-y-6 max-h-[calc(100vh-7rem)] overflow-y-auto pr-2 pb-12">
           {/* Section 1: On this page */}
           {headings.length > 0 && (
             <div className="space-y-2.5">
@@ -173,6 +186,15 @@ export function DocsTableOfContents({
                     <li key={h.id}>
                       <a
                         href={`#${h.id}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          const el = document.getElementById(h.id);
+                          if (el) {
+                            el.scrollIntoView({ behavior: "smooth", block: "start" });
+                            window.history.replaceState(null, "", `#${h.id}`);
+                            setActiveHeadingId(h.id);
+                          }
+                        }}
                         className={`block text-xs py-1 pl-3 -ml-px border-l-2 transition-colors ${
                           isActive
                             ? "border-indigo-600 dark:border-indigo-500 text-indigo-700 dark:text-indigo-400 font-semibold"
