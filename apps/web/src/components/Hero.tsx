@@ -16,24 +16,24 @@ import {
 
 export function Hero() {
   const [copied, setCopied] = useState(false);
-  const [isFlipped, setIsFlipped] = useState(false);
-  const [billCounter, setBillCounter] = useState(1284.5);
+  const [activeScenario, setActiveScenario] = useState<"standard" | "syncploy">("standard");
+  const [billCounter, setBillCounter] = useState(14820.5);
   const installCmd = "bun add @syncploy/sdk";
 
   // Automated background ticker showing the runaway bill risk on standard AWS
   useEffect(() => {
     const interval = setInterval(() => {
       setBillCounter((prev) =>
-        prev > 48000 ? 1284.5 : prev + Math.floor(Math.random() * 85 + 25)
+        prev > 88000 ? 14820.5 : prev + Math.floor(Math.random() * 85 + 25)
       );
-    }, 90);
+    }, 200);
     return () => clearInterval(interval);
   }, []);
 
-  // Continuous CSS 3D card-flip animation: alternates between Standard AWS & Syncploy every 4.5 seconds
+  // Silky smooth card shuffle transition: automatically alternates active card in depth deck
   useEffect(() => {
     const interval = setInterval(() => {
-      setIsFlipped((prev) => !prev);
+      setActiveScenario((prev) => (prev === "standard" ? "syncploy" : "standard"));
     }, 4500);
     return () => clearInterval(interval);
   }, []);
@@ -186,15 +186,15 @@ export function Hero() {
             </div>
           </div>
 
-          {/* Right Column: First-Fold 3D Auto-Flipping Credit Card UI (Both Scenarios via CSS) */}
+          {/* Right Column: Buttery-Smooth Depth Deck Card Shuffle (Hardware-Accelerated 60fps) */}
           <div className="lg:col-span-5 flex flex-col items-center justify-center pt-8 lg:pt-0">
             {/* Scenario Indicator Pills */}
             <div className="w-full max-w-[420px] flex items-center justify-center gap-2 mb-3 text-xs">
               <button
                 type="button"
-                onClick={() => setIsFlipped(false)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs transition-all ${
-                  !isFlipped
+                onClick={() => setActiveScenario("standard")}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-xs transition-all ${
+                  activeScenario === "standard"
                     ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 shadow-xs scale-105"
                     : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 border border-transparent"
                 }`}
@@ -207,9 +207,9 @@ export function Hero() {
 
               <button
                 type="button"
-                onClick={() => setIsFlipped(true)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs transition-all ${
-                  isFlipped
+                onClick={() => setActiveScenario("syncploy")}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full font-bold text-xs transition-all ${
+                  activeScenario === "syncploy"
                     ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shadow-xs scale-105"
                     : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 border border-transparent"
                 }`}
@@ -219,122 +219,125 @@ export function Hero() {
               </button>
             </div>
 
-            {/* 3D Perspective Card Container */}
-            <div className="relative w-full max-w-[420px] [perspective:1200px]">
+            {/* Depth Deck Container with Fixed Boundary to Prevent Any Layout Shift */}
+            <div className="relative w-full max-w-[420px] h-[245px] sm:h-[255px] mx-auto select-none">
+              {/* Card 1: Standard AWS (The Risk) */}
               <div
+                onClick={() => setActiveScenario("standard")}
                 style={{
-                  transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+                  animation: activeScenario === "standard" ? "card-overheat 2.5s infinite ease-in-out" : "none",
                 }}
-                className="relative w-full transition-transform duration-700 [transform-style:preserve-3d]"
+                className={`absolute inset-x-0 top-0 rounded-2xl p-5 sm:p-6 border text-white transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer will-change-transform ${
+                  activeScenario === "standard"
+                    ? "z-20 translate-x-0 translate-y-0 scale-100 rotate-0 opacity-100 bg-gradient-to-tr from-rose-950 via-slate-900 to-rose-950 border-rose-400 dark:border-rose-500/80 shadow-2xl shadow-rose-600/30 ring-1 ring-rose-500/40"
+                    : "z-10 translate-x-3 translate-y-4 sm:translate-x-5 sm:translate-y-5 scale-[0.93] rotate-2 opacity-65 hover:opacity-90 bg-gradient-to-tr from-rose-950/80 via-slate-900/90 to-rose-950/80 border-rose-500/30 shadow-lg"
+                }`}
               >
-                {/* Side A: Standard AWS (The Risk) - Glowing Overheat Animation */}
-                <div
-                  style={{
-                    animation: !isFlipped ? "card-overheat 2.5s infinite ease-in-out" : "none",
-                  }}
-                  className="w-full rounded-2xl p-5 sm:p-6 border text-white transition-all [backface-visibility:hidden] bg-gradient-to-tr from-rose-950 via-slate-900 to-rose-950 border-rose-400 dark:border-rose-500/80 shadow-2xl shadow-rose-600/30"
-                >
-                  {/* Header & Chip */}
-                  <div className="relative flex items-center justify-between mb-5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-7 rounded-md bg-rose-500/20 border border-rose-400/60 flex items-center justify-center shadow-xs">
-                        <Flame className="h-4 w-4 text-rose-400 animate-pulse" />
-                      </div>
-                      <span className="text-[10px] font-mono tracking-widest text-rose-300 uppercase font-bold">
-                        UNCAPPED RISK
-                      </span>
+                {/* Header & Chip */}
+                <div className="relative flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-7 rounded-md bg-rose-500/20 border border-rose-400/60 flex items-center justify-center shadow-xs">
+                      <Flame className="h-4 w-4 text-rose-400 animate-pulse" />
                     </div>
-                    <div className="font-mono text-xs font-bold text-rose-200 flex items-center gap-1.5">
-                      <span>AWS CLOUD</span>
-                      <Flame className="h-4 w-4 text-rose-400 animate-bounce" />
-                    </div>
+                    <span className="text-[10px] font-mono tracking-widest text-rose-300 uppercase font-bold">
+                      UNCAPPED RISK
+                    </span>
                   </div>
-
-                  {/* Runaway Spend Ticker */}
-                  <div className="relative space-y-1 mb-5 text-left">
-                    <div className="text-[10px] font-mono text-slate-300 uppercase tracking-widest flex items-center justify-between">
-                      <span>Runaway Live Spend</span>
-                      <span className="text-[10px] font-mono text-rose-400 font-bold animate-pulse">+$148.00 / min</span>
-                    </div>
-                    <div className="font-mono text-3xl sm:text-4xl font-black text-rose-400 tracking-tight animate-pulse">
-                      ${billCounter.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      <span className="text-xs font-mono font-normal text-slate-400 ml-2">USD</span>
-                    </div>
-                  </div>
-
-                  {/* Card Footer */}
-                  <div className="relative flex items-center justify-between text-[11px] font-mono text-slate-300 pt-2 border-t border-white/10 text-left">
-                    <div>
-                      <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Cardholder</span>
-                      <span className="text-white font-semibold">DEV ACCOUNT #9482</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Limit Status</span>
-                      <span className="font-bold text-rose-400 animate-pulse">
-                        CRITICAL: UNBOUNDED
-                      </span>
-                    </div>
+                  <div className="font-mono text-xs font-bold text-rose-200 flex items-center gap-1.5">
+                    <span>AWS CLOUD</span>
+                    <Flame className="h-4 w-4 text-rose-400 animate-bounce" />
                   </div>
                 </div>
 
-                {/* Side B: With Syncploy (Vault Locked) - Vault-Lock Cyan Glow Animation */}
-                <div
-                  style={{
-                    animation: isFlipped ? "vault-lock 0.8s ease-out forwards" : "none",
-                  }}
-                  className="absolute inset-0 w-full rounded-2xl p-5 sm:p-6 border text-white transition-all [backface-visibility:hidden] [transform:rotateY(180deg)] bg-gradient-to-tr from-slate-900 via-emerald-950 to-slate-900 border-emerald-400 dark:border-cyan-500/80 shadow-2xl shadow-emerald-500/20 backdrop-blur-md"
-                >
-                  {/* Ambient Card Gloss */}
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
-
-                  {/* Header & Golden EMV Chip */}
-                  <div className="relative flex items-center justify-between mb-5">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-7 rounded-md bg-amber-400/90 border border-amber-300 flex items-center justify-center shadow-xs">
-                        <div className="w-5 h-4 border border-amber-600/60 rounded-xs bg-amber-400/40" />
-                      </div>
-                      <span className="text-[10px] font-mono tracking-widest text-emerald-300 uppercase font-bold">
-                        EMV SECURE &bull; ZERO-DOW
-                      </span>
-                    </div>
-                    <div className="font-mono text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                      <span>AWS CLOUD</span>
-                      <Lock className="h-4 w-4 text-emerald-400" />
-                    </div>
+                {/* Runaway Spend Ticker */}
+                <div className="relative space-y-1 mb-5 text-left">
+                  <div className="text-[10px] font-mono text-slate-300 uppercase tracking-widest flex items-center justify-between">
+                    <span>Runaway Live Spend</span>
+                    <span className="text-[10px] font-mono text-rose-400 font-bold animate-pulse">+$148.00 / min</span>
                   </div>
-
-                  {/* Hard-Capped Spend */}
-                  <div className="relative space-y-1 mb-5 text-left">
-                    <div className="text-[10px] font-mono text-slate-300 uppercase tracking-widest flex items-center justify-between">
-                      <span>Month-To-Date Spend</span>
-                      <span className="text-[10px] font-mono text-emerald-400 font-bold">$0.00 / idle</span>
-                    </div>
-                    <div className="font-mono text-3xl sm:text-4xl font-black text-emerald-400 tracking-tight">
-                      $0.42
-                      <span className="text-xs font-mono font-normal text-slate-400 ml-2">USD</span>
-                    </div>
+                  <div className="font-mono text-3xl sm:text-4xl font-black text-rose-400 tracking-tight animate-pulse">
+                    ${billCounter.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <span className="text-xs font-mono font-normal text-slate-400 ml-2">USD</span>
                   </div>
+                </div>
 
-                  {/* Card Footer */}
-                  <div className="relative flex items-center justify-between text-[11px] font-mono text-slate-300 pt-2 border-t border-white/10 text-left">
-                    <div>
-                      <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Cardholder</span>
-                      <span className="text-white font-semibold">DEV ACCOUNT #9482</span>
+                {/* Card Footer */}
+                <div className="relative flex items-center justify-between text-[11px] font-mono text-slate-300 pt-2 border-t border-white/10 text-left">
+                  <div>
+                    <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Cardholder</span>
+                    <span className="text-white font-semibold">DEV ACCOUNT #9482</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Limit Status</span>
+                    <span className="font-bold text-rose-400 animate-pulse">
+                      CRITICAL: UNBOUNDED
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: With Syncploy (Vault Locked) */}
+              <div
+                onClick={() => setActiveScenario("syncploy")}
+                style={{
+                  animation: activeScenario === "syncploy" ? "vault-lock 0.8s ease-out forwards" : "none",
+                }}
+                className={`absolute inset-x-0 top-0 rounded-2xl p-5 sm:p-6 border text-white transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer will-change-transform ${
+                  activeScenario === "syncploy"
+                    ? "z-20 translate-x-0 translate-y-0 scale-100 rotate-0 opacity-100 bg-gradient-to-tr from-slate-900 via-emerald-950 to-slate-900 border-emerald-400 dark:border-cyan-500/80 shadow-2xl shadow-emerald-500/20 ring-1 ring-emerald-500/40"
+                    : "z-10 translate-x-3 translate-y-4 sm:translate-x-5 sm:translate-y-5 scale-[0.93] -rotate-2 opacity-65 hover:opacity-90 bg-gradient-to-tr from-slate-900/90 via-emerald-950/80 to-slate-900/90 border-emerald-500/30 shadow-lg"
+                }`}
+              >
+                {/* Ambient Card Gloss */}
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
+
+                {/* Header & Golden EMV Chip */}
+                <div className="relative flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-7 rounded-md bg-amber-400/90 border border-amber-300 flex items-center justify-center shadow-xs">
+                      <div className="w-5 h-4 border border-amber-600/60 rounded-xs bg-amber-400/40" />
                     </div>
-                    <div className="text-right">
-                      <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Limit Status</span>
-                      <span className="font-bold text-cyan-400">
-                        VAULT SEALED (MAX $4.80)
-                      </span>
-                    </div>
+                    <span className="text-[10px] font-mono tracking-widest text-emerald-300 uppercase font-bold">
+                      EMV SECURE &bull; ZERO-DOW
+                    </span>
+                  </div>
+                  <div className="font-mono text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                    <span>AWS CLOUD</span>
+                    <Lock className="h-4 w-4 text-emerald-400" />
+                  </div>
+                </div>
+
+                {/* Hard-Capped Spend */}
+                <div className="relative space-y-1 mb-5 text-left">
+                  <div className="text-[10px] font-mono text-slate-300 uppercase tracking-widest flex items-center justify-between">
+                    <span>Month-To-Date Spend</span>
+                    <span className="text-[10px] font-mono text-emerald-400 font-bold">$0.00 / idle</span>
+                  </div>
+                  <div className="font-mono text-3xl sm:text-4xl font-black text-emerald-400 tracking-tight">
+                    $0.42
+                    <span className="text-xs font-mono font-normal text-slate-400 ml-2">USD</span>
+                  </div>
+                </div>
+
+                {/* Card Footer */}
+                <div className="relative flex items-center justify-between text-[11px] font-mono text-slate-300 pt-2 border-t border-white/10 text-left">
+                  <div>
+                    <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Cardholder</span>
+                    <span className="text-white font-semibold">DEV ACCOUNT #9482</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Limit Status</span>
+                    <span className="font-bold text-cyan-400">
+                      VAULT SEALED (MAX $4.80)
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Dynamic Explanatory Caption that syncs with current side */}
-            <div className="mt-3.5 text-center text-xs font-mono h-8 flex items-center justify-center">
-              {isFlipped ? (
+            <div className="mt-5 text-center text-xs font-mono h-8 flex items-center justify-center">
+              {activeScenario === "syncploy" ? (
                 <span className="text-emerald-700 dark:text-emerald-400 font-semibold inline-flex items-center justify-center gap-1.5 transition-all">
                   <Shield className="h-3.5 w-3.5 shrink-0" />
                   <span>Zero-DoW Shield: Tarjan SCC &amp; concurrency bounds cap max burn at $4.80.</span>
