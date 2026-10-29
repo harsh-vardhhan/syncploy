@@ -17,7 +17,6 @@ import {
 export function Hero() {
   const [copied, setCopied] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [billCounter, setBillCounter] = useState(1284.5);
   const installCmd = "bun add @syncploy/sdk";
 
@@ -31,14 +30,13 @@ export function Hero() {
     return () => clearInterval(interval);
   }, []);
 
-  // Continuous CSS 3D card-flip animation: alternates between Standard AWS & Syncploy every 4 seconds
+  // Continuous CSS 3D card-flip animation: alternates between Standard AWS & Syncploy every 4.5 seconds
   useEffect(() => {
-    if (isPaused) return;
     const interval = setInterval(() => {
       setIsFlipped((prev) => !prev);
-    }, 4200);
+    }, 4500);
     return () => clearInterval(interval);
-  }, [isPaused]);
+  }, []);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(installCmd);
@@ -190,60 +188,39 @@ export function Hero() {
 
           {/* Right Column: First-Fold 3D Auto-Flipping Credit Card UI (Both Scenarios via CSS) */}
           <div className="lg:col-span-5 flex flex-col items-center justify-center pt-8 lg:pt-0">
-            {/* Mode Indicator & Auto-Cycle Control */}
-            <div className="w-full max-w-[420px] flex items-center justify-between mb-2 px-1 text-xs">
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsFlipped(false);
-                    setIsPaused(true);
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs transition-all ${
-                    !isFlipped
-                      ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 shadow-xs scale-105"
-                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
-                  }`}
-                >
-                  <Flame className="h-3.5 w-3.5 text-rose-500 animate-pulse" />
-                  <span>Standard AWS (The Risk)</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsFlipped(true);
-                    setIsPaused(true);
-                  }}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs transition-all ${
-                    isFlipped
-                      ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shadow-xs scale-105"
-                      : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
-                  }`}
-                >
-                  <Shield className="h-3.5 w-3.5 text-emerald-500" />
-                  <span>Syncploy (Vault Locked)</span>
-                </button>
-              </div>
-
-              <span
-                className="hidden sm:inline-flex items-center gap-1 text-[10px] font-mono text-slate-400 dark:text-slate-500"
-                title="Cards alternate automatically every 4 seconds"
+            {/* Scenario Indicator Pills */}
+            <div className="w-full max-w-[420px] flex items-center justify-center gap-2 mb-3 text-xs">
+              <button
+                type="button"
+                onClick={() => setIsFlipped(false)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs transition-all ${
+                  !isFlipped
+                    ? "bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/30 shadow-xs scale-105"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 border border-transparent"
+                }`}
               >
-                <RefreshCw
-                  className={`h-2.5 w-2.5 ${isPaused ? "" : "animate-spin"}`}
-                  style={{ animationDuration: "4s" }}
-                />
-                <span>{isPaused ? "Paused" : "Auto-cycling"}</span>
-              </span>
+                <Flame className="h-3.5 w-3.5 text-rose-500 animate-pulse" />
+                <span>Standard AWS (The Risk)</span>
+              </button>
+
+              <span className="text-slate-300 dark:text-slate-600">&bull;</span>
+
+              <button
+                type="button"
+                onClick={() => setIsFlipped(true)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs transition-all ${
+                  isFlipped
+                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shadow-xs scale-105"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 border border-transparent"
+                }`}
+              >
+                <Shield className="h-3.5 w-3.5 text-emerald-500" />
+                <span>With Syncploy (Vault Locked)</span>
+              </button>
             </div>
 
             {/* 3D Perspective Card Container */}
-            <div
-              className="relative w-full max-w-[420px] [perspective:1200px]"
-              onMouseEnter={() => setIsPaused(true)}
-              onMouseLeave={() => setIsPaused(false)}
-            >
+            <div className="relative w-full max-w-[420px] [perspective:1200px]">
               <div
                 style={{
                   transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
