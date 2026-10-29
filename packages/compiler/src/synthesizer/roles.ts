@@ -185,6 +185,9 @@ export function createLambdaRole(
           },
         },
       ],
+      Tags: [
+        { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+      ],
     },
   };
 }

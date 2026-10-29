@@ -61,7 +61,7 @@ export function generateQueueConsumers(
     }
 
     funcProps["Tags"] = [
-      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+      { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
     ];
 
     resources[funcKey] = {
@@ -131,7 +131,7 @@ export function generateStreamConsumers(
     }
 
     funcProps["Tags"] = [
-      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+      { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
     ];
 
     resources[funcKey] = {
@@ -226,7 +226,7 @@ export function generateTopicSubscribers(
     }
 
     funcProps["Tags"] = [
-      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+      { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
     ];
 
     resources[funcKey] = {

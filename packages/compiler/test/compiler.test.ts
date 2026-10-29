@@ -305,6 +305,8 @@ export const monthlyBudget = new Budget("monthlyBudget", {
     expect(tableRes.Properties.GlobalSecondaryIndexes[0].IndexName).toBe("GSI1Index");
 
     // Edge Controls & Throttling
+    expect(res["HttpApiStage"].Properties.DefaultRouteSettings.ThrottlingBurstLimit).toBe(2000);
+    expect(res["HttpApiStage"].Properties.DefaultRouteSettings.ThrottlingRateLimit).toBe(1000);
     expect(res["HttpApiStage"].Properties.RouteSettings["GET /users/{id}"].ThrottlingBurstLimit).toBe(100);
     expect(res["HttpApiStage"].Properties.RouteSettings["GET /users/{id}"].ThrottlingRateLimit).toBe(50);
     expect(res["HttpApiStage"].Properties.RouteSettings["GET /users/{id}"].DetailedMetricsEnabled).toBe(true);
@@ -318,14 +320,14 @@ export const monthlyBudget = new Budget("monthlyBudget", {
 
     // 6. Stack Tags on synthesized resources
     expect(tableRes.Properties.Tags).toBeDefined();
-    expect(tableRes.Properties.Tags[0].Key).toBe("user:StackName");
+    expect(tableRes.Properties.Tags[0].Key).toBe("StackName");
 
     // 2. Bucket with EventBridge & Versioning
     const bucketRes = res["Bucketdocuments"];
     expect(bucketRes.Properties.VersioningConfiguration.Status).toBe("Enabled");
     expect(bucketRes.Properties.NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled).toBe(true);
     expect(bucketRes.Properties.Tags).toBeDefined();
-    expect(bucketRes.Properties.Tags[0].Key).toBe("user:StackName");
+    expect(bucketRes.Properties.Tags[0].Key).toBe("StackName");
 
     // 3. Queue with DLQ
     const queueRes = res["Queueannotations"];
@@ -1313,6 +1315,47 @@ export const streamWorker = tbl.stream({
       expect(validation.suppressions).toBeDefined();
       expect(validation.suppressions?.some((s) => s.code === "ERR_RECURSIVE_LOOP")).toBe(true);
       expect(validation.suppressions?.[0]?.reason).toContain("Suppressed on Table construct");
+    });
+  });
+
+  describe("Multiple Budgets and Robust Budget Argument Parsing", () => {
+    const testDir = path.join(tmpdir(), `syncploy-test-multi-budgets-${Date.now()}`);
+
+    beforeAll(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+      const code = `
+import { Budget } from "@syncploy/sdk";
+
+export const warningBudget = new Budget("warningBudget", {
+  amount: 50,
+  threshold: 80,
+  filterByStack: true,
+});
+
+const criticalId = "criticalBudget";
+export const criticalBudget = new Budget(criticalId, {
+  amount: 100,
+  threshold: 100,
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+    });
+
+    afterAll(async () => {
+      await fs.rm(testDir, { recursive: true, force: true });
+    });
+
+    it("parses multiple budgets and non-literal identifier names without crashing", async () => {
+      const compiler = new Compiler(testDir);
+      const graph = await compiler.parse();
+      expect(graph.budgets?.length).toBe(2);
+
+      const out = await compiler.build();
+      const template = JSON.parse(await fs.readFile(out.templatePath, "utf-8"));
+      expect(template.Resources["BudgetwarningBudget"]).toBeDefined();
+      expect(template.Resources["BudgetcriticalBudget"]).toBeDefined();
+      expect(template.Resources["BudgetwarningBudget"].Properties.Budget.BudgetLimit.Amount).toBe(50);
+      expect(template.Resources["BudgetcriticalBudget"].Properties.Budget.BudgetLimit.Amount).toBe(100);
     });
   });
 });

@@ -142,4 +142,17 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
       `Total reserved concurrency across all functions is ${totalReservedConcurrency}, exceeding the AWS default unreserved concurrency budget (900 of 1,000). CloudFormation deployments will fail unless you have requested an account Service Quota increase for Lambda concurrent executions.`
     );
   }
+
+  // E. Budget Cost Allocation Tag Activation Notice
+  const budgetList = graph.budgets || (graph.budget ? [graph.budget] : []);
+  for (const b of budgetList) {
+    if (b.filterByStack) {
+      ctx.addWarning(
+        "WARN_DOW_BUDGET_TAG_ACTIVATION",
+        b.id,
+        `Budget '${b.id}' uses 'filterByStack: true'. Note that user-defined Cost Allocation Tags for 'StackName' must be activated in the AWS Billing & Cost Management console for tag-scoped filters to report spend. Without activation, cost filters will report $0. (Set filterByStack to false or omit it for account-wide spend tracking).`,
+        b.sourceFile
+      );
+    }
+  }
 }

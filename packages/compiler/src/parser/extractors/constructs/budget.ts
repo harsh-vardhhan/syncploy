@@ -19,12 +19,22 @@ export function extractBudget(
 
   const varName = decl.getName();
   const args = init.getArguments();
-  if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
-    throw new Error(
-      `Budget '${varName}' in ${sourceFile.getFilePath()} must have a string literal name as first argument.`
-    );
+  let budgetId = varName;
+  if (args.length > 0 && args[0]) {
+    if (args[0].isKind(SyntaxKind.StringLiteral)) {
+      budgetId = args[0].getLiteralValue();
+    } else if (args[0].isKind(SyntaxKind.Identifier)) {
+      const idDecl = sourceFile.getVariableDeclaration(args[0].getText());
+      const idInit = idDecl?.getInitializer();
+      if (idInit && idInit.isKind(SyntaxKind.StringLiteral)) {
+        budgetId = idInit.getLiteralValue();
+      } else {
+        budgetId = args[0].getText() || varName;
+      }
+    } else {
+      budgetId = args[0].getText().replace(/['"]/g, "") || varName;
+    }
   }
-  const budgetId = args[0].getLiteralValue();
 
   let amount = 100;
   let unit = "USD";

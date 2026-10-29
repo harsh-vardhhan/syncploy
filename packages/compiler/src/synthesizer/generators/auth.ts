@@ -43,6 +43,10 @@ export function generateAuth(
       };
     }
 
+    userPoolProps.UserPoolTags = {
+      StackName: { "Fn::Sub": "${AWS::StackName}" },
+    };
+
     resources[userPoolKey] = {
       Type: "AWS::Cognito::UserPool",
       Properties: userPoolProps,

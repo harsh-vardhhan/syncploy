@@ -63,7 +63,7 @@ export function generateBuckets(
     }
 
     bucketProps["Tags"] = [
-      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+      { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
     ];
 
     const bucketDeletionPolicy =

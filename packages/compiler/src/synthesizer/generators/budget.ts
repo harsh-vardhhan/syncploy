@@ -1,66 +1,75 @@
 import type { ResourceGraph } from "../../types";
-import { getTopicLogicalId } from "../logical-ids";
+import { getTopicLogicalId, sanitizeName } from "../logical-ids";
 
 export function generateBudget(
   graph: ResourceGraph,
   resources: Record<string, any>
 ): void {
-  // Only synthesize when explicitly requested/configured
-  if (!graph.budget) return;
+  const budgetList = graph.budgets || (graph.budget ? [graph.budget] : []);
+  if (budgetList.length === 0) return;
 
-  const budgetKey = graph.budget.logicalId || "StackBudget";
-  const threshold = graph.budget.threshold ?? 80;
+  for (const budget of budgetList) {
+    const budgetKey =
+      budget.logicalId ||
+      (budgetList.length === 1 ? "StackBudget" : `Budget${sanitizeName(budget.id)}`);
+    const threshold = budget.threshold ?? 80;
 
-  const budgetInner: any = {
-    BudgetName: graph.budget.budgetName || { "Fn::Sub": "${AWS::StackName}-budget" },
-    BudgetType: "COST",
-    TimeUnit: "MONTHLY",
-    BudgetLimit: {
-      Amount: graph.budget.amount,
-      Unit: graph.budget.unit || "USD",
-    },
-  };
+    const budgetInner: any = {
+      BudgetName: budget.budgetName || {
+        "Fn::Sub":
+          budgetList.length === 1
+            ? "${AWS::StackName}-budget"
+            : `\${AWS::StackName}-${budget.id}-budget`,
+      },
+      BudgetType: "COST",
+      TimeUnit: "MONTHLY",
+      BudgetLimit: {
+        Amount: budget.amount,
+        Unit: budget.unit || "USD",
+      },
+    };
 
-  if (graph.budget.filterByStack) {
-    budgetInner.CostFilters = {
-      TagKeyValue: [{ "Fn::Sub": "user:StackName$${AWS::StackName}" }],
+    if (budget.filterByStack) {
+      budgetInner.CostFilters = {
+        TagKeyValue: [{ "Fn::Sub": "user:StackName$${AWS::StackName}" }],
+      };
+    }
+
+    const budgetProps: any = {
+      Budget: budgetInner,
+    };
+
+    const targetTopic = budget.topicName
+      ? (graph.topics || []).find((t) => t.name === budget.topicName || t.id === budget.topicName)
+      : (graph.topics || []).find(
+          (t) =>
+            t.name.toLowerCase().includes("alert") ||
+            t.name.toLowerCase().includes("kill") ||
+            t.name.toLowerCase().includes("alarm")
+        );
+
+    if (targetTopic) {
+      budgetProps.NotificationsWithSubscribers = [
+        {
+          Notification: {
+            NotificationType: "ACTUAL",
+            ComparisonOperator: "GREATER_THAN",
+            Threshold: threshold,
+            ThresholdType: "PERCENTAGE",
+          },
+          Subscribers: [
+            {
+              SubscriptionType: "SNS",
+              Address: { Ref: getTopicLogicalId(targetTopic) },
+            },
+          ],
+        },
+      ];
+    }
+
+    resources[budgetKey] = {
+      Type: "AWS::Budgets::Budget",
+      Properties: budgetProps,
     };
   }
-
-  const budgetProps: any = {
-    Budget: budgetInner,
-  };
-
-  const targetTopic = graph.budget.topicName
-    ? (graph.topics || []).find((t) => t.name === graph.budget!.topicName || t.id === graph.budget!.topicName)
-    : (graph.topics || []).find(
-        (t) =>
-          t.name.toLowerCase().includes("alert") ||
-          t.name.toLowerCase().includes("kill") ||
-          t.name.toLowerCase().includes("alarm")
-      );
-
-  if (targetTopic) {
-    budgetProps.NotificationsWithSubscribers = [
-      {
-        Notification: {
-          NotificationType: "ACTUAL",
-          ComparisonOperator: "GREATER_THAN",
-          Threshold: threshold,
-          ThresholdType: "PERCENTAGE",
-        },
-        Subscribers: [
-          {
-            SubscriptionType: "SNS",
-            Address: { Ref: getTopicLogicalId(targetTopic) },
-          },
-        ],
-      },
-    ];
-  }
-
-  resources[budgetKey] = {
-    Type: "AWS::Budgets::Budget",
-    Properties: budgetProps,
-  };
 }

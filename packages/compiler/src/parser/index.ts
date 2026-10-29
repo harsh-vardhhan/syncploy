@@ -78,7 +78,7 @@ export class Parser {
     const auths: AuthIR[] = [];
     const bindings: EventBindingIR[] = [];
     const electroEntities: ElectroEntityIR[] = [];
-    let budget: BudgetIR | undefined;
+    const budgets: BudgetIR[] = [];
 
     const context: ParseContext = {
       varToTableName: {},
@@ -280,7 +280,7 @@ export class Parser {
 
           const budgetResult = extractBudget(decl, sourceFile, context);
           if (budgetResult) {
-            budget = budgetResult;
+            budgets.push(budgetResult);
             continue;
           }
         }
@@ -320,7 +320,8 @@ export class Parser {
       bindings,
       auths,
       electroEntities,
-      budget,
+      budgets,
+      budget: budgets[0],
     };
   }
 }

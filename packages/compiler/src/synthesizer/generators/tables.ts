@@ -85,7 +85,7 @@ export function generateTables(
     }
 
     tableProps["Tags"] = [
-      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+      { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
     ];
 
     const tableDeletionPolicy =

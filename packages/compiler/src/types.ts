@@ -349,6 +349,7 @@ export interface ResourceGraph {
   bindings: EventBindingIR[];
   auths?: AuthIR[] | undefined;
   electroEntities?: ElectroEntityIR[] | undefined;
+  budgets?: BudgetIR[] | undefined;
   budget?: BudgetIR | undefined;
 }
 

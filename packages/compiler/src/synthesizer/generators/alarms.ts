@@ -95,6 +95,10 @@ export function generateAlarms(
       }
     }
 
+    alarmProps["Tags"] = [
+      { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+    ];
+
     resources[resourceKey] = {
       Type: "AWS::CloudWatch::Alarm",
       Properties: alarmProps,

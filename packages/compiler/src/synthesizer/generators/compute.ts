@@ -26,7 +26,7 @@ export function generateApiGateway(
         AllowHeaders: ["*"],
       },
       Tags: {
-        "user:StackName": { "Fn::Sub": "${AWS::StackName}" },
+        StackName: { "Fn::Sub": "${AWS::StackName}" },
       },
     },
   };
@@ -49,6 +49,13 @@ export function generateApiGateway(
     ApiId: { Ref: "HttpApi" },
     StageName: "$default",
     AutoDeploy: true,
+    DefaultRouteSettings: {
+      ThrottlingBurstLimit: 2000,
+      ThrottlingRateLimit: 1000,
+    },
+    Tags: {
+      StackName: { "Fn::Sub": "${AWS::StackName}" },
+    },
   };
 
   if (Object.keys(routeSettings).length > 0) {
@@ -133,7 +140,7 @@ export function generateLambdaApis(
     }
 
     funcProps["Tags"] = [
-      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+      { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
     ];
 
     resources[funcKey] = {

@@ -27,7 +27,7 @@ export function generateQueues(
         Type: "AWS::SQS::Queue",
         Properties: {
           ...dlqProps,
-          Tags: [{ Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } }],
+          Tags: [{ Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } }],
         },
       };
 
@@ -38,7 +38,7 @@ export function generateQueues(
     }
 
     queueProps["Tags"] = [
-      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+      { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
     ];
 
     resources[resourceKey] = {

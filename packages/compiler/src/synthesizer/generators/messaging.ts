@@ -28,7 +28,7 @@ export function generateTopics(
       }));
     }
     topicProps["Tags"] = [
-      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+      { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
     ];
     resources[resourceKey] = {
       Type: "AWS::SNS::Topic",
@@ -175,6 +175,9 @@ export function generateFirehose(
             },
           },
         ],
+        Tags: [
+          { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+        ],
       },
     };
 
@@ -202,6 +205,9 @@ export function generateFirehose(
         DeliveryStreamName: resolvePhysicalName(ds.streamName, { "Fn::Sub": `\${AWS::StackName}-${ds.name}` }),
         DeliveryStreamType: "DirectPut",
         ExtendedS3DestinationConfiguration: s3DestConfig,
+        Tags: [
+          { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+        ],
       },
     };
 
