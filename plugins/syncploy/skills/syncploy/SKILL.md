@@ -146,6 +146,43 @@ export const auth = new Auth("portal", {
 });
 ```
 
+### Notification Topics: `new Topic(...)`
+```typescript
+import { Topic } from "@syncploy/sdk";
+
+export const alertsTopic = new Topic("alerts", {
+  logicalId: "AlertsTopic",
+});
+
+// Topic Subscriber
+export const onAlert = alertsTopic.subscriber(
+  { timeout: "30s", concurrency: 5 },
+  async (event) => {
+    console.log("Alert received:", event);
+  }
+);
+```
+
+### Financial Defense & Spend Budgets: `new Budget(...)`
+```typescript
+import { Budget } from "@syncploy/sdk";
+
+// Prevents silent runaway compute charges (triggers alert at 80% of $50)
+export const monthlyBudget = new Budget("monthly-cap", {
+  amount: 50,
+  threshold: 80,
+  topic: alertsTopic,
+});
+```
+
+### Environment Secrets: `new Secret(...)`
+```typescript
+import { Secret } from "@syncploy/sdk";
+
+export const stripeKey = new Secret("STRIPE_SECRET_KEY");
+```
+
+
 ---
 
 ## 3. Operational CLI Commands

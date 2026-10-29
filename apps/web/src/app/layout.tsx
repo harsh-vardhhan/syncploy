@@ -70,11 +70,21 @@ export default function RootLayout({
               (function() {
                 try {
                   var t = localStorage.getItem('syncploy_theme');
-                  var isDark = t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches) || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-                  if (isDark) {
-                    document.documentElement.classList.add('dark');
+                  var isDark = false;
+                  if (t === 'dark') {
+                    isDark = true;
+                  } else if (t === 'light') {
+                    isDark = false;
                   } else {
-                    document.documentElement.classList.remove('dark');
+                    isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                  }
+                  var root = document.documentElement;
+                  if (isDark) {
+                    root.classList.add('dark');
+                    root.style.colorScheme = 'dark';
+                  } else {
+                    root.classList.remove('dark');
+                    root.style.colorScheme = 'light';
                   }
                 } catch (e) {}
               })();

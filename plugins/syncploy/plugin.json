@@ -1,13 +1,18 @@
 {
   "name": "syncploy",
-  "description": "The Terraform for AWS Serverless. Infrastructure-from-Code (IfC) compiler and SDK for TypeScript to build crash-proof, zero-data-loss AWS serverless architectures.",
+  "displayName": "Syncploy: Pure AWS Serverless",
+  "description": "Zero-DoW Infrastructure-from-Code SDK for TypeScript. Mathematically caps cloud bills and detects recursion loops before code reaches AWS.",
   "version": "0.1.0",
   "homepage": "https://www.syncploy.com",
   "repository": "https://github.com/harsh-vardhhan/syncploy",
+  "author": {
+    "name": "Syncploy",
+    "url": "https://www.syncploy.com"
+  },
+  "logo": "assets/logo.svg",
   "suggestedPrompts": [
     "Create a serverless REST API with DynamoDB and SQS queue using Syncploy",
     "Validate this serverless application for recursion loops and Denial-of-Wallet risks",
-    "Generate a least-privilege IAM deployment policy with syncploy policy",
-    "Compare synthesized infrastructure against existing CloudFormation stack with syncploy diff"
+    "Generate a least-privilege IAM deployment policy with syncploy policy"
   ]
 }
