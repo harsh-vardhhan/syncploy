@@ -30,3 +30,7 @@ jobs:
 
       - name: Run Test Suite
         run: bun test
+
+      - name: Run Security & Supply Chain Audit
+        run: bun run audit:security
+

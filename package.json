@@ -14,7 +14,8 @@
     "dev": "bun --filter \"*\" dev",
     "test": "bun test",
     "typecheck": "tsc --noEmit && bun --filter syncploy-web typecheck",
-    "package:plugin": "bun run ./scripts/package-plugin.ts"
+    "package:plugin": "bun run ./scripts/package-plugin.ts",
+    "audit:security": "bun run ./scripts/audit-security.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
