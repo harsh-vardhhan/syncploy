@@ -46,6 +46,12 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
 
   const options: { value: Theme; label: string; icon: React.ReactNode; desc: string }[] = [
     {
+      value: "system",
+      label: "System",
+      icon: <Monitor className="h-4 w-4 text-slate-500 dark:text-neutral-400" />,
+      desc: "Default • Automatic sync with OS setting",
+    },
+    {
       value: "light",
       label: "Light",
       icon: <Sun className="h-4 w-4 text-amber-500" />,
@@ -56,12 +62,6 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
       label: "Dark",
       icon: <Moon className="h-4 w-4 text-indigo-400" />,
       desc: "Deep OLED serverless night mode",
-    },
-    {
-      value: "system",
-      label: "System",
-      icon: <Monitor className="h-4 w-4 text-slate-500 dark:text-neutral-400" />,
-      desc: "Automatic sync with OS setting",
     },
   ];
 

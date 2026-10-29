@@ -13,14 +13,22 @@ export interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: "system",
-  resolvedTheme: "dark",
+  resolvedTheme: "light",
   setTheme: () => {},
   toggleTheme: () => {},
 });
 
+const STORAGE_KEY = "syncploy_theme_preference";
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  // Always default to "system" on load
   const [theme, setThemeState] = useState<Theme>("system");
-  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">("dark");
+  const [resolvedTheme, setResolvedTheme] = useState<"light" | "dark">(() => {
+    if (typeof window !== "undefined" && window.matchMedia) {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    return "light";
+  });
   const [, setMounted] = useState(false);
 
   const applyThemeClass = (effective: "light" | "dark") => {
@@ -41,10 +49,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       return mediaQuery.matches ? "dark" : "light";
     };
 
-    // Read stored preference
+    // Clean up legacy storage key to remove any stale dark-mode locks
+    try {
+      if (localStorage.getItem("syncploy_theme")) {
+        localStorage.removeItem("syncploy_theme");
+      }
+    } catch {
+      // Ignore localStorage errors
+    }
+
+    // Read stored preference, defaulting to "system" on load
     let saved: Theme | null = null;
     try {
-      saved = localStorage.getItem("syncploy_theme") as Theme | null;
+      saved = localStorage.getItem(STORAGE_KEY) as Theme | null;
     } catch {
       // Ignore localStorage errors
     }
@@ -65,7 +82,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // Live listener for OS system theme changes
     const handleMediaChange = (e: MediaQueryListEvent | MediaQueryList) => {
       try {
-        const current = localStorage.getItem("syncploy_theme");
+        const current = localStorage.getItem(STORAGE_KEY);
         // Only react to OS changes if theme is system (or no override set)
         if (!current || current === "system") {
           const isDark = "matches" in e ? e.matches : mediaQuery.matches;
@@ -98,13 +115,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     try {
       if (newTheme === "system") {
         // Remove override so system setting takes control cleanly
-        localStorage.removeItem("syncploy_theme");
+        localStorage.removeItem(STORAGE_KEY);
         const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
         const resolved = mediaQuery.matches ? "dark" : "light";
         setResolvedTheme(resolved);
         applyThemeClass(resolved);
       } else {
-        localStorage.setItem("syncploy_theme", newTheme);
+        localStorage.setItem(STORAGE_KEY, newTheme);
         setResolvedTheme(newTheme);
         applyThemeClass(newTheme);
       }

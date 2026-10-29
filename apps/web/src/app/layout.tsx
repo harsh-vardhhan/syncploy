@@ -69,13 +69,18 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var t = localStorage.getItem('syncploy_theme');
+                  // Purge legacy key to ensure fresh visits and reloads default to system
+                  if (localStorage.getItem('syncploy_theme')) {
+                    localStorage.removeItem('syncploy_theme');
+                  }
+                  var t = localStorage.getItem('syncploy_theme_preference');
                   var isDark = false;
                   if (t === 'dark') {
                     isDark = true;
                   } else if (t === 'light') {
                     isDark = false;
                   } else {
+                    // Default on page load is ALWAYS SYSTEM (tracks OS appearance)
                     isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
                   }
                   var root = document.documentElement;

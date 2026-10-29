@@ -13,7 +13,8 @@
     "build": "bun --filter \"*\" build",
     "dev": "bun --filter \"*\" dev",
     "test": "bun test",
-    "typecheck": "tsc --noEmit && bun --filter syncploy-web typecheck"
+    "typecheck": "tsc --noEmit && bun --filter syncploy-web typecheck",
+    "package:plugin": "bun run ./scripts/package-plugin.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
