@@ -14,6 +14,7 @@ import { brownfieldAdoptionDoc } from './brownfield-adoption';
 import { testingDoc } from './testing';
 import { cliReferenceDoc } from './cli-reference';
 import { ehrBackendCaseStudyDoc } from './ehr-backend-case-study';
+import { securityDoc } from './security';
 
 export const DOCS_DATA: DocItem[] = [
   introductionDoc,
@@ -26,6 +27,7 @@ export const DOCS_DATA: DocItem[] = [
   constructQueueDoc,
   constructTopicSecretDoc,
   safetyRailsDoc,
+  securityDoc,
   leastPrivilegeIamDoc,
   brownfieldAdoptionDoc,
   testingDoc,

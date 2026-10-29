@@ -34,6 +34,7 @@ export function Footer() {
             <ul className="space-y-2 text-sm text-slate-600 dark:text-neutral-400">
               <li><Link href="/docs/safety-rails" className="hover:text-slate-900 dark:hover:text-white transition-colors">Infinite Loop Shield</Link></li>
               <li><Link href="/docs/safety-rails" className="hover:text-slate-900 dark:hover:text-white transition-colors">Denial of Wallet Audits</Link></li>
+              <li><Link href="/docs/security" className="hover:text-slate-900 dark:hover:text-white transition-colors">Security & Supply Chain</Link></li>
               <li><Link href="/docs/brownfield-adoption" className="hover:text-slate-900 dark:hover:text-white transition-colors">Brownfield Adoption</Link></li>
               <li><Link href="/docs/ehr-backend-case-study" className="hover:text-slate-900 dark:hover:text-white transition-colors">EHR Case Study</Link></li>
               <li><Link href="/docs/cli-reference" className="hover:text-slate-900 dark:hover:text-white transition-colors">Least-Privilege IAM</Link></li>

@@ -120,6 +120,7 @@ Below is the complete set of documentation topics. Each file is available in raw
 - [Queue & DLQ (Amazon SQS)](https://www.syncploy.com/docs/construct-queue.md): SQS queues with automatic Dead Letter Queue (DLQ) redrive and worker wiring.
 - [Topic & Secret (SNS & Secrets)](https://www.syncploy.com/docs/construct-topic-secret.md): Fan-out pub/sub messaging with Amazon SNS and audited Secrets Manager integration.
 - [Safety Rails & Denial-of-Wallet Shield](https://www.syncploy.com/docs/safety-rails.md): Compile-time detection of infinite Lambda-DynamoDB cycles, mathematical blast-radius caps, and Denial-of-Wallet (DoW) auditing.
+- [Security, Supply Chain & Trust](https://www.syncploy.com/docs/security.md): Cryptographic supply-chain integrity, zero lifecycle hooks, offline local compilation, and zero-telemetry architecture.
 - [Least-Privilege IAM Policy Generator](https://www.syncploy.com/docs/least-privilege-iam.md): Synthesizing minimal IAM deployment policies for GitHub Actions and CI/CD runners.
 - [Brownfield Adoption & Diff](https://www.syncploy.com/docs/brownfield-adoption.md): Zero-replacement migration from existing AWS SAM or CloudFormation templates.
 - [In-Memory Zero-Mock Testing](https://www.syncploy.com/docs/testing.md): Lightning-fast unit and integration testing without Docker or LocalStack.
