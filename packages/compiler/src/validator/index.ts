@@ -22,6 +22,7 @@ import { validateDenialOfWallet } from "./rules/dow";
 import { validateElectroDb } from "./rules/electrodb";
 
 export * from "./types";
+export * from "./rules-catalog";
 export { formatDiagnostics } from "./formatter";
 
 export class GraphValidator implements ValidationContext {

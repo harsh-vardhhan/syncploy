@@ -5,6 +5,7 @@ import { DOCS_DATA } from "@/data/docs";
 import Link from "next/link";
 import { ChevronRight, ArrowLeft, ArrowRight } from "lucide-react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { RuleExplorer } from "@/components/RuleExplorer";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -53,6 +54,23 @@ export default async function DocArticlePage({ params }: PageProps) {
 
       {/* Main Body via MarkdownRenderer */}
       <MarkdownRenderer content={doc.content} />
+
+      {slug === "safety-rails" && (
+        <section className="pt-8 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+            <h2 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
+              Interactive Denial-of-Wallet Rule Explorer
+            </h2>
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 w-fit">
+              LIVE AUDIT CATALOG
+            </span>
+          </div>
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+            Explore, filter, and inspect all compile-time Denial-of-Wallet rules, graph cycle diagnostics, and financial blast-radius limits. Switch between hazardous patterns and safe code remediations.
+          </p>
+          <RuleExplorer />
+        </section>
+      )}
 
       {/* Navigation Footer */}
       <div className="pt-10 border-t border-slate-200 dark:border-[#232736] flex items-center justify-between gap-4">

@@ -10,6 +10,14 @@ const PUBLIC_DOCS_DIR = path.join(PUBLIC_DIR, "docs");
 if (!fs.existsSync(PUBLIC_DIR)) fs.mkdirSync(PUBLIC_DIR, { recursive: true });
 if (!fs.existsSync(PUBLIC_DOCS_DIR)) fs.mkdirSync(PUBLIC_DOCS_DIR, { recursive: true });
 
+// 0. Synchronize rules-catalog.ts from @syncploy/compiler
+const COMPILER_RULES_CATALOG = path.resolve(__dirname, "../../../packages/compiler/src/validator/rules-catalog.ts");
+const WEB_RULES_CATALOG = path.resolve(__dirname, "../src/data/rules-catalog.ts");
+if (fs.existsSync(COMPILER_RULES_CATALOG)) {
+  fs.copyFileSync(COMPILER_RULES_CATALOG, WEB_RULES_CATALOG);
+  console.log("✓ Synchronized rules-catalog.ts from @syncploy/compiler to web app data");
+}
+
 // 1. Copy individual .md files to public/docs/<slug>.md
 for (const doc of DOCS_DATA) {
   const srcFile = path.join(DOCS_CONTENT_DIR, `${doc.slug}.md`);
