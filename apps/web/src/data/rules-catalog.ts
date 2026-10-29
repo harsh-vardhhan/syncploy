@@ -394,6 +394,112 @@ export const monthlyBudget = new Budget("monthly-cap", {
     docsAnchor: "err_budget_invalid_amount",
   },
 
+  ERR_BUDGET_INVALID_THRESHOLD: {
+    id: "ERR_BUDGET_INVALID_THRESHOLD",
+    title: "Budget Alert Threshold Invalid",
+    layer: "governance",
+    severity: "error",
+    service: "AWS Budgets",
+    financialRisk: "Invalid or non-percentage thresholds prevent CloudWatch/SNS notifications from triggering when spend spikes.",
+    summary: "Budget threshold must be a positive number literal representing a percentage (e.g. 80).",
+    badCode: `export const budget = new Budget("cap", { amount: 50, threshold: -10 });`,
+    goodCode: `export const budget = new Budget("cap", { amount: 50, threshold: 80 }); // Alert at 80%`,
+    remediation: "Set 'threshold: <number>' between 1 and 1000 (e.g. 80 for 80% of budget).",
+    docsAnchor: "err_budget_invalid_threshold",
+  },
+
+  ERR_BUDGET_INVALID_UNIT: {
+    id: "ERR_BUDGET_INVALID_UNIT",
+    title: "Budget Currency Unit Not ISO Code",
+    layer: "governance",
+    severity: "error",
+    service: "AWS Budgets",
+    financialRisk: "AWS Budgets rejects non-ISO currency codes during CloudFormation stack creation, failing deployment.",
+    summary: "Budget unit must be a 3-letter uppercase ISO currency code (e.g. 'USD', 'EUR', 'GBP').",
+    badCode: `export const budget = new Budget("cap", { amount: 50, unit: "dollars" });`,
+    goodCode: `export const budget = new Budget("cap", { amount: 50, unit: "USD" });`,
+    remediation: "Use standard 3-letter uppercase currency code like 'USD' or 'EUR'.",
+    docsAnchor: "err_budget_invalid_unit",
+  },
+
+  ERR_BUDGET_INVALID_FILTER: {
+    id: "ERR_BUDGET_INVALID_FILTER",
+    title: "Budget Stack Filter Invalid",
+    layer: "governance",
+    severity: "error",
+    service: "AWS Budgets",
+    financialRisk: "Dynamic non-boolean stack filter expressions prevent deterministic CloudFormation tag cost filtering.",
+    summary: "Budget filterByStack must be a static boolean literal (true | false).",
+    badCode: `export const budget = new Budget("cap", { amount: 50, filterByStack: "yes" as any });`,
+    goodCode: `export const budget = new Budget("cap", { amount: 50, filterByStack: true });`,
+    remediation: "Pass literal boolean 'filterByStack: true' or omit for account-wide tracking.",
+    docsAnchor: "err_budget_invalid_filter",
+  },
+
+  ERR_DUPLICATE_BUDGET_ID: {
+    id: "ERR_DUPLICATE_BUDGET_ID",
+    title: "Duplicate Budget Identifier Declared",
+    layer: "governance",
+    severity: "error",
+    service: "AWS Budgets",
+    financialRisk: "Duplicate budget constructs collide in the CloudFormation logical ID map and overwrite financial limits.",
+    summary: "Two Budget constructs share the same constructor identifier.",
+    badCode: `export const b1 = new Budget("monthly-cap", { amount: 50 });
+export const b2 = new Budget("monthly-cap", { amount: 100 });`,
+    goodCode: `export const b1 = new Budget("dev-cap", { amount: 50 });
+export const b2 = new Budget("prod-cap", { amount: 100 });`,
+    remediation: "Provide unique identifier strings for each declared Budget construct.",
+    docsAnchor: "err_duplicate_budget_id",
+  },
+
+  ERR_DUPLICATE_BUDGET_NAME: {
+    id: "ERR_DUPLICATE_BUDGET_NAME",
+    title: "Duplicate Physical AWS Budget Name",
+    layer: "governance",
+    severity: "error",
+    service: "AWS Budgets",
+    financialRisk: "AWS Budgets names are globally unique per AWS account. Duplicate names cause CloudFormation create failures.",
+    summary: "Two Budget constructs specify the same physical budgetName.",
+    badCode: `export const b1 = new Budget("b1", { amount: 50, budgetName: "my-budget" });
+export const b2 = new Budget("b2", { amount: 100, budgetName: "my-budget" });`,
+    goodCode: `export const b1 = new Budget("b1", { amount: 50, budgetName: "api-budget" });
+export const b2 = new Budget("b2", { amount: 100, budgetName: "workers-budget" });`,
+    remediation: "Assign distinct physical budgetName options or allow Syncploy to auto-generate unique stack-scoped names.",
+    docsAnchor: "err_duplicate_budget_name",
+  },
+
+  WARN_DOW_BUDGET_NO_NOTIFICATION: {
+    id: "WARN_DOW_BUDGET_NO_NOTIFICATION",
+    title: "Silent Budget Without Alert Topic",
+    layer: "governance",
+    severity: "warning",
+    service: "AWS Budgets & SNS",
+    financialRisk: "A budget without a notification topic cannot deliver alerts to engineers, leaving spending breaches unmonitored.",
+    summary: "Budget construct has no topic configured and no fallback alert topic was discovered in the stack.",
+    badCode: `// ❌ HAZARDOUS: Silent budget records spend but alerts nobody
+export const budget = new Budget("cap", { amount: 50 });`,
+    goodCode: `// ✅ IMMUNIZED: Wires SNS topic to dispatch SMS/Email alerts
+export const alerts = new Topic("alerts");
+export const budget = new Budget("cap", { amount: 50, topic: alerts });`,
+    remediation: "Configure 'topic: myAlertTopic' on the Budget construct.",
+    docsAnchor: "warn_dow_budget_no_notification",
+  },
+
+  WARN_DOW_BUDGET_TAG_ACTIVATION: {
+    id: "WARN_DOW_BUDGET_TAG_ACTIVATION",
+    title: "Stack Cost Allocation Tag Activation Required",
+    layer: "governance",
+    severity: "advisory",
+    service: "AWS Billing & Cost Management",
+    financialRisk: "Without activating user-defined Cost Allocation Tags in AWS Console, stack-scoped budget filters report $0 spend regardless of usage.",
+    summary: "filterByStack: true requires activating the 'StackName' cost allocation tag in the AWS Billing console.",
+    badCode: `export const budget = new Budget("cap", { amount: 50, filterByStack: true });`,
+    goodCode: `// Tip: Activate Cost Allocation Tags in AWS Billing Console -> Cost Allocation Tags -> User-Defined -> StackName
+export const budget = new Budget("cap", { amount: 50, filterByStack: true });`,
+    remediation: "In AWS Billing Console, navigate to Cost Allocation Tags and activate 'StackName' so AWS populates tag-scoped metrics.",
+    docsAnchor: "warn_dow_budget_tag_activation",
+  },
+
   ERR_BUDGET_UNRESOLVED_TOPIC: {
     id: "ERR_BUDGET_UNRESOLVED_TOPIC",
     title: "Budget Configured Non-Existent Alert Topic",
