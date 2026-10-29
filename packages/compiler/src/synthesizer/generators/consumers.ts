@@ -70,6 +70,18 @@ export function generateQueueConsumers(
     };
     applyContainerConfig(funcProps, consumer.container, consumer.id, resources, funcKey);
 
+    const logGroupKey = `LogGroup${baseId}`;
+    resources[logGroupKey] = {
+      Type: "AWS::Logs::LogGroup",
+      Properties: {
+        LogGroupName: { "Fn::Sub": `/aws/lambda/\${${funcKey}}` },
+        RetentionInDays: consumer.logRetentionInDays ?? 14,
+        Tags: [
+          { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+        ],
+      },
+    };
+
     resources[mappingKey] = {
       Type: "AWS::Lambda::EventSourceMapping",
       Properties: {
@@ -139,6 +151,18 @@ export function generateStreamConsumers(
       Properties: funcProps,
     };
     applyContainerConfig(funcProps, consumer.container, consumer.id, resources, funcKey);
+
+    const logGroupKey = `LogGroup${baseId}`;
+    resources[logGroupKey] = {
+      Type: "AWS::Logs::LogGroup",
+      Properties: {
+        LogGroupName: { "Fn::Sub": `/aws/lambda/\${${funcKey}}` },
+        RetentionInDays: consumer.logRetentionInDays ?? 14,
+        Tags: [
+          { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+        ],
+      },
+    };
 
     const mappingProps: any = {
       EventSourceArn: { "Fn::GetAtt": [tableKey, "StreamArn"] },
@@ -234,6 +258,18 @@ export function generateTopicSubscribers(
       Properties: funcProps,
     };
     applyContainerConfig(funcProps, subscriber.container, subscriber.id, resources, funcKey);
+
+    const logGroupKey = `LogGroup${baseId}`;
+    resources[logGroupKey] = {
+      Type: "AWS::Logs::LogGroup",
+      Properties: {
+        LogGroupName: { "Fn::Sub": `/aws/lambda/\${${funcKey}}` },
+        RetentionInDays: subscriber.logRetentionInDays ?? 14,
+        Tags: [
+          { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+        ],
+      },
+    };
 
     resources[permKey] = {
       Type: "AWS::Lambda::Permission",

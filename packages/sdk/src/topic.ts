@@ -35,6 +35,7 @@ export interface TopicSubscriberOptions {
   timeout?: Duration;
   concurrency?: number;
   memory?: MemorySize;
+  logRetentionInDays?: number;
   policies?: PolicyStatement[];
   environment?: Record<string, string>;
   container?: ContainerOptions | boolean;

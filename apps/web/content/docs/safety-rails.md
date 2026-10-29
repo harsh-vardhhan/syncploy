@@ -77,6 +77,9 @@ $$5 \times 0.25 \times 2,592,000 \times 0.0000166667 \approx \$54.00/\text{month
 | `WARN_DOW_STREAM_UNBOUNDED` | Warning | DynamoDB stream consumer has unbounded concurrency | Configure `concurrency: <number>` |
 | `WARN_DOW_STREAM_RETRY_UNLIMITED` | Warning | Stream explicitly configured `retryAttempts: -1` | Configure `retryAttempts: 3` |
 | `WARN_DOW_STREAM_MISSING_DLQ` | Warning | Active DynamoDB stream has no DLQ configured | Add `onFailure: "myDlqQueue"` |
+| `WARN_DOW_SMS_TOLL_FRAUD` | Warning | SMS protocol on Topic subscription or phone Auth | Restrict destination countries, add SNS SMS spend limit |
+| `WARN_DOW_DYNAMODB_SCAN` | Warning | API handler executes full table scan ($O(N)$ read amplification) | Use indexed queries or ElectroDB secondary indexes |
+| `WARN_DOW_HIGH_BLAST_RADIUS` | Warning | Stack continuous compute liability exceeds $100/mo without a Budget | Declare `new Budget(...)` to monitor and cap spend |
 | `WARN_DOW_CONCURRENCY_BUDGET_EXCEEDED` | Warning | Total reserved concurrency across stack exceeds 900 of account limit (1,000) | Request quota increase or reduce reserved allocations |
 | `ERR_SQS_VISIBILITY_TIMEOUT_SHORT` | **Fatal Error** | Queue visibilityTimeout is shorter than 6x consumer timeout | Set `visibilityTimeout >= 6 * timeout` |
 | `WARN_DOW_BUDGET_NO_NOTIFICATION` | Warning | Budget has no explicit notification topic and no fallback topic | Configure `topic: myAlertTopic` |
@@ -157,6 +160,11 @@ export const taskWorker = taskQueue.consumer(
   }
 );
 ```
+
+### 5. Automated Storage & Log Drain Neutralization
+Beyond compute concurrency, cloud bills bleed silently through unbounded monotonic data accumulation:
+- **CloudWatch Log Retention**: AWS Lambda by default creates log groups set to *Never Expire*, accumulating gigabytes forever at $0.03/GB-mo. Syncploy auto-synthesizes an explicit `AWS::Logs::LogGroup` with `RetentionInDays: 14` for every Lambda function, guaranteeing log data rotates out automatically.
+- **S3 Multipart Upload Pruning**: When large uploads fail or drop connection midway, orphaned chunks linger indefinitely at standard S3 storage rates. Syncploy auto-injects an S3 `LifecycleConfiguration` rule (`AbortIncompleteMultipartUpload: { DaysAfterInitiation: 7 }`) on all synthesized buckets, permanently eliminating zombie upload charges.
 
 ---
 

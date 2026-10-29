@@ -45,6 +45,7 @@ export function extractQueueConsumer(
   let timeout: number | undefined;
   let concurrency: number | undefined;
   let memory: number | undefined;
+  let logRetentionInDays: number | undefined;
   let policies: PolicyStatementIR[] | undefined;
   let environment: Record<string, string> | undefined;
   let container: ContainerIR | undefined;
@@ -60,6 +61,7 @@ export function extractQueueConsumer(
     timeout = extractDuration(consumerOpts.getProperty("timeout"));
     concurrency = extractNumber(consumerOpts.getProperty("concurrency"));
     memory = extractMemory(consumerOpts.getProperty("memory"));
+    logRetentionInDays = extractNumber(consumerOpts.getProperty("logRetentionInDays"));
     policies = extractPolicies(consumerOpts.getProperty("policies"));
     environment = extractEnvironment(consumerOpts.getProperty("environment"));
     container = extractContainer(consumerOpts.getProperty("container"));
@@ -98,6 +100,7 @@ export function extractQueueConsumer(
     timeout,
     concurrency,
     memory,
+    logRetentionInDays,
     policies,
     environment,
     container,
@@ -135,6 +138,7 @@ export function extractTableStream(
   let bisectOnFunctionError: boolean | undefined;
   let onFailureQueueName: string | undefined;
   let memory: number | undefined;
+  let logRetentionInDays: number | undefined;
   let policies: PolicyStatementIR[] | undefined;
   let environment: Record<string, string> | undefined;
   let container: ContainerIR | undefined;
@@ -164,6 +168,7 @@ export function extractTableStream(
     }
     onFailureQueueName = extractString(streamOpts.getProperty("onFailure"));
     memory = extractMemory(streamOpts.getProperty("memory"));
+    logRetentionInDays = extractNumber(streamOpts.getProperty("logRetentionInDays"));
     policies = extractPolicies(streamOpts.getProperty("policies"));
     environment = extractEnvironment(streamOpts.getProperty("environment"));
     container = extractContainer(streamOpts.getProperty("container"));
@@ -207,6 +212,7 @@ export function extractTableStream(
     bisectOnFunctionError,
     onFailureQueueName,
     memory,
+    logRetentionInDays,
     policies,
     environment,
     container,
@@ -239,6 +245,7 @@ export function extractTopicSubscriber(
   let timeout: number | undefined;
   let concurrency: number | undefined;
   let memory: number | undefined;
+  let logRetentionInDays: number | undefined;
   let policies: PolicyStatementIR[] | undefined;
   let environment: Record<string, string> | undefined;
   let container: ContainerIR | undefined;
@@ -254,6 +261,7 @@ export function extractTopicSubscriber(
     timeout = extractDuration(subOpts.getProperty("timeout"));
     concurrency = extractNumber(subOpts.getProperty("concurrency"));
     memory = extractMemory(subOpts.getProperty("memory"));
+    logRetentionInDays = extractNumber(subOpts.getProperty("logRetentionInDays"));
     policies = extractPolicies(subOpts.getProperty("policies"));
     environment = extractEnvironment(subOpts.getProperty("environment"));
     container = extractContainer(subOpts.getProperty("container"));
@@ -290,6 +298,7 @@ export function extractTopicSubscriber(
     timeout,
     concurrency,
     memory,
+    logRetentionInDays,
     policies,
     environment,
     container,

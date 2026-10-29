@@ -149,6 +149,18 @@ export function generateLambdaApis(
     };
     applyContainerConfig(funcProps, api.container, api.id, resources, funcKey);
 
+    const logGroupKey = `LogGroup${baseId}`;
+    resources[logGroupKey] = {
+      Type: "AWS::Logs::LogGroup",
+      Properties: {
+        LogGroupName: { "Fn::Sub": `/aws/lambda/\${${funcKey}}` },
+        RetentionInDays: api.logRetentionInDays ?? 14,
+        Tags: [
+          { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+        ],
+      },
+    };
+
     if (api.ingress === "function-url") {
       const urlKey = api.logicalId ? `${api.logicalId}Url` : `FunctionUrl${baseId}`;
       const urlPermKey = api.permissionLogicalId || (api.logicalId ? `Permission${api.logicalId}Url` : `Permission${baseId}Url`);

@@ -62,6 +62,18 @@ export function generateBuckets(
       bucketProps["ObjectLockConfiguration"] = config;
     }
 
+    bucketProps["LifecycleConfiguration"] = {
+      Rules: [
+        {
+          Id: "AbortIncompleteMultipartUploads",
+          Status: "Enabled",
+          AbortIncompleteMultipartUpload: {
+            DaysAfterInitiation: 7,
+          },
+        },
+      ],
+    };
+
     bucketProps["Tags"] = [
       { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
     ];

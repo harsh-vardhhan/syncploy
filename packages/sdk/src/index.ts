@@ -56,6 +56,7 @@ export interface ApiOptions {
   timeout?: Duration;
   memory?: MemorySize;
   concurrency?: number;
+  logRetentionInDays?: number;
   throttle?: ApiThrottleOptions;
   detailedMetrics?: boolean;
   cors?: CorsOptions | boolean;

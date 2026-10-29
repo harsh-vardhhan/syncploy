@@ -97,6 +97,15 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
         api.sourceFile
       );
     }
+
+    if (api.mutations?.tablesScanned && api.mutations.tablesScanned.length > 0) {
+      ctx.addWarning(
+        "WARN_DOW_DYNAMODB_SCAN",
+        api.id,
+        `Endpoint '${api.id}' (${api.method} ${api.path}) executes full table scan on DynamoDB table(s) [${api.mutations.tablesScanned.map((t) => `'${t}'`).join(", ")}]. On-demand DynamoDB scans consume Read Capacity Units for every single item in the entire table ($O(N)$ read amplification), creating acute Denial-of-Wallet vulnerability under bot traffic. Use indexed queries ('query' or ElectroDB secondary index) instead of full scans.`,
+        api.sourceFile
+      );
+    }
   }
 
   // C. DynamoDB Stream Unbounded Concurrency & Retries
@@ -259,6 +268,57 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
         b.id,
         `Budget '${b.id}' uses 'filterByStack: true'. Note that user-defined Cost Allocation Tags for 'StackName' must be activated in the AWS Billing & Cost Management console for tag-scoped filters to report spend. Without activation, cost filters will report $0. (Set filterByStack to false or omit it for account-wide spend tracking).`,
         b.sourceFile
+      );
+    }
+  }
+
+  // F. Toll-Fraud Prevention (SNS SMS and Cognito Phone Verification)
+  for (const topic of graph.topics || []) {
+    for (const sub of topic.subscriptions || []) {
+      if (sub.protocol === "sms") {
+        ctx.addWarning(
+          "WARN_DOW_SMS_TOLL_FRAUD",
+          topic.id,
+          `Topic '${topic.name}' has an SMS subscription (protocol: "sms"). SMS messaging is vulnerable to international toll fraud (traffic pumping to premium-rate destination numbers at $0.50+/SMS). Implement strict spending quotas or rate limiting.`,
+          topic.sourceFile
+        );
+      }
+    }
+  }
+
+  for (const auth of graph.auths || []) {
+    if (auth.signInMethod === "phone" || auth.autoVerify?.includes("phone")) {
+      ctx.addWarning(
+        "WARN_DOW_SMS_TOLL_FRAUD",
+        auth.id,
+        `Auth User Pool '${auth.name}' enables phone verification/sign-in. Public sign-up endpoints without captcha or SMS spending quotas are vulnerable to automated SMS toll fraud. Configure AWS SNS SMS account spend limits.`,
+        auth.sourceFile
+      );
+    }
+  }
+
+  // G. High Blast Radius Warning without Budget
+  if (budgetList.length === 0) {
+    let totalMonthlyLiability = 0;
+    const allFunctions = [
+      ...graph.apis.map((a) => ({ id: a.id, memory: a.memory ?? 256, concurrency: a.concurrency })),
+      ...graph.consumers.map((c) => ({ id: c.id, memory: c.memory ?? 256, concurrency: c.concurrency })),
+      ...graph.tableStreams.map((s) => ({ id: s.id, memory: s.memory ?? 256, concurrency: s.concurrency })),
+      ...graph.topicSubscribers.map((sub) => ({ id: sub.id, memory: sub.memory ?? 256, concurrency: sub.concurrency })),
+    ];
+
+    for (const fn of allFunctions) {
+      if (fn.concurrency !== undefined) {
+        const memGB = fn.memory / 1024;
+        totalMonthlyLiability += fn.concurrency * memGB * 2592000 * 0.0000166667;
+      }
+    }
+
+    if (totalMonthlyLiability > 100) {
+      ctx.addWarning(
+        "WARN_DOW_HIGH_BLAST_RADIUS",
+        "Stack",
+        `Continuous monthly compute liability from configured function concurrency limits is ~$${Math.round(totalMonthlyLiability)}/mo, but no 'new Budget(...)' is declared. Under sustained traffic or DDoS, execution spend could reach this ceiling. Declare a Budget to receive alerts before costs escalate.`
       );
     }
   }

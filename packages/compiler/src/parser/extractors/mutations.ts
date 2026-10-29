@@ -29,6 +29,7 @@ export function extractMutationsFromNode(
   }
 
   const tablesWritten: string[] = [];
+  const tablesScanned: string[] = [];
   const bucketsWritten: (string | BucketMutationIR)[] = [];
   const queuesSent: string[] = [];
   const topicsPublished: string[] = [];
@@ -243,6 +244,13 @@ export function extractMutationsFromNode(
           }
         }
 
+        // Check Table full scans
+        if (tblName && (methodName === "scan" || methodName === "find")) {
+          if (!tablesScanned.includes(tblName)) {
+            tablesScanned.push(tblName);
+          }
+        }
+
         // Check Bucket writes with prefix discrimination
         const bktName = localVarToBucketName[callerText] || localVarToBucketName[baseCaller];
         if (bktName && ["put", "putText", "putBuffer", "upload", "delete"].includes(methodName)) {
@@ -342,6 +350,25 @@ export function extractMutationsFromNode(
                     }
                     if (resolvedTbl && !tablesWritten.includes(resolvedTbl)) {
                       tablesWritten.push(resolvedTbl);
+                    }
+                  }
+                }
+
+                // DynamoDB ScanCommand
+                if (cmdName === "ScanCommand") {
+                  const tblProp = inputObj.getProperty("TableName");
+                  if (tblProp && tblProp.isKind(SyntaxKind.PropertyAssignment)) {
+                    const init = tblProp.getInitializer();
+                    let resolvedTbl: string | undefined;
+                    if (init?.isKind(SyntaxKind.StringLiteral)) {
+                      resolvedTbl = init.getLiteralValue();
+                    } else if (init) {
+                      const txt = init.getText();
+                      const base = txt.includes(".") ? txt.split(".")[0]! : txt;
+                      resolvedTbl = localVarToTableName[txt] || localVarToTableName[base];
+                    }
+                    if (resolvedTbl && !tablesScanned.includes(resolvedTbl)) {
+                      tablesScanned.push(resolvedTbl);
                     }
                   }
                 }
@@ -508,6 +535,7 @@ export function extractMutationsFromNode(
 
   if (
     tablesWritten.length === 0 &&
+    tablesScanned.length === 0 &&
     bucketsWritten.length === 0 &&
     queuesSent.length === 0 &&
     topicsPublished.length === 0 &&
@@ -519,6 +547,7 @@ export function extractMutationsFromNode(
 
   return {
     tablesWritten: tablesWritten.length > 0 ? tablesWritten : undefined,
+    tablesScanned: tablesScanned.length > 0 ? tablesScanned : undefined,
     bucketsWritten: bucketsWritten.length > 0 ? bucketsWritten : undefined,
     queuesSent: queuesSent.length > 0 ? queuesSent : undefined,
     topicsPublished: topicsPublished.length > 0 ? topicsPublished : undefined,

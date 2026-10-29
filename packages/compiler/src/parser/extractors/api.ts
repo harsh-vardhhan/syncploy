@@ -94,6 +94,7 @@ export function extractApiRoute(
   const timeout = extractDuration(optionsObj.getProperty("timeout"));
   const memory = extractMemory(optionsObj.getProperty("memory"));
   const concurrency = extractNumber(optionsObj.getProperty("concurrency"));
+  const logRetentionInDays = extractNumber(optionsObj.getProperty("logRetentionInDays"));
   const cors = extractCors(optionsObj.getProperty("cors"));
 
   let throttle: { rateLimit?: number; burstLimit?: number } | undefined;
@@ -150,6 +151,7 @@ export function extractApiRoute(
     timeout,
     memory,
     concurrency,
+    logRetentionInDays,
     throttle,
     detailedMetrics,
     cors,

@@ -33,6 +33,7 @@ export interface BucketMutationIR {
 
 export interface FunctionMutationsIR {
   tablesWritten?: string[] | undefined;
+  tablesScanned?: string[] | undefined;
   bucketsWritten?: (string | BucketMutationIR)[] | undefined;
   queuesSent?: string[] | undefined;
   topicsPublished?: string[] | undefined;
@@ -51,6 +52,7 @@ export interface ApiRouteIR {
   timeout?: number | undefined; // in seconds
   memory?: number | undefined; // in MB
   concurrency?: number | undefined; // ReservedConcurrentExecutions
+  logRetentionInDays?: number | undefined;
   throttle?: { rateLimit?: number | undefined; burstLimit?: number | undefined } | undefined;
   detailedMetrics?: boolean | undefined;
   cors?: CorsConfig | boolean | undefined;
@@ -138,6 +140,7 @@ export interface QueueConsumerIR {
   timeout?: number | undefined;
   concurrency?: number | undefined;
   memory?: number | undefined;
+  logRetentionInDays?: number | undefined;
   policies?: PolicyStatementIR[] | undefined;
   environment?: Record<string, string> | undefined;
   container?: ContainerIR | undefined;
@@ -165,6 +168,7 @@ export interface TableStreamConsumerIR {
   bisectOnFunctionError?: boolean | undefined;
   onFailureQueueName?: string | undefined;
   memory?: number | undefined;
+  logRetentionInDays?: number | undefined;
   policies?: PolicyStatementIR[] | undefined;
   environment?: Record<string, string> | undefined;
   container?: ContainerIR | undefined;
@@ -196,6 +200,7 @@ export interface TopicSubscriberIR {
   timeout?: number | undefined;
   concurrency?: number | undefined;
   memory?: number | undefined;
+  logRetentionInDays?: number | undefined;
   policies?: PolicyStatementIR[] | undefined;
   environment?: Record<string, string> | undefined;
   container?: ContainerIR | undefined;

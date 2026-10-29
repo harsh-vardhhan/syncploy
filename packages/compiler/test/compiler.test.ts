@@ -329,6 +329,7 @@ export const monthlyBudget = new Budget("monthlyBudget", {
     const bucketRes = res["Bucketdocuments"];
     expect(bucketRes.Properties.VersioningConfiguration.Status).toBe("Enabled");
     expect(bucketRes.Properties.NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled).toBe(true);
+    expect(bucketRes.Properties.LifecycleConfiguration.Rules[0].AbortIncompleteMultipartUpload.DaysAfterInitiation).toBe(7);
     expect(bucketRes.Properties.Tags).toBeDefined();
     expect(bucketRes.Properties.Tags[0].Key).toBe("StackName");
 
@@ -348,6 +349,10 @@ export const monthlyBudget = new Budget("monthlyBudget", {
     expect(getUserFunc.Properties.Environment.Variables.SYNCPLOY_QUEUE_ANNOTATIONS).toEqual({ Ref: "Queueannotations" });
     expect(res["RoutegetUser"]).toBeDefined();
     expect(res["IntegrationgetUser"]).toBeDefined();
+    expect(res["LogGroupgetUser"]).toBeDefined();
+    expect(res["LogGroupgetUser"].Type).toBe("AWS::Logs::LogGroup");
+    expect(res["LogGroupgetUser"].Properties.RetentionInDays).toBe(14);
+    expect(res["LogGroupgetUser"].Properties.LogGroupName).toEqual({ "Fn::Sub": "/aws/lambda/${FunctiongetUser}" });
 
     // 5. Lambda Function URL Route
     const analyzeFunc = res["FunctionanalyzeClinicalDoc"];

@@ -1007,4 +1007,86 @@ describe("@syncploy/compiler - Pre-Flight AWS Platform Validator", () => {
       expect(loopErrors.some((e) => e.message.includes("Table 'shared-table'"))).toBe(true);
     });
   });
+
+  describe("Exhaustive Denial of Wallet (DoW) Protections", () => {
+    it("flags WARN_DOW_SMS_TOLL_FRAUD for SMS topic subscriptions and phone-verified Auth", () => {
+      const graph = createEmptyGraph();
+      graph.topics.push({
+        id: "alertTopic",
+        name: "alerts",
+        sourceFile: "src/infra.ts",
+        subscriptions: [{ protocol: "sms", endpoint: "+15551234567" }],
+      });
+      graph.auths = [
+        {
+          id: "userAuth",
+          name: "my-users",
+          sourceFile: "src/infra.ts",
+          signInMethod: "phone",
+        },
+      ];
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      const smsWarnings = result.warnings.filter((w) => w.code === "WARN_DOW_SMS_TOLL_FRAUD");
+      expect(smsWarnings.length).toBe(2);
+      expect(smsWarnings.some((w) => w.constructId === "alertTopic")).toBe(true);
+      expect(smsWarnings.some((w) => w.constructId === "userAuth")).toBe(true);
+    });
+
+    it("flags WARN_DOW_DYNAMODB_SCAN when an API route scans a table", () => {
+      const graph = createEmptyGraph();
+      graph.tables.push({
+        id: "usersTable",
+        name: "users",
+        partitionKey: { name: "id", type: "string" },
+        sourceFile: "src/infra.ts",
+      });
+      graph.apis.push({
+        id: "listUsers",
+        exportName: "listUsers",
+        sourceFile: "src/api.ts",
+        method: "GET",
+        path: "/users",
+        mutations: {
+          tablesScanned: ["users"],
+        },
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_DYNAMODB_SCAN")).toBe(true);
+    });
+
+    it("flags WARN_DOW_HIGH_BLAST_RADIUS when continuous monthly compute liability exceeds $100 without a Budget", () => {
+      const graph = createEmptyGraph();
+      // 10 concurrent executions at 512 MB: 10 * 0.5 * 43.20 = $216/month
+      graph.apis.push({
+        id: "heavyApi",
+        exportName: "heavyApi",
+        sourceFile: "src/api.ts",
+        method: "POST",
+        path: "/process",
+        memory: 512,
+        concurrency: 10,
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_HIGH_BLAST_RADIUS")).toBe(true);
+      expect(result.warnings.find((w) => w.code === "WARN_DOW_HIGH_BLAST_RADIUS")?.message).toContain("$216/mo");
+
+      // Adding an explicit Budget clears the warning
+      graph.budgets = [
+        {
+          id: "mainBudget",
+          amount: 250,
+          threshold: 80,
+          sourceFile: "src/infra.ts",
+        },
+      ];
+      const resultWithBudget = validator.validate(graph);
+      expect(resultWithBudget.warnings.some((w) => w.code === "WARN_DOW_HIGH_BLAST_RADIUS")).toBe(false);
+    });
+  });
 });

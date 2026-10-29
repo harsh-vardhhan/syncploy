@@ -30,6 +30,7 @@ export interface TableStreamOptions {
   bisectOnFunctionError?: boolean;
   onFailure?: string;
   memory?: MemorySize;
+  logRetentionInDays?: number;
   policies?: PolicyStatement[];
   environment?: Record<string, string>;
   container?: ContainerOptions | boolean;

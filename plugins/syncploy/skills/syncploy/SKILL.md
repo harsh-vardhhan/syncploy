@@ -179,3 +179,6 @@ Syncploy's pre-flight validator executes in `<1ms`. If `syncploy build` fails, i
 | `WARN_DOW_MISSING_DLQ` | An active queue consumer has no `deadLetterQueue`. | Add `deadLetterQueue: { maxReceiveCount: 3 }` to the `new Queue(...)` declaration. |
 | `WARN_DOW_UNRESERVED_CONCURRENCY` | Public Function URL lacks concurrency limit. | Add `concurrency: <number>` to the `api(...)` options object. |
 | `WARN_DOW_STREAM_UNBOUNDED` | Stream consumer has unbounded concurrency. | Add `concurrency: <number>` to the `table.stream(...)` options object. |
+| `WARN_DOW_SMS_TOLL_FRAUD` | Topic SMS protocol or phone verification enabled. | Restrict destination countries, add SNS SMS spend limit. |
+| `WARN_DOW_DYNAMODB_SCAN` | API route executes full table scan ($O(N)$ read amplification). | Use indexed queries or ElectroDB secondary indexes instead of `.scan()`. |
+| `WARN_DOW_HIGH_BLAST_RADIUS` | Total continuous monthly compute liability $> \$100$ without a Budget. | Declare `new Budget(...)` to monitor and alert on overruns. |

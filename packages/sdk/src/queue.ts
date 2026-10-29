@@ -21,6 +21,7 @@ export interface ConsumerOptions {
   timeout?: Duration;
   concurrency?: number;
   memory?: MemorySize;
+  logRetentionInDays?: number;
   policies?: PolicyStatement[];
   environment?: Record<string, string>;
   container?: ContainerOptions | boolean;
