@@ -31,8 +31,15 @@ export class Compiler {
     const validator = new GraphValidator(options);
     const validation = validator.validate(graph);
 
-    if (validation.warnings.length > 0) {
-      console.warn(formatDiagnostics({ valid: true, errors: [], warnings: validation.warnings }));
+    if (validation.warnings.length > 0 || (validation.suppressions && validation.suppressions.length > 0)) {
+      console.warn(
+        formatDiagnostics({
+          valid: true,
+          errors: [],
+          warnings: validation.warnings,
+          suppressions: validation.suppressions,
+        })
+      );
     }
 
     if (!validation.valid) {

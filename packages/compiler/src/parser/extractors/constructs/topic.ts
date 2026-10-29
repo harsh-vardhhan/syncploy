@@ -5,11 +5,13 @@ import {
   type VariableDeclaration,
 } from "ts-morph";
 import type { TopicIR } from "../../../types";
+import type { ParseContext } from "../../types";
 import { extractString } from "../ast-utils";
 
 export function extractTopic(
   decl: VariableDeclaration,
-  sourceFile: SourceFile
+  sourceFile: SourceFile,
+  context?: ParseContext
 ): { topic: TopicIR; topicName: string } | undefined {
   const init = decl.getInitializer();
   if (!init || !init.isKind(SyntaxKind.NewExpression)) return undefined;
@@ -42,7 +44,11 @@ export function extractTopic(
         for (const el of arr.getElements()) {
           if (el.isKind(SyntaxKind.ObjectLiteralExpression)) {
             const proto = extractString(el.getProperty("protocol")) || "email";
-            const endp = extractString(el.getProperty("endpoint")) || "";
+            let endp = extractString(el.getProperty("endpoint")) || "";
+            if (proto === "sqs" && context?.varToQueueName) {
+              const baseVar = endp.includes(".") ? endp.split(".")[0]! : endp;
+              endp = context.varToQueueName[baseVar] || context.varToQueueName[endp] || endp;
+            }
             if (endp) {
               subscriptions.push({ protocol: proto, endpoint: endp });
             }

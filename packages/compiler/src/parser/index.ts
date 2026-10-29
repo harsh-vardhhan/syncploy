@@ -148,7 +148,7 @@ export class Parser {
     while (aliasAdded) {
       aliasAdded = false;
       for (const sourceFile of this.project.getSourceFiles()) {
-        for (const decl of sourceFile.getDescendantsOfKind(SyntaxKind.VariableDeclaration)) {
+        for (const decl of sourceFile.getVariableDeclarations()) {
           const varName = decl.getName();
           if (
             context.varToTableName[varName] ||
@@ -248,7 +248,7 @@ export class Parser {
             continue;
           }
 
-          const topicResult = extractTopic(decl, sourceFile);
+          const topicResult = extractTopic(decl, sourceFile, context);
           if (topicResult) {
             topics.push(topicResult.topic);
             context.varToTopicName[decl.getName()] = topicResult.topicName;

@@ -32,8 +32,15 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
     for (const sub of topic.subscriptions || []) {
       if (sub.protocol === "sqs") {
         const ep = sub.endpoint;
+        const baseVar = ep.includes(".") ? ep.split(".")[0]! : ep;
         const matchedQueue = graph.queues.find(
-          (q) => q.name === ep || q.queueName === ep || q.id === ep
+          (q) =>
+            q.name === ep ||
+            q.queueName === ep ||
+            q.id === ep ||
+            q.name === baseVar ||
+            q.id === baseVar ||
+            q.queueName === baseVar
         );
         const queueNode = matchedQueue ? `Queue '${matchedQueue.name}'` : `Queue '${ep}'`;
         addEdge(`Topic '${topic.name}'`, queueNode, topic.id, topic.sourceFile);
@@ -41,8 +48,16 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
     }
   }
 
+  // Non-fatal advisory check for HTTP self-invocation
   for (const api of graph.apis) {
-    addEdge(`API '${api.id}'`, `API Handler '${api.id}'`, api.id, api.sourceFile);
+    if (api.mutations?.httpInvoked && api.mutations.httpInvoked.includes(api.id)) {
+      ctx.addWarning(
+        "WARN_HTTP_RECURSIVE_LOOP",
+        api.id,
+        `Potential HTTP self-invocation detected: API route '${api.id}' (${api.method} ${api.path}) fetches its own endpoint '${api.path}'. Self-invoking public HTTP endpoints inside a handler causes concurrency exhaustion and circular request storms.`,
+        api.sourceFile
+      );
+    }
   }
 
   for (const b of graph.bindings || []) {
@@ -100,9 +115,6 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
   for (const fn of allFunctions) {
     for (const tbl of fn.mutations?.tablesWritten || []) {
       addEdge(fn.nodeName, `Table '${tbl}'`, fn.id, fn.sourceFile);
-    }
-    for (const invokedApi of fn.mutations?.httpInvoked || []) {
-      addEdge(fn.nodeName, `API '${invokedApi}'`, fn.id, fn.sourceFile);
     }
     for (const bktItem of fn.mutations?.bucketsWritten || []) {
       const bktName = typeof bktItem === "string" ? bktItem : bktItem.name;
@@ -208,56 +220,106 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
     }
   }
 
-  const seenCycles = new Set<string>();
+  // Tarjan's Strongly Connected Components Algorithm
+  // Strictly O(V + E) linear time and space, eliminating combinatorial explosion
+  let sccIndex = 0;
+  const indices = new Map<string, number>();
+  const lowlink = new Map<string, number>();
+  const onStack = new Map<string, boolean>();
+  const sccStack: string[] = [];
+  const sccs: string[][] = [];
 
-  const normalizeCycle = (nodes: string[]): string => {
-    const cycleNodes = nodes.slice(0, -1);
-    let minIdx = 0;
-    for (let i = 1; i < cycleNodes.length; i++) {
-      if (cycleNodes[i]! < cycleNodes[minIdx]!) {
-        minIdx = i;
-      }
-    }
-    const rotated = [...cycleNodes.slice(minIdx), ...cycleNodes.slice(0, minIdx)];
-    return rotated.join(" -> ");
-  };
+  const strongConnect = (v: string) => {
+    indices.set(v, sccIndex);
+    lowlink.set(v, sccIndex);
+    sccIndex++;
+    sccStack.push(v);
+    onStack.set(v, true);
 
-  const findCycles = (
-    current: string,
-    currentConstructId: string,
-    currentSourceFile: string | undefined,
-    currentPath: { node: string; constructId: string; sourceFile?: string | undefined }[]
-  ) => {
-    const cycleIndex = currentPath.findIndex((p) => p.node === current);
-    if (cycleIndex !== -1) {
-      const cycleSegment = currentPath.slice(cycleIndex).map((p) => p.node).concat(current);
-      const normalized = normalizeCycle(cycleSegment);
-      if (!seenCycles.has(normalized)) {
-        seenCycles.add(normalized);
-        const cycleStr = cycleSegment.join(" -> ");
-        ctx.addError(
-          "ERR_RECURSIVE_LOOP",
-          currentConstructId,
-          `Infinite recursion loop detected: ${cycleStr}. This event-driven cycle causes continuous self-amplifying Lambda invocations and exponential Denial-of-Wallet.`,
-          currentSourceFile
-        );
-      }
-      return;
-    }
-
-    if (currentPath.length >= 20) return; // Prevent runaway search depth on cyclic graphs
-
-    const nextPath: { node: string; constructId: string; sourceFile?: string | undefined }[] = [
-      ...currentPath,
-      { node: current, constructId: currentConstructId, sourceFile: currentSourceFile },
-    ];
-    const neighbors = adj.get(current) || [];
+    const neighbors = adj.get(v) || [];
     for (const edge of neighbors) {
-      findCycles(edge.target, edge.constructId, edge.sourceFile, nextPath);
+      const w = edge.target;
+      if (!indices.has(w)) {
+        strongConnect(w);
+        lowlink.set(v, Math.min(lowlink.get(v)!, lowlink.get(w)!));
+      } else if (onStack.get(w)) {
+        lowlink.set(v, Math.min(lowlink.get(v)!, indices.get(w)!));
+      }
+    }
+
+    if (lowlink.get(v) === indices.get(v)) {
+      const scc: string[] = [];
+      let w: string;
+      do {
+        w = sccStack.pop()!;
+        onStack.set(w, false);
+        scc.push(w);
+      } while (w !== v);
+      sccs.push(scc);
     }
   };
 
-  for (const startNode of adj.keys()) {
-    findCycles(startNode, startNode, undefined, []);
+  for (const node of adj.keys()) {
+    if (!indices.has(node)) {
+      strongConnect(node);
+    }
+  }
+
+  // Find witness cycle for an SCC via BFS
+  const findWitnessCycle = (start: string, sccSet: Set<string>): string[] => {
+    const queue: { curr: string; path: string[] }[] = [];
+    const neighbors = (adj.get(start) || []).filter((e) => sccSet.has(e.target));
+    for (const edge of neighbors) {
+      if (edge.target === start) return [start, start];
+      queue.push({ curr: edge.target, path: [start, edge.target] });
+    }
+
+    const visited = new Set<string>();
+    while (queue.length > 0) {
+      const { curr, path } = queue.shift()!;
+      if (visited.has(curr)) continue;
+      visited.add(curr);
+
+      const nextEdges = (adj.get(curr) || []).filter((e) => sccSet.has(e.target));
+      for (const edge of nextEdges) {
+        if (edge.target === start) return [...path, start];
+        if (!visited.has(edge.target)) {
+          queue.push({ curr: edge.target, path: [...path, edge.target] });
+        }
+      }
+    }
+    return [...sccSet, start];
+  };
+
+  for (const scc of sccs) {
+    const sccSet = new Set(scc);
+    const hasCycle =
+      scc.length > 1 ||
+      (scc.length === 1 && (adj.get(scc[0]!) || []).some((e) => e.target === scc[0]!));
+
+    if (!hasCycle) continue;
+
+    const startNode = scc[0]!;
+    const witnessPath = findWitnessCycle(startNode, sccSet);
+
+    let constructId = startNode;
+    let sourceFile: string | undefined;
+    for (const node of scc) {
+      const edges = adj.get(node) || [];
+      const edge = edges.find((e) => sccSet.has(e.target));
+      if (edge) {
+        constructId = edge.constructId;
+        sourceFile = edge.sourceFile;
+        break;
+      }
+    }
+
+    const cycleStr = witnessPath.join(" -> ");
+    ctx.addError(
+      "ERR_RECURSIVE_LOOP",
+      constructId,
+      `Infinite recursion loop detected: ${cycleStr}. This event-driven cycle causes continuous self-amplifying Lambda invocations and exponential Denial-of-Wallet.`,
+      sourceFile
+    );
   }
 }

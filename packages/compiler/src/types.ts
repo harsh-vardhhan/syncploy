@@ -320,6 +320,12 @@ export interface ElectroEntityIR {
   tableName?: string | undefined;
 }
 
+export interface BudgetIR {
+  amount: number;
+  unit?: string | undefined;
+  topicName?: string | undefined;
+}
+
 export interface ResourceGraph {
   apis: ApiRouteIR[];
   tables: TableIR[];
@@ -334,6 +340,7 @@ export interface ResourceGraph {
   bindings: EventBindingIR[];
   auths?: AuthIR[] | undefined;
   electroEntities?: ElectroEntityIR[] | undefined;
+  budget?: BudgetIR | undefined;
 }
 
 export interface BuildOutput {

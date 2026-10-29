@@ -734,7 +734,7 @@ describe("@syncploy/compiler - Pre-Flight AWS Platform Validator", () => {
       expect(result.warnings[0]?.message).toContain("API Gateway route");
     });
 
-    it("warns when active DynamoDB stream consumer lacks retryAttempts cap", () => {
+    it("warns when active DynamoDB stream consumer explicitly configures retryAttempts: -1 (unlimited) or lacks DLQ", () => {
       const graph = createEmptyGraph();
       graph.tables.push({
         id: "t1",
@@ -748,12 +748,41 @@ describe("@syncploy/compiler - Pre-Flight AWS Platform Validator", () => {
         exportName: "eventWorker",
         sourceFile: "src/infra.ts",
         enabled: true,
-        // retryAttempts: undefined
+        retryAttempts: -1,
       });
 
       const validator = new GraphValidator();
       const result = validator.validate(graph);
       expect(result.warnings.some((w) => w.code === "WARN_DOW_STREAM_RETRY_UNLIMITED")).toBe(true);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_STREAM_MISSING_DLQ")).toBe(true);
+    });
+
+    it("allows suppressing stack-level concurrency warnings via construct comment", () => {
+      const graph = createEmptyGraph();
+      graph.apis.push({
+        id: "bigApi1",
+        exportName: "bigApi1",
+        sourceFile: "src/api.ts",
+        method: "GET",
+        path: "/1",
+        concurrency: 500,
+        suppressions: {
+          WARN_DOW_CONCURRENCY_BUDGET_EXCEEDED: "Requested account quota increase to 5,000",
+        },
+      });
+      graph.apis.push({
+        id: "bigApi2",
+        exportName: "bigApi2",
+        sourceFile: "src/api.ts",
+        method: "GET",
+        path: "/2",
+        concurrency: 450,
+      });
+
+      const validator = new GraphValidator();
+      const result = validator.validate(graph);
+      expect(result.warnings.some((w) => w.code === "WARN_DOW_CONCURRENCY_BUDGET_EXCEEDED")).toBe(false);
+      expect(result.suppressions?.some((s) => s.code === "WARN_DOW_CONCURRENCY_BUDGET_EXCEEDED")).toBe(true);
     });
 
     it("records audit trail of suppressed diagnostics with reasons", () => {
@@ -885,7 +914,7 @@ describe("@syncploy/compiler - Pre-Flight AWS Platform Validator", () => {
       expect(loopErr?.message).toContain("Queue 'alertQueue'");
     });
 
-    it("detects HTTP self-invocation cycle in API handler", () => {
+    it("detects HTTP self-invocation cycle as advisory warning or DoW error", () => {
       const graph = createEmptyGraph();
       graph.apis.push({
         id: "reentrantApi",
@@ -901,11 +930,18 @@ describe("@syncploy/compiler - Pre-Flight AWS Platform Validator", () => {
       });
 
       const validator = new GraphValidator();
-      const result = validator.validate(graph);
-      expect(result.valid).toBe(false);
-      const loopErr = result.errors.find((e) => e.code === "ERR_RECURSIVE_LOOP");
-      expect(loopErr).toBeDefined();
-      expect(loopErr?.message).toContain("API 'reentrantApi' -> API Handler 'reentrantApi' -> API 'reentrantApi'");
+      const advisoryResult = validator.validate(graph);
+      expect(advisoryResult.valid).toBe(true);
+      const warn = advisoryResult.warnings.find((w) => w.code === "WARN_HTTP_RECURSIVE_LOOP");
+      expect(warn).toBeDefined();
+      expect(warn?.message).toContain("Potential HTTP self-invocation detected: API route 'reentrantApi'");
+
+      const strictValidator = new GraphValidator({ failOnDow: true });
+      const strictResult = strictValidator.validate(graph);
+      expect(strictResult.valid).toBe(false);
+      const err = strictResult.errors.find((e) => e.code === "ERR_HTTP_RECURSIVE_LOOP");
+      expect(err).toBeDefined();
+      expect(err?.message).toContain("API route 'reentrantApi'");
     });
 
     it("enumerates all distinct cycles when cycles share a node", () => {

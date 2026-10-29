@@ -290,11 +290,9 @@ export const alertSubscriber = alertTopic.subscribe(
     expect(tableRes.Properties.GlobalSecondaryIndexes.length).toBe(1);
     expect(tableRes.Properties.GlobalSecondaryIndexes[0].IndexName).toBe("GSI1Index");
 
-    // Edge Controls & Budget Safeguards
+    // Edge Controls
     expect(res["HttpApiStage"].Properties.DefaultRouteSettings.ThrottlingBurstLimit).toBe(100);
     expect(res["HttpApiStage"].Properties.DefaultRouteSettings.ThrottlingRateLimit).toBe(50);
-    expect(res["StackBudget"]).toBeDefined();
-    expect(res["StackBudget"].Properties.Budget.BudgetLimit.Amount).toBe(100);
 
     // 2. Bucket with EventBridge & Versioning
     const bucketRes = res["Bucketdocuments"];
@@ -1051,7 +1049,7 @@ export const localWorker = localTable.stream({ concurrency: 2 }, async (event) =
       await expect(compiler.build()).rejects.toThrow("Pre-flight validation failed with 1 error(s).");
     });
 
-    it("catches recursion through HTTP self-invocation in API route handler", async () => {
+    it("catches recursion through HTTP self-invocation in API route handler under strict mode", async () => {
       const code = `
 import { api } from "@syncploy/sdk";
 
@@ -1061,7 +1059,48 @@ export const loopApi = api({ path: "/orders", method: "POST", concurrency: 5 }, 
 `;
       await fs.writeFile(path.join(testDir, "app.ts"), code);
       const compiler = new Compiler(testDir);
-      await expect(compiler.build()).rejects.toThrow("Pre-flight validation failed with 1 error(s).");
+      await expect(compiler.build({ strict: true })).rejects.toThrow("Pre-flight validation failed with 1 error(s).");
+    });
+
+    it("does not false-positive on external API calls (e.g. Stripe /v1/charges or headers.get)", async () => {
+      const code = `
+import { api } from "@syncploy/sdk";
+
+export const charges = api({ path: "/charges", method: "POST", concurrency: 5 }, async (req) => {
+  const authHeader = req.headers.get("authorization");
+  await fetch("https://api.stripe.com/v1/charges", { method: "POST" });
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+      const compiler = new Compiler(testDir);
+      const out = await compiler.build({ strict: true });
+      expect(out.templatePath).toBeDefined();
+    });
+
+    it("does not collide handler-local aliases across different handlers (const t = a; const t = b)", async () => {
+      const code = `
+import { Table } from "@syncploy/sdk";
+
+export const tableA = new Table("table-a", { stream: "NEW_IMAGE" });
+export const tableB = new Table("table-b", { stream: "NEW_IMAGE" });
+
+export const workerA = tableA.stream({ concurrency: 2 }, async () => {
+  const t = tableB;
+  await t.put({ id: "1" });
+});
+
+export const workerB = tableB.stream({ concurrency: 2 }, async () => {
+  const t = tableB;
+  await t.put({ id: "2" });
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+      const compiler = new Compiler(testDir);
+      const graph = await compiler.parse();
+      const mutationsA = graph.tableStreams.find(s => s.id === "workerA")?.mutations?.tablesWritten;
+      const mutationsB = graph.tableStreams.find(s => s.id === "workerB")?.mutations?.tablesWritten;
+      expect(mutationsA).toEqual(["table-b"]);
+      expect(mutationsB).toEqual(["table-b"]);
     });
   });
 

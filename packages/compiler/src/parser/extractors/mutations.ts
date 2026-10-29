@@ -35,6 +35,45 @@ export function extractMutationsFromNode(
   const deliveryStreamsWritten: string[] = [];
   const httpInvoked: string[] = [];
 
+  // Build a scope-isolated alias map for this handler/function AST
+  const localVarToTableName = { ...varToTableName };
+  const localVarToBucketName = { ...varToBucketName };
+  const localVarToQueueName = { ...varToQueueName };
+  const localVarToTopicName = { ...varToTopicName };
+  const localVarToDeliveryStreamName = { ...(varToDeliveryStreamName || {}) };
+
+  const localDecls = targetNode.getDescendantsOfKind(SyntaxKind.VariableDeclaration);
+  for (const decl of localDecls) {
+    const varName = decl.getName();
+    const init = decl.getInitializer();
+    if (!init) continue;
+
+    let targetVarName: string | undefined;
+    if (init.isKind(SyntaxKind.Identifier)) {
+      targetVarName = init.getText();
+    } else if (init.isKind(SyntaxKind.PropertyAccessExpression)) {
+      targetVarName = init.getName();
+    }
+
+    if (targetVarName) {
+      if (localVarToTableName[targetVarName]) {
+        localVarToTableName[varName] = localVarToTableName[targetVarName]!;
+      }
+      if (localVarToBucketName[targetVarName]) {
+        localVarToBucketName[varName] = localVarToBucketName[targetVarName]!;
+      }
+      if (localVarToQueueName[targetVarName]) {
+        localVarToQueueName[varName] = localVarToQueueName[targetVarName]!;
+      }
+      if (localVarToTopicName[targetVarName]) {
+        localVarToTopicName[varName] = localVarToTopicName[targetVarName]!;
+      }
+      if (localVarToDeliveryStreamName[targetVarName]) {
+        localVarToDeliveryStreamName[varName] = localVarToDeliveryStreamName[targetVarName]!;
+      }
+    }
+  }
+
   // Traverse targetNode and any referenced helper functions/variables (local + imported)
   const nodesToScan: Node[] = [targetNode];
   const visitedNodes = new Set<Node>([targetNode]);
@@ -91,25 +130,59 @@ export function extractMutationsFromNode(
       }
 
       // Check HTTP invocations (fetch, axios, http, etc.)
-      const isFetch = expr.isKind(SyntaxKind.Identifier) && expr.getText() === "fetch";
-      const isAxiosOrHttp =
-        expr.isKind(SyntaxKind.PropertyAccessExpression) &&
-        ["get", "post", "put", "patch", "delete", "request"].includes(expr.getName());
+      let isHttpClient = false;
+      if (expr.isKind(SyntaxKind.Identifier) && expr.getText() === "fetch") {
+        isHttpClient = true;
+      } else if (expr.isKind(SyntaxKind.PropertyAccessExpression)) {
+        const callerName = expr.getExpression().getText();
+        const baseCallerName = callerName.includes(".") ? callerName.split(".").pop()! : callerName;
+        const methodName = expr.getName();
+        if (
+          ["axios", "http", "https", "got", "needle", "urllib"].includes(baseCallerName) &&
+          ["get", "post", "put", "patch", "delete", "request"].includes(methodName)
+        ) {
+          isHttpClient = true;
+        }
+      }
 
-      if ((isFetch || isAxiosOrHttp) && knownApis && knownApis.length > 0) {
+      if (isHttpClient && knownApis && knownApis.length > 0) {
         const callArgs = call.getArguments();
         if (callArgs.length > 0) {
           const urlArg = callArgs[0]!;
-          const urlText = urlArg.getText();
-          for (const api of knownApis) {
-            const normPath = api.path === "/" ? "/" : api.path;
-            if (
-              urlText.includes(api.id) ||
-              (normPath !== "/" && urlText.includes(normPath)) ||
-              (urlArg.isKind(SyntaxKind.StringLiteral) && urlArg.getLiteralValue() === normPath)
-            ) {
-              if (!httpInvoked.includes(api.id)) {
-                httpInvoked.push(api.id);
+          let rawUrl: string | undefined;
+
+          if (urlArg.isKind(SyntaxKind.StringLiteral)) {
+            rawUrl = urlArg.getLiteralValue();
+          } else if (urlArg.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) {
+            rawUrl = urlArg.getLiteralValue();
+          }
+
+          if (rawUrl) {
+            let isExternal = false;
+            try {
+              if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+                const parsed = new URL(rawUrl);
+                const host = parsed.hostname.toLowerCase();
+                isExternal =
+                  !host.includes("localhost") &&
+                  !host.includes("127.0.0.1") &&
+                  !host.includes("execute-api") &&
+                  !host.includes("lambda-url");
+              }
+            } catch {
+              // Ignore invalid URL
+            }
+
+            if (!isExternal) {
+              for (const api of knownApis) {
+                const normPath = api.path.startsWith("/") ? api.path : `/${api.path}`;
+                if (rawUrl.startsWith("/")) {
+                  if (rawUrl === normPath || rawUrl.startsWith(`${normPath}/`)) {
+                    if (!httpInvoked.includes(api.id)) {
+                      httpInvoked.push(api.id);
+                    }
+                  }
+                }
               }
             }
           }
@@ -122,7 +195,7 @@ export function extractMutationsFromNode(
         const baseCaller = callerText.includes(".") ? callerText.split(".").pop()! : callerText;
 
         // Check Table writes (standard SDK methods + ElectroDB mutations)
-        const tblName = varToTableName[callerText] || varToTableName[baseCaller];
+        const tblName = localVarToTableName[callerText] || localVarToTableName[baseCaller];
         if (
           tblName &&
           [
@@ -142,7 +215,7 @@ export function extractMutationsFromNode(
         }
 
         // Check Bucket writes with prefix discrimination
-        const bktName = varToBucketName[callerText] || varToBucketName[baseCaller];
+        const bktName = localVarToBucketName[callerText] || localVarToBucketName[baseCaller];
         if (bktName && ["put", "putText", "putBuffer", "upload", "delete"].includes(methodName)) {
           let prefix: string | undefined;
           const args = call.getArguments();
@@ -164,7 +237,7 @@ export function extractMutationsFromNode(
         }
 
         // Check Queue sends
-        const qName = varToQueueName[callerText] || varToQueueName[baseCaller];
+        const qName = localVarToQueueName[callerText] || localVarToQueueName[baseCaller];
         if (qName && ["send", "sendMessage"].includes(methodName)) {
           if (!queuesSent.includes(qName)) {
             queuesSent.push(qName);
@@ -172,7 +245,7 @@ export function extractMutationsFromNode(
         }
 
         // Check Topic publishes
-        const topName = varToTopicName[callerText] || varToTopicName[baseCaller];
+        const topName = localVarToTopicName[callerText] || localVarToTopicName[baseCaller];
         if (topName && ["publish", "send"].includes(methodName)) {
           if (!topicsPublished.includes(topName)) {
             topicsPublished.push(topName);
@@ -182,7 +255,7 @@ export function extractMutationsFromNode(
         // Check DeliveryStream writes
         if (varToDeliveryStreamName) {
           const streamName =
-            varToDeliveryStreamName[callerText] || varToDeliveryStreamName[baseCaller];
+            localVarToDeliveryStreamName[callerText] || localVarToDeliveryStreamName[baseCaller];
           if (streamName && ["put", "send", "putRecord", "putRecordBatch"].includes(methodName)) {
             if (!deliveryStreamsWritten.includes(streamName)) {
               deliveryStreamsWritten.push(streamName);
@@ -236,7 +309,7 @@ export function extractMutationsFromNode(
                     } else if (init) {
                       const txt = init.getText();
                       const base = txt.includes(".") ? txt.split(".")[0]! : txt;
-                      resolvedTbl = varToTableName[txt] || varToTableName[base];
+                      resolvedTbl = localVarToTableName[txt] || localVarToTableName[base];
                     }
                     if (resolvedTbl && !tablesWritten.includes(resolvedTbl)) {
                       tablesWritten.push(resolvedTbl);
@@ -265,7 +338,7 @@ export function extractMutationsFromNode(
                                   } else if (tInit) {
                                     const txt = tInit.getText();
                                     const base = txt.includes(".") ? txt.split(".")[0]! : txt;
-                                    resTbl = varToTableName[txt] || varToTableName[base];
+                                    resTbl = localVarToTableName[txt] || localVarToTableName[base];
                                   }
                                   if (resTbl && !tablesWritten.includes(resTbl)) {
                                     tablesWritten.push(resTbl);
@@ -291,7 +364,7 @@ export function extractMutationsFromNode(
                     } else if (init) {
                       const txt = init.getText();
                       const base = txt.includes(".") ? txt.split(".")[0]! : txt;
-                      resolvedQ = varToQueueName[txt] || varToQueueName[base];
+                      resolvedQ = localVarToQueueName[txt] || localVarToQueueName[base];
                     }
                     if (resolvedQ && !queuesSent.includes(resolvedQ)) {
                       queuesSent.push(resolvedQ);
@@ -310,7 +383,7 @@ export function extractMutationsFromNode(
                     } else if (init) {
                       const txt = init.getText();
                       const base = txt.includes(".") ? txt.split(".")[0]! : txt;
-                      resolvedBkt = varToBucketName[txt] || varToBucketName[base];
+                      resolvedBkt = localVarToBucketName[txt] || localVarToBucketName[base];
                     }
                   }
 
@@ -348,7 +421,7 @@ export function extractMutationsFromNode(
                     } else if (init) {
                       const txt = init.getText();
                       const base = txt.includes(".") ? txt.split(".")[0]! : txt;
-                      resolvedTop = varToTopicName[txt] || varToTopicName[base];
+                      resolvedTop = localVarToTopicName[txt] || localVarToTopicName[base];
                     }
                     if (resolvedTop && !topicsPublished.includes(resolvedTop)) {
                       topicsPublished.push(resolvedTop);

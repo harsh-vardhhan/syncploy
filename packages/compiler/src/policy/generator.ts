@@ -383,6 +383,20 @@ export function generateDeployPolicy(
     });
   }
 
+  // 15. AWS Budgets - ONLY if a Budget resource is synthesized
+  const hasBudget = Object.values(resources).some((r: any) => r.Type === "AWS::Budgets::Budget");
+  if (hasBudget) {
+    statements.push({
+      Sid: "BudgetsManagement",
+      Effect: "Allow",
+      Action: [
+        "budgets:ViewBudget",
+        "budgets:ModifyBudget",
+      ],
+      Resource: [`arn:aws:budgets::${accountId}:budget/*`],
+    });
+  }
+
   return {
     Version: "2012-10-17",
     Statement: statements,

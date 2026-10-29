@@ -5,10 +5,8 @@ export function generateBudget(
   graph: ResourceGraph,
   resources: Record<string, any>
 ): void {
-  const hasExistingBudget = Object.values(resources).some(
-    (r: any) => r.Type === "AWS::Budgets::Budget"
-  );
-  if (hasExistingBudget) return;
+  // Only synthesize when explicitly requested/configured
+  if (!graph.budget) return;
 
   const budgetProps: any = {
     Budget: {
@@ -16,20 +14,25 @@ export function generateBudget(
       BudgetType: "COST",
       TimeUnit: "MONTHLY",
       BudgetLimit: {
-        Amount: 100,
-        Unit: "USD",
+        Amount: graph.budget.amount,
+        Unit: graph.budget.unit || "USD",
+      },
+      CostFilters: {
+        TagKeyValue: [{ "Fn::Sub": "user:StackName$${AWS::StackName}" }],
       },
     },
   };
 
-  const alertTopic = (graph.topics || []).find(
-    (t) =>
-      t.name.toLowerCase().includes("alert") ||
-      t.name.toLowerCase().includes("kill") ||
-      t.name.toLowerCase().includes("alarm")
-  );
+  const targetTopic = graph.budget.topicName
+    ? (graph.topics || []).find((t) => t.name === graph.budget!.topicName || t.id === graph.budget!.topicName)
+    : (graph.topics || []).find(
+        (t) =>
+          t.name.toLowerCase().includes("alert") ||
+          t.name.toLowerCase().includes("kill") ||
+          t.name.toLowerCase().includes("alarm")
+      );
 
-  if (alertTopic) {
+  if (targetTopic) {
     budgetProps.NotificationsWithSubscribers = [
       {
         Notification: {
@@ -41,7 +44,7 @@ export function generateBudget(
         Subscribers: [
           {
             SubscriptionType: "SNS",
-            Address: { Ref: getTopicLogicalId(alertTopic) },
+            Address: { Ref: getTopicLogicalId(targetTopic) },
           },
         ],
       },

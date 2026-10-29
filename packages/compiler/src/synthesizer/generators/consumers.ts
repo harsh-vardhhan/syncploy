@@ -142,6 +142,23 @@ export function generateStreamConsumers(
       BisectBatchOnFunctionError: consumer.bisectOnFunctionError ?? true,
     };
 
+    if (consumer.onFailureQueueName) {
+      const dlq = (graph.queues || []).find(
+        (q) =>
+          q.name === consumer.onFailureQueueName ||
+          q.id === consumer.onFailureQueueName ||
+          q.logicalId === consumer.onFailureQueueName
+      );
+      if (dlq) {
+        const dlqLogicalId = getQueueLogicalId(dlq, graph);
+        mappingProps.DestinationConfig = {
+          OnFailure: {
+            Destination: { "Fn::GetAtt": [dlqLogicalId, "Arn"] },
+          },
+        };
+      }
+    }
+
     if (consumer.enabled !== undefined) {
       mappingProps.Enabled = consumer.enabled;
     }

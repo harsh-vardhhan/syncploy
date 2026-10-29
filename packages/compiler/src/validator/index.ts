@@ -38,7 +38,18 @@ export class GraphValidator implements ValidationContext {
     sourceFile?: string,
     severity: "error" | "warning" = "warning"
   ): boolean {
-    const supp = this.suppressionMap.get(constructId);
+    let supp = this.suppressionMap.get(constructId);
+
+    // If constructId is "Stack", check if any construct or file in the stack suppressed this code
+    if (!supp && constructId === "Stack") {
+      for (const [_, sMap] of this.suppressionMap.entries()) {
+        if (sMap[code] !== undefined || sMap["*"] !== undefined) {
+          supp = sMap;
+          break;
+        }
+      }
+    }
+
     if (!supp) return false;
     const reason = supp[code] ?? supp["*"];
     if (reason !== undefined) {
@@ -126,7 +137,8 @@ export class GraphValidator implements ValidationContext {
         if (
           w.code.startsWith("WARN_DOW_") ||
           w.code.startsWith("WARN_SQS_") ||
-          w.code.startsWith("WARN_FUNCTION_URL_")
+          w.code.startsWith("WARN_FUNCTION_URL_") ||
+          w.code.startsWith("WARN_HTTP_")
         ) {
           errors.push({
             ...w,

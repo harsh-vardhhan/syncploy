@@ -101,11 +101,20 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
       );
     }
 
-    if (s.enabled !== false && s.retryAttempts === undefined && !s.onFailureQueueName) {
+    if (s.enabled !== false && s.retryAttempts === -1) {
       ctx.addWarning(
         "WARN_DOW_STREAM_RETRY_UNLIMITED",
         s.id,
-        `Active DynamoDB stream consumer '${s.id}' for table '${s.tableName}' has no explicit 'retryAttempts' cap or 'onFailure' DLQ destination. Poison-pill records will retry continuously for up to 24 hours, blocking shard processing and incurring severe DoW costs. Configure 'retryAttempts: 3' or 'bisectOnFunctionError: true'.`,
+        `Active DynamoDB stream consumer '${s.id}' for table '${s.tableName}' explicitly configured 'retryAttempts: -1' (unlimited). Poison-pill records will retry continuously for up to 24 hours until stream expiration, draining execution concurrency. Consider configuring 'retryAttempts: 3'.`,
+        s.sourceFile
+      );
+    }
+
+    if (s.enabled !== false && !s.onFailureQueueName) {
+      ctx.addWarning(
+        "WARN_DOW_STREAM_MISSING_DLQ",
+        s.id,
+        `Active DynamoDB stream consumer '${s.id}' for table '${s.tableName}' has no 'onFailure' DLQ destination configured. Discarded poison-pill records after ${s.retryAttempts ?? 3} retries will be permanently lost. Consider configuring 'onFailure: "myDlqQueue"'.`,
         s.sourceFile
       );
     }
