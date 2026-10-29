@@ -11,6 +11,7 @@ import {
   extractDuration,
   extractMemory,
   extractString,
+  getNodeLocation,
 } from "../ast-utils";
 
 export function extractDeliveryStream(
@@ -65,6 +66,8 @@ export function extractDeliveryStream(
     }
   }
 
+  const { line, column } = getNodeLocation(decl, sourceFile);
+
   return {
     deliveryStream: {
       id: varName,
@@ -76,6 +79,8 @@ export function extractDeliveryStream(
       bufferingSize,
       compression,
       sourceFile: sourceFile.getFilePath(),
+      line,
+      column,
       logicalId,
       streamName: customStreamName,
       roleLogicalId,

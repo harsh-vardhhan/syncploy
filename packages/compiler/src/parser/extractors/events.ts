@@ -6,11 +6,11 @@ import {
 } from "ts-morph";
 import type { EventBindingIR, BucketIR } from "../../types";
 import type { ParseContext } from "../types";
-import { unwrapExpression, extractString } from "./ast-utils";
+import { unwrapExpression, extractString, getNodeLocation } from "./ast-utils";
 
 export function extractEventBinding(
   statement: Statement,
-  _sourceFile: SourceFile,
+  sourceFile: SourceFile,
   context: ParseContext,
   buckets: BucketIR[]
 ): EventBindingIR | undefined {
@@ -64,6 +64,8 @@ export function extractEventBinding(
     b.eventBridge = true;
   }
 
+  const { line, column } = getNodeLocation(statement, sourceFile);
+
   return {
     id: `${bucketVar}_${targetQueueVar}_${eventArg}`,
     sourceBucketName,
@@ -71,6 +73,9 @@ export function extractEventBinding(
     targetQueueName,
     prefix,
     suffix,
+    sourceFile: sourceFile.getFilePath(),
+    line,
+    column,
     ruleLogicalId,
     queuePolicyLogicalId,
   };

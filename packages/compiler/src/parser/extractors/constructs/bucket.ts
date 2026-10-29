@@ -10,6 +10,7 @@ import {
   extractNumber,
   extractString,
   extractCommentSuppressions,
+  getNodeLocation,
 } from "../ast-utils";
 
 export function extractBucket(
@@ -76,6 +77,8 @@ export function extractBucket(
     }
   }
 
+  const { line, column } = getNodeLocation(decl, sourceFile);
+
   return {
     bucket: {
       id: varName,
@@ -86,6 +89,8 @@ export function extractBucket(
       accountScoped,
       objectLock,
       sourceFile: sourceFile.getFilePath(),
+      line,
+      column,
       logicalId,
       bucketName: customBucketName,
       retain,

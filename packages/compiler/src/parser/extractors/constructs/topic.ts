@@ -6,7 +6,7 @@ import {
 } from "ts-morph";
 import type { TopicIR } from "../../../types";
 import type { ParseContext } from "../../types";
-import { extractString, unwrapExpression } from "../ast-utils";
+import { extractString, unwrapExpression, getNodeLocation } from "../ast-utils";
 
 export function extractTopic(
   decl: VariableDeclaration,
@@ -91,6 +91,8 @@ export function extractTopic(
     }
   }
 
+  const { line, column } = getNodeLocation(decl, sourceFile);
+
   return {
     topic: {
       id: varName,
@@ -98,6 +100,8 @@ export function extractTopic(
       fifo,
       subscriptions,
       sourceFile: sourceFile.getFilePath(),
+      line,
+      column,
       logicalId,
       topicName: customTopicName,
     },

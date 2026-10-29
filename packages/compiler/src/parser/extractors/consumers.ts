@@ -22,6 +22,7 @@ import {
   extractPolicies,
   extractContainer,
   extractCommentSuppressions,
+  getNodeLocation,
 } from "./ast-utils";
 import { extractMutationsFromNode } from "./mutations";
 
@@ -91,11 +92,15 @@ export function extractQueueConsumer(
     context.knownApis
   );
 
+  const { line, column } = getNodeLocation(decl, sourceFile);
+
   return {
     id: varName,
     queueName: context.varToQueueName[targetQueueVar] || targetQueueVar,
     exportName: varName,
     sourceFile: sourceFile.getFilePath(),
+    line,
+    column,
     batchSize,
     timeout,
     concurrency,
@@ -198,11 +203,15 @@ export function extractTableStream(
     context.knownApis
   );
 
+  const { line, column } = getNodeLocation(decl, sourceFile);
+
   return {
     id: varName,
     tableName: context.varToTableName[targetTableVar] || targetTableVar,
     exportName: varName,
     sourceFile: sourceFile.getFilePath(),
+    line,
+    column,
     batchSize,
     startingPosition,
     enabled,
@@ -290,11 +299,15 @@ export function extractTopicSubscriber(
     context.knownApis
   );
 
+  const { line, column } = getNodeLocation(decl, sourceFile);
+
   return {
     id: varName,
     topicName: context.varToTopicName[targetTopicVar] || targetTopicVar,
     exportName: varName,
     sourceFile: sourceFile.getFilePath(),
+    line,
+    column,
     timeout,
     concurrency,
     memory,

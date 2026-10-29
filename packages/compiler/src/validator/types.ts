@@ -7,6 +7,8 @@ export interface Diagnostic {
   message: string;
   constructId: string;
   sourceFile?: string | undefined;
+  line?: number | undefined;
+  column?: number | undefined;
   severity: "error" | "warning";
 }
 
@@ -32,13 +34,17 @@ export interface ValidationContext {
     constructId: string,
     message: string,
     sourceFile?: string,
-    candidateConstructIds?: string[]
+    candidateConstructIds?: string[],
+    line?: number,
+    column?: number
   ): void;
   addWarning(
     code: DiagnosticCode,
     constructId: string,
     message: string,
     sourceFile?: string,
-    candidateConstructIds?: string[]
+    candidateConstructIds?: string[],
+    line?: number,
+    column?: number
   ): void;
 }

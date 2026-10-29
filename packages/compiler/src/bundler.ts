@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
 import * as esbuild from "esbuild";
+import { resolveTsConfigPaths } from "./parser/tsconfig-resolver";
 
 export interface BundlerOptions {
   minify?: boolean;
@@ -31,6 +32,10 @@ export class Bundler {
     const aliases: Record<string, string> = {
       "@syncploy/sdk": sdkIndexPath,
     };
+    try {
+      const { exactAliases } = resolveTsConfigPaths(this.workDir);
+      Object.assign(aliases, exactAliases);
+    } catch {}
     const nodePaths: string[] = [path.join(this.workDir, "node_modules")];
 
     try {

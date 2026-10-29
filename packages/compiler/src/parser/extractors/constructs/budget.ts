@@ -12,6 +12,7 @@ import {
   extractString,
   extractStringLiteral,
   resolveConstantInitializer,
+  getNodeLocation,
 } from "../ast-utils";
 
 export function extractBudget(
@@ -123,6 +124,8 @@ export function extractBudget(
     }
   }
 
+  const { line, column } = getNodeLocation(decl, sourceFile);
+
   return {
     id: budgetId,
     amount,
@@ -137,6 +140,8 @@ export function extractBudget(
     filterByStack,
     filterByStackInvalid,
     sourceFile: sourceFile.getFilePath(),
+    line,
+    column,
     suppressions: extractCommentSuppressions(decl),
   };
 }

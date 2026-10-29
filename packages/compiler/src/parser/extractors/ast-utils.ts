@@ -2,12 +2,25 @@ import {
   Node,
   SyntaxKind,
   ObjectLiteralExpression,
+  type SourceFile,
 } from "ts-morph";
 import type {
   CorsConfig,
   PolicyStatementIR,
   ContainerIR,
 } from "../../types";
+
+export function getNodeLocation(
+  node: Node,
+  sourceFile?: SourceFile
+): { line: number; column: number } {
+  try {
+    const sf = sourceFile ?? node.getSourceFile();
+    return sf.getLineAndColumnAtPos(node.getStart());
+  } catch {
+    return { line: 1, column: 1 };
+  }
+}
 
 export function unwrapExpression(node: Node | undefined): Node | undefined {
   if (!node) return undefined;

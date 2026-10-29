@@ -9,6 +9,7 @@ import {
   extractBoolean,
   extractNumber,
   extractString,
+  getNodeLocation,
 } from "../ast-utils";
 
 export function extractAuth(
@@ -103,6 +104,8 @@ export function extractAuth(
     }
   }
 
+  const { line, column } = getNodeLocation(decl, sourceFile);
+
   return {
     auth: {
       id: varName,
@@ -113,6 +116,8 @@ export function extractAuth(
       passwordPolicy,
       client,
       sourceFile: sourceFile.getFilePath(),
+      line,
+      column,
       logicalId,
       userPoolName,
     },

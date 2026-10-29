@@ -47,13 +47,23 @@ export * from "./extractors/consumers";
 export * from "./extractors/constructs";
 export * from "./extractors/events";
 export * from "./extractors/electrodb-enricher";
+export * from "./tsconfig-resolver";
+
+import { resolveTsConfigPaths } from "./tsconfig-resolver";
 
 export class Parser {
   private project: Project;
 
   constructor(public readonly projectRoot: string) {
+    const { paths } = resolveTsConfigPaths(projectRoot);
     this.project = new Project({
       skipAddingFilesFromTsConfig: false,
+      compilerOptions: {
+        baseUrl: this.projectRoot,
+        paths,
+        allowJs: true,
+        resolveJsonModule: true,
+      },
     });
   }
 

@@ -10,6 +10,7 @@ import {
   extractNumber,
   extractString,
   extractCommentSuppressions,
+  getNodeLocation,
 } from "../ast-utils";
 
 export function extractQueue(
@@ -59,6 +60,8 @@ export function extractQueue(
     }
   }
 
+  const { line, column } = getNodeLocation(decl, sourceFile);
+
   return {
     queue: {
       id: varName,
@@ -67,6 +70,8 @@ export function extractQueue(
       deadLetterQueue,
       fifo,
       sourceFile: sourceFile.getFilePath(),
+      line,
+      column,
       logicalId,
       queueName: customQueueName,
       suppressions: extractCommentSuppressions(decl),

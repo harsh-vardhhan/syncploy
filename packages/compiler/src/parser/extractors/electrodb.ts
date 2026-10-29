@@ -6,7 +6,7 @@ import {
   ObjectLiteralExpression,
 } from "ts-morph";
 import type { ElectroEntityIR, ElectroIndexIR } from "../../types";
-import { extractString } from "./ast-utils";
+import { extractString, getNodeLocation } from "./ast-utils";
 
 export function extractElectroEntity(
   decl: VariableDeclaration,
@@ -190,12 +190,16 @@ export function extractElectroEntity(
     }
   }
 
+  const { line, column } = getNodeLocation(decl, sourceFile);
+
   return {
     id: decl.getName(),
     entityName,
     serviceName,
     version: version || undefined,
     sourceFile: sourceFile.getFilePath(),
+    line,
+    column,
     primaryIndex,
     secondaryIndexes,
     attributes,

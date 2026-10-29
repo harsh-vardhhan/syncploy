@@ -17,6 +17,7 @@ import {
   extractPolicies,
   extractContainer,
   extractCommentSuppressions,
+  getNodeLocation,
 } from "./ast-utils";
 import { extractMutationsFromNode } from "./mutations";
 
@@ -140,10 +141,14 @@ export function extractApiRoute(
     context.knownApis
   );
 
+  const { line, column } = getNodeLocation(decl, sourceFile);
+
   return {
     id: varName,
     exportName: varName,
     sourceFile: sourceFile.getFilePath(),
+    line,
+    column,
     method: methodValue,
     path: pathValue,
     auth: authValue,

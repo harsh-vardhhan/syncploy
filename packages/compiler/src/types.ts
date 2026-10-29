@@ -45,6 +45,8 @@ export interface ApiRouteIR {
   id: string;
   exportName: string;
   sourceFile: string;
+  line?: number | undefined;
+  column?: number | undefined;
   method: HttpMethod;
   path: string;
   auth?: boolean | undefined;
@@ -84,6 +86,8 @@ export interface TableIR {
   pointInTimeRecovery?: boolean | undefined;
   indexes?: Record<string, TableIndexIR> | undefined;
   sourceFile: string;
+  line?: number | undefined;
+  column?: number | undefined;
   logicalId?: string | undefined;
   tableName?: string | undefined;
   retain?: boolean | undefined;
@@ -108,6 +112,8 @@ export interface BucketIR {
       }
     | undefined;
   sourceFile: string;
+  line?: number | undefined;
+  column?: number | undefined;
   logicalId?: string | undefined;
   bucketName?: string | undefined;
   retain?: boolean | undefined;
@@ -126,6 +132,8 @@ export interface QueueIR {
   } | undefined;
   fifo?: boolean | undefined;
   sourceFile: string;
+  line?: number | undefined;
+  column?: number | undefined;
   logicalId?: string | undefined;
   queueName?: string | undefined;
   suppressions?: Record<string, string> | undefined;
@@ -136,6 +144,8 @@ export interface QueueConsumerIR {
   queueName: string;
   exportName: string;
   sourceFile: string;
+  line?: number | undefined;
+  column?: number | undefined;
   batchSize?: number | undefined;
   timeout?: number | undefined;
   concurrency?: number | undefined;
@@ -159,6 +169,8 @@ export interface TableStreamConsumerIR {
   tableName: string;
   exportName: string;
   sourceFile: string;
+  line?: number | undefined;
+  column?: number | undefined;
   batchSize?: number | undefined;
   startingPosition?: "LATEST" | "TRIM_HORIZON" | undefined;
   enabled?: boolean | undefined;
@@ -188,6 +200,8 @@ export interface TopicIR {
   fifo?: boolean | undefined;
   subscriptions?: { protocol: string; endpoint: string }[] | undefined;
   sourceFile: string;
+  line?: number | undefined;
+  column?: number | undefined;
   logicalId?: string | undefined;
   topicName?: string | undefined;
 }
@@ -197,6 +211,8 @@ export interface TopicSubscriberIR {
   topicName: string;
   exportName: string;
   sourceFile: string;
+  line?: number | undefined;
+  column?: number | undefined;
   timeout?: number | undefined;
   concurrency?: number | undefined;
   memory?: number | undefined;
@@ -247,6 +263,8 @@ export interface AlarmIR {
   metrics?: AlarmMetricQueryIR[] | undefined;
   actions?: string[] | undefined;
   sourceFile: string;
+  line?: number | undefined;
+  column?: number | undefined;
   logicalId?: string | undefined;
   alarmName?: string | undefined;
 }
@@ -258,6 +276,9 @@ export interface EventBindingIR {
   targetQueueName: string;
   prefix?: string | undefined;
   suffix?: string | undefined;
+  sourceFile?: string | undefined;
+  line?: number | undefined;
+  column?: number | undefined;
   ruleLogicalId?: string | undefined;
   queuePolicyLogicalId?: string | undefined;
 }
@@ -272,6 +293,8 @@ export interface DeliveryStreamIR {
   bufferingSize?: number | undefined; // in MB
   compression?: "GZIP" | "ZIP" | "SNAPPY" | "UNCOMPRESSED" | undefined;
   sourceFile: string;
+  line?: number | undefined;
+  column?: number | undefined;
   logicalId?: string | undefined;
   streamName?: string | undefined;
   roleLogicalId?: string | undefined;
@@ -303,6 +326,8 @@ export interface AuthIR {
   passwordPolicy?: AuthPasswordPolicyIR | undefined;
   client?: AuthClientIR | undefined;
   sourceFile: string;
+  line?: number | undefined;
+  column?: number | undefined;
   logicalId?: string | undefined;
   userPoolName?: string | undefined;
 }
@@ -321,6 +346,8 @@ export interface ElectroEntityIR {
   serviceName: string; // model.service, e.g. "ehr"
   version?: string | undefined;
   sourceFile: string;
+  line?: number | undefined;
+  column?: number | undefined;
   primaryIndex: ElectroIndexIR;
   secondaryIndexes: Record<string, ElectroIndexIR>;
   attributes: Record<string, string>; // name -> type
@@ -341,6 +368,8 @@ export interface BudgetIR {
   filterByStack?: boolean | undefined;
   filterByStackInvalid?: boolean | undefined;
   sourceFile?: string | undefined;
+  line?: number | undefined;
+  column?: number | undefined;
   suppressions?: Record<string, string> | undefined;
 }
 

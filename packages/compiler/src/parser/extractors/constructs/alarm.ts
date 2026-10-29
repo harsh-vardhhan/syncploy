@@ -10,6 +10,7 @@ import {
   extractDuration,
   extractNumber,
   extractString,
+  getNodeLocation,
 } from "../ast-utils";
 
 export function extractAlarm(
@@ -153,6 +154,8 @@ export function extractAlarm(
     }
   }
 
+  const { line, column } = getNodeLocation(decl, sourceFile);
+
   return {
     id: varName,
     name: alarmName,
@@ -165,6 +168,8 @@ export function extractAlarm(
     metrics,
     actions,
     sourceFile: sourceFile.getFilePath(),
+    line,
+    column,
     logicalId,
     alarmName: customAlarmName,
   };

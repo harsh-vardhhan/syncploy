@@ -9,6 +9,7 @@ import {
   extractBoolean,
   extractString,
   extractCommentSuppressions,
+  getNodeLocation,
 } from "../ast-utils";
 
 export function extractTable(
@@ -182,6 +183,8 @@ export function extractTable(
     }
   }
 
+  const { line, column } = getNodeLocation(decl, sourceFile);
+
   return {
     table: {
       id: varName,
@@ -193,6 +196,8 @@ export function extractTable(
       pointInTimeRecovery,
       indexes,
       sourceFile: sourceFile.getFilePath(),
+      line,
+      column,
       logicalId,
       tableName: customTableName,
       retain,
