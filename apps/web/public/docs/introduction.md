@@ -1,8 +1,8 @@
 # Introduction & Architecture
 
-Syncploy is a compiler-driven **Infrastructure-from-Code (IfC)** engine and runtime SDK built exclusively for **pure AWS Serverless** in TypeScript.
+Syncploy is the **Zero-DoW (Denial of Wallet) Serverless Framework** for AWS in pure TypeScript.
 
-Instead of writing thousands of lines of handwritten CloudFormation/SAM YAML or managing multi-language imperative graphs (like AWS CDK or Pulumi), you author your application logic in standard TypeScript. The Syncploy compiler statically analyzes your Abstract Syntax Tree (AST), validates event cycles, and deterministically synthesizes 1:1 CloudFormation templates with zero stateful replacements.
+Instead of paying a 10x–50x PaaS tax on Vercel or Render out of fear of AWS, or maintaining thousands of lines of handwritten CloudFormation/SAM YAML and brittle CDK stacks, you author application logic and infrastructure side-by-side in standard TypeScript. The Syncploy compiler statically analyzes your Abstract Syntax Tree (AST), validates event cycles, bounds execution liability, and deterministically synthesizes 1:1 CloudFormation templates with zero stateful replacements.
 
 ```typescript
 import { Table, Queue, api } from "@syncploy/sdk";

@@ -82,3 +82,11 @@ await ehrTable.put({ PK: "CLINIC#1", SK: "DOC#10", status: "PENDING" });
 const item = await ehrTable.get({ PK: "CLINIC#1", SK: "DOC#10" });
 await ehrTable.delete({ PK: "CLINIC#1", SK: "DOC#10" });
 ```
+
+---
+
+## Denial-of-Wallet Immunity: No Table Scans
+
+Never invoke `.scan()` on DynamoDB tables inside HTTP request handlers or API endpoints. Full-table scans consume Read Capacity Units linearly proportional to the size of your entire table ($O(N)$ read amplification), causing astronomical bills under high query load.
+
+Syncploy's pre-flight AST analyzer detects `.scan()` calls in API endpoints and raises warning `WARN_DOW_DYNAMODB_SCAN`. Always query using partition keys, sort key conditions, or ElectroDB secondary indexes.

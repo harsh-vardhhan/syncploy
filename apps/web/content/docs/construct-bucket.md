@@ -55,3 +55,11 @@ const buffer = await documentsBucket.getBuffer("scans/xray.png");
 // List files:
 const files = await documentsBucket.list({ prefix: "notes/" });
 ```
+
+---
+
+## Automatic Denial-of-Wallet Storage Protection
+
+When uploading large files in multi-part chunks via SDK or presigned URLs, network dropouts or abandoned client uploads leave orphan byte fragments in S3. These incomplete multipart uploads do not show up in regular bucket listings, yet AWS bills for their storage indefinitely.
+
+Syncploy automatically synthesizes an `AbortIncompleteMultipartUpload` lifecycle rule (`DaysAfterInitiation: 7`) on every declared bucket, ensuring abandoned upload fragments are purged without manual intervention.

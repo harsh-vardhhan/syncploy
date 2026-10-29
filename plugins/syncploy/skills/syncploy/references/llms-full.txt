@@ -374,6 +374,15 @@ Syncploy supports two distinct ingress modes:
 | `concurrency` | `number` | `undefined` | Reserved concurrency cap (prevents Denial-of-Wallet) |
 | `cors` | `boolean | CorsOptions` | `true` | Automatic CORS preflight headers |
 | `packageType` | `"Zip" | "Image"` | `"Zip"` | ESM bundle vs Native Docker container image |
+| `logRetentionInDays` | `number` | `14` | CloudWatch LogGroup retention in days (auto-synthesized to prevent log accumulation bills) |
+
+---
+
+## Automatic Denial-of-Wallet Log Rotation
+
+AWS Lambda by default creates log streams in unmanaged CloudWatch log groups that retain data indefinitely, quietly creating runaway storage bills over months and years.
+
+Syncploy automatically synthesizes an `AWS::Logs::LogGroup` with `RetentionInDays: 14` for every Lambda endpoint, SQS consumer, and DynamoDB stream worker. You can customize the retention window per endpoint via `logRetentionInDays`, with zero manual CloudFormation LogGroup declarations.
 
 ---
 
@@ -566,6 +575,14 @@ await ehrTable.delete({ PK: "CLINIC#1", SK: "DOC#10" });
 
 ---
 
+## Denial-of-Wallet Immunity: No Table Scans
+
+Never invoke `.scan()` on DynamoDB tables inside HTTP request handlers or API endpoints. Full-table scans consume Read Capacity Units linearly proportional to the size of your entire table ($O(N)$ read amplification), causing astronomical bills under high query load.
+
+Syncploy's pre-flight AST analyzer detects `.scan()` calls in API endpoints and raises warning `WARN_DOW_DYNAMODB_SCAN`. Always query using partition keys, sort key conditions, or ElectroDB secondary indexes.
+
+---
+
 <a id="construct-bucket"></a>
 
 <!-- Section: Bucket (Amazon S3) (Core Constructs) -->
@@ -628,6 +645,14 @@ const buffer = await documentsBucket.getBuffer("scans/xray.png");
 // List files:
 const files = await documentsBucket.list({ prefix: "notes/" });
 ```
+
+---
+
+## Automatic Denial-of-Wallet Storage Protection
+
+When uploading large files in multi-part chunks via SDK or presigned URLs, network dropouts or abandoned client uploads leave orphan byte fragments in S3. These incomplete multipart uploads do not show up in regular bucket listings, yet AWS bills for their storage indefinitely.
+
+Syncploy automatically synthesizes an `AbortIncompleteMultipartUpload` lifecycle rule (`DaysAfterInitiation: 7`) on every declared bucket, ensuring abandoned upload fragments are purged without manual intervention.
 
 ---
 
@@ -753,6 +778,34 @@ export const paymentWebhook = api({ path: "/webhook", method: "POST" }, async (r
 
 > [!WARNING]
 > Syncploy's compiler inspects all environment variables and flags literal secrets (like `sk_live_...` or `ghp_...`) as fatal pre-flight build errors.
+
+---
+
+## `Budget` (AWS Budgets Financial Guardrail)
+
+Declare financial spend limits with automated CloudWatch and SNS alerts to guarantee total stack compute and storage liability never exceeds your financial appetite:
+
+```typescript
+import { Budget, Topic } from "@syncploy/sdk";
+
+export const alertTopic = new Topic("alerts", {
+  logicalId: "SystemAlertsTopic",
+});
+
+// Hard budget guardrail: alerts via SNS when monthly spend reaches 80% of $50
+export const monthlyBudget = new Budget("monthly-cap", {
+  amount: 50, // $50.00 USD monthly limit
+  unit: "USD",
+  threshold: 80, // Alert at 80% ($40)
+  topic: alertTopic,
+  filterByStack: true, // Scoped to this CloudFormation stack
+});
+```
+
+Syncploy's AST compiler statically validates that:
+- The budget amount is a static positive integer or float (`ERR_BUDGET_INVALID_AMOUNT`).
+- The alert topic resolves to a declared SNS Topic construct in the stack (`ERR_BUDGET_UNRESOLVED_TOPIC`).
+- Stacks with high continuous compute liability ($> \$100/\text{mo}$) declare a Budget to prevent unmonitored overruns (`WARN_DOW_HIGH_BLAST_RADIUS`).
 
 ---
 

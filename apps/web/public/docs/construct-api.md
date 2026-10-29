@@ -48,6 +48,15 @@ Syncploy supports two distinct ingress modes:
 | `concurrency` | `number` | `undefined` | Reserved concurrency cap (prevents Denial-of-Wallet) |
 | `cors` | `boolean | CorsOptions` | `true` | Automatic CORS preflight headers |
 | `packageType` | `"Zip" | "Image"` | `"Zip"` | ESM bundle vs Native Docker container image |
+| `logRetentionInDays` | `number` | `14` | CloudWatch LogGroup retention in days (auto-synthesized to prevent log accumulation bills) |
+
+---
+
+## Automatic Denial-of-Wallet Log Rotation
+
+AWS Lambda by default creates log streams in unmanaged CloudWatch log groups that retain data indefinitely, quietly creating runaway storage bills over months and years.
+
+Syncploy automatically synthesizes an `AWS::Logs::LogGroup` with `RetentionInDays: 14` for every Lambda endpoint, SQS consumer, and DynamoDB stream worker. You can customize the retention window per endpoint via `logRetentionInDays`, with zero manual CloudFormation LogGroup declarations.
 
 ---
 
