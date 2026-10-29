@@ -1,5 +1,6 @@
 import React from "react";
 import { Hero } from "@/components/Hero";
+import { DenialOfWalletShowcase } from "@/components/DenialOfWalletShowcase";
 import { CaseStudyShowcase } from "@/components/CaseStudyShowcase";
 import { InteractiveComparison } from "@/components/InteractiveComparison";
 import { Features } from "@/components/Features";
@@ -11,6 +12,7 @@ export default function Home() {
   return (
     <div className="space-y-8">
       <Hero />
+      <DenialOfWalletShowcase />
       <CaseStudyShowcase />
       <InteractiveComparison />
       <Features />

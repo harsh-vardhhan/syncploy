@@ -101,7 +101,7 @@ Below is the complete set of documentation topics. Each file is available in raw
 - [Bucket (Amazon S3)](https://syncploy-web.vercel.app/docs/construct-bucket.md): Amazon S3 buckets with ObjectLock compliance, EventBridge routing, and public blocks.
 - [Queue & DLQ (Amazon SQS)](https://syncploy-web.vercel.app/docs/construct-queue.md): SQS queues with automatic Dead Letter Queue (DLQ) redrive and worker wiring.
 - [Topic & Secret (SNS & Secrets)](https://syncploy-web.vercel.app/docs/construct-topic-secret.md): Fan-out pub/sub messaging with Amazon SNS and audited Secrets Manager integration.
-- [Safety Rails & Loop Shield](https://syncploy-web.vercel.app/docs/safety-rails.md): Compile-time detection of infinite Lambda-DynamoDB cycles and Denial-of-Wallet (DoW) vectors.
+- [Safety Rails & Denial-of-Wallet Shield](https://syncploy-web.vercel.app/docs/safety-rails.md): Compile-time detection of infinite Lambda-DynamoDB cycles, mathematical blast-radius caps, and Denial-of-Wallet (DoW) auditing.
 - [Least-Privilege IAM Policy Generator](https://syncploy-web.vercel.app/docs/least-privilege-iam.md): Synthesizing minimal IAM deployment policies for GitHub Actions and CI/CD runners.
 - [Brownfield Adoption & Diff](https://syncploy-web.vercel.app/docs/brownfield-adoption.md): Zero-replacement migration from existing AWS SAM or CloudFormation templates.
 - [In-Memory Zero-Mock Testing](https://syncploy-web.vercel.app/docs/testing.md): Lightning-fast unit and integration testing without Docker or LocalStack.

@@ -17,6 +17,63 @@ interface TabOption {
 
 const TABS: TabOption[] = [
   {
+    id: "dow-budget",
+    name: "DoW Budget & Throttle",
+    description: "Compile-time mathematical cost containment with zero YAML.",
+    outputLang: "yaml",
+    outputFilename: "synthesized-template.yaml",
+    tsCode: `import { api, Budget } from "@syncploy/sdk";
+
+// 1. Stack-scoped budget with working SNS topic notification policy
+export const monthlyBudget = new Budget("production-cap", {
+  amount: 25,
+  unit: "USD",
+  filterByStack: true, // Scoped to StackName cost allocation tag
+});
+
+// 2. DDoS-contained public endpoint with stage throttling
+export const payments = api({
+  path: "/checkout",
+  ingress: "api-gateway",
+  concurrency: 5, // Mathematically bounds max concurrent Lambda bill
+  throttle: { rateLimit: 50, burstLimit: 100 },
+}, async (req) => {
+  return Response.json({ status: "ok" });
+});`,
+    cfnOutput: `Resources:
+  StackBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: !Sub "\${AWS::StackName}-\${AWS::Region}-production-cap-budget"
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: 25
+          Unit: USD
+        CostFilters:
+          TagKeyValue: [!Sub "user:StackName$\${AWS::StackName}"]
+      ResourceTags:
+        - Key: StackName
+          Value: !Sub "\${AWS::StackName}"
+
+  HttpApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 2000
+        ThrottlingRateLimit: 1000
+      RouteSettings:
+        "POST /checkout":
+          ThrottlingBurstLimit: 100
+          ThrottlingRateLimit: 50`,
+    benefits: [
+      "Caps maximum concurrent Lambda execution spend to pennies per hour",
+      "Synthesizes default 1000 rps / 2000 burst API Gateway stage throttling",
+      "Wires verified AWS::Budgets::Budget notification policy automatically",
+    ],
+  },
+  {
     id: "auth",
     name: "Cognito Auth",
     description: "Production-ready Amazon Cognito authentication with zero YAML.",

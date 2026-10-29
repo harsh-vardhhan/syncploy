@@ -113,7 +113,7 @@ export function Hero() {
 
         {/* Subtitle */}
         <p className="max-w-2xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-neutral-400 leading-relaxed">
-          Type-safe infrastructure synthesized straight from your TypeScript code — zero YAML, zero state files, zero data-loss replacements.
+          Type-safe infrastructure with <strong className="text-slate-900 dark:text-white font-semibold">compile-time Denial-of-Wallet immunity</strong>. Zero YAML, static event recursion shields, edge rate limits, and mathematical cost ceilings straight from your TypeScript code.
         </p>
 
         {/* CTA buttons & Copy Pill */}
@@ -179,15 +179,15 @@ export function Hero() {
         <div className="pt-6 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto text-left">
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
-              <Shield className="h-3.5 w-3.5" /> Loop Shield
+              <Shield className="h-3.5 w-3.5" /> Zero-DoW Shield
             </div>
-            <div className="text-xs text-slate-600 dark:text-neutral-400">Static AST recursion & event cycle detection</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Compile-time Tarjan SCC loop & retry storm prevention</div>
           </div>
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-cyan-700 dark:text-cyan-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
-              <RefreshCw className="h-3.5 w-3.5" /> 0-Replacement
+              <Zap className="h-3.5 w-3.5" /> Cost Ceilings
             </div>
-            <div className="text-xs text-slate-600 dark:text-neutral-400">Brownfield SAM adoption with zero data loss</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Default edge rate limits & reserved concurrency caps</div>
           </div>
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-sky-600 dark:text-sky-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
@@ -197,9 +197,9 @@ export function Hero() {
           </div>
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-amber-600 dark:text-amber-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
-              <Zap className="h-3.5 w-3.5" /> Least-Privilege
+              <RefreshCw className="h-3.5 w-3.5" /> 0-Replacement
             </div>
-            <div className="text-xs text-slate-600 dark:text-neutral-400">Automated CI/CD deploy policy generation</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Brownfield SAM adoption with zero data-loss replacements</div>
           </div>
         </div>
       </div>
