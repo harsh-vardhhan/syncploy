@@ -62,6 +62,10 @@ export function generateBuckets(
       bucketProps["ObjectLockConfiguration"] = config;
     }
 
+    bucketProps["Tags"] = [
+      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+    ];
+
     const bucketDeletionPolicy =
       bucket.deletionPolicy || (bucket.retain === false ? "Delete" : "Retain");
     const bucketUpdateReplacePolicy =

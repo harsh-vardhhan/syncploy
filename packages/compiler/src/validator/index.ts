@@ -66,12 +66,34 @@ export class GraphValidator implements ValidationContext {
     return false;
   }
 
-  public addError(code: string, constructId: string, message: string, sourceFile?: string): void {
+  public addError(
+    code: string,
+    constructId: string,
+    message: string,
+    sourceFile?: string,
+    candidateConstructIds?: string[]
+  ): void {
+    if (candidateConstructIds && candidateConstructIds.length > 0) {
+      for (const cid of candidateConstructIds) {
+        if (this.checkSuppression(code, cid, message, sourceFile, "error")) return;
+      }
+    }
     if (this.checkSuppression(code, constructId, message, sourceFile, "error")) return;
     this.diagnostics.push({ code, constructId, message, sourceFile, severity: "error" });
   }
 
-  public addWarning(code: string, constructId: string, message: string, sourceFile?: string): void {
+  public addWarning(
+    code: string,
+    constructId: string,
+    message: string,
+    sourceFile?: string,
+    candidateConstructIds?: string[]
+  ): void {
+    if (candidateConstructIds && candidateConstructIds.length > 0) {
+      for (const cid of candidateConstructIds) {
+        if (this.checkSuppression(code, cid, message, sourceFile, "warning")) return;
+      }
+    }
     if (this.checkSuppression(code, constructId, message, sourceFile, "warning")) return;
     this.diagnostics.push({ code, constructId, message, sourceFile, severity: "warning" });
   }

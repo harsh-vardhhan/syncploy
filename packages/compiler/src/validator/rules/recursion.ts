@@ -302,24 +302,38 @@ export function validateInfraRecursion(ctx: ValidationContext, graph: ResourceGr
     const startNode = scc[0]!;
     const witnessPath = findWitnessCycle(startNode, sccSet);
 
+    const sccConstructIds = new Set<string>();
     let constructId = startNode;
     let sourceFile: string | undefined;
+
     for (const node of scc) {
+      const match = node.match(/'([^']+)'/);
+      if (match && match[1]) {
+        sccConstructIds.add(match[1]);
+      }
       const edges = adj.get(node) || [];
-      const edge = edges.find((e) => sccSet.has(e.target));
-      if (edge) {
-        constructId = edge.constructId;
-        sourceFile = edge.sourceFile;
-        break;
+      for (const edge of edges) {
+        if (sccSet.has(edge.target)) {
+          if (edge.constructId) {
+            sccConstructIds.add(edge.constructId);
+            if (!sourceFile && edge.sourceFile) {
+              constructId = edge.constructId;
+              sourceFile = edge.sourceFile;
+            }
+          }
+        }
       }
     }
 
+    const candidateIds = Array.from(sccConstructIds);
     const cycleStr = witnessPath.join(" -> ");
+    const involvedSuffix = candidateIds.length > 0 ? ` (Involving: ${candidateIds.join(", ")})` : "";
     ctx.addError(
       "ERR_RECURSIVE_LOOP",
       constructId,
-      `Infinite recursion loop detected: ${cycleStr}. This event-driven cycle causes continuous self-amplifying Lambda invocations and exponential Denial-of-Wallet.`,
-      sourceFile
+      `Infinite recursion loop detected: ${cycleStr}.${involvedSuffix} This event-driven cycle causes continuous self-amplifying Lambda invocations and exponential Denial-of-Wallet.`,
+      sourceFile,
+      candidateIds
     );
   }
 }

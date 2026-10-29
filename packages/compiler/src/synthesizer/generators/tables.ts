@@ -84,6 +84,10 @@ export function generateTables(
       };
     }
 
+    tableProps["Tags"] = [
+      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+    ];
+
     const tableDeletionPolicy =
       table.deletionPolicy || (table.retain === false ? "Delete" : "Retain");
     const tableUpdateReplacePolicy =

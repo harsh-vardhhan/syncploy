@@ -15,7 +15,7 @@ describe("@syncploy/compiler - In-Code Configurations & Function URLs", () => {
     await fs.writeFile(
       path.join(TEST_DIR, "app.ts"),
       `
-import { api, Table, Bucket, Queue, Topic, Alarm, DeliveryStream } from "@syncploy/sdk";
+import { api, Table, Bucket, Queue, Topic, Alarm, DeliveryStream, Budget } from "@syncploy/sdk";
 
 export const ehrTable = new Table("ehr", {
   partitionKey: { name: "PK", type: "string" },
@@ -118,6 +118,8 @@ export const getUser = api(
     timeout: "30s",
     memory: "512MB",
     concurrency: 2,
+    throttle: { rateLimit: 50, burstLimit: 100 },
+    detailedMetrics: true,
     cors: {
       allowOrigins: ["https://example.com"],
       allowHeaders: ["Content-Type", "X-Api-Key"],
@@ -172,6 +174,13 @@ export const alertSubscriber = alertTopic.subscribe(
     console.log("Alert message", message);
   }
 );
+
+export const monthlyBudget = new Budget("monthlyBudget", {
+  amount: 100,
+  topic: alertTopic,
+  threshold: 80,
+  filterByStack: true,
+});
 `,
       "utf-8"
     );
@@ -273,6 +282,11 @@ export const alertSubscriber = alertTopic.subscribe(
     expect(graph.deliveryStreams[1]?.bufferingInterval).toBe(900);
     expect(graph.deliveryStreams[1]?.bufferingSize).toBe(5);
     expect(graph.deliveryStreams[1]?.compression).toBe("GZIP");
+
+    // Verify Budget
+    expect(graph.budget).toBeDefined();
+    expect(graph.budget?.amount).toBe(100);
+    expect(graph.budget?.filterByStack).toBe(true);
   });
 
   it("synthesizes accurate CloudFormation properties for both API Gateway and Lambda Function URLs", async () => {
@@ -290,14 +304,28 @@ export const alertSubscriber = alertTopic.subscribe(
     expect(tableRes.Properties.GlobalSecondaryIndexes.length).toBe(1);
     expect(tableRes.Properties.GlobalSecondaryIndexes[0].IndexName).toBe("GSI1Index");
 
-    // Edge Controls
-    expect(res["HttpApiStage"].Properties.DefaultRouteSettings.ThrottlingBurstLimit).toBe(100);
-    expect(res["HttpApiStage"].Properties.DefaultRouteSettings.ThrottlingRateLimit).toBe(50);
+    // Edge Controls & Throttling
+    expect(res["HttpApiStage"].Properties.RouteSettings["GET /users/{id}"].ThrottlingBurstLimit).toBe(100);
+    expect(res["HttpApiStage"].Properties.RouteSettings["GET /users/{id}"].ThrottlingRateLimit).toBe(50);
+    expect(res["HttpApiStage"].Properties.RouteSettings["GET /users/{id}"].DetailedMetricsEnabled).toBe(true);
+
+    // 5. Budget Resource with Tag Scoping
+    const budgetRes = res["StackBudget"];
+    expect(budgetRes).toBeDefined();
+    expect(budgetRes.Type).toBe("AWS::Budgets::Budget");
+    expect(budgetRes.Properties.Budget.BudgetLimit.Amount).toBe(100);
+    expect(budgetRes.Properties.Budget.CostFilters.TagKeyValue[0]["Fn::Sub"]).toBe("user:StackName$${AWS::StackName}");
+
+    // 6. Stack Tags on synthesized resources
+    expect(tableRes.Properties.Tags).toBeDefined();
+    expect(tableRes.Properties.Tags[0].Key).toBe("user:StackName");
 
     // 2. Bucket with EventBridge & Versioning
     const bucketRes = res["Bucketdocuments"];
     expect(bucketRes.Properties.VersioningConfiguration.Status).toBe("Enabled");
     expect(bucketRes.Properties.NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled).toBe(true);
+    expect(bucketRes.Properties.Tags).toBeDefined();
+    expect(bucketRes.Properties.Tags[0].Key).toBe("user:StackName");
 
     // 3. Queue with DLQ
     const queueRes = res["Queueannotations"];
@@ -597,7 +625,7 @@ describe("@syncploy/compiler - Brownfield Adoption (logicalId & physical name ov
     await fs.writeFile(
       path.join(BROWNFIELD_TEST_DIR, "app.ts"),
       `
-import { api, Table, Bucket, Queue, Topic, Alarm, DeliveryStream } from "@syncploy/sdk";
+import { api, Table, Bucket, Queue, Topic, Alarm, DeliveryStream, Budget } from "@syncploy/sdk";
 
 export const ehrTable = new Table("ehr", {
   logicalId: "EhrTable",
@@ -1201,6 +1229,90 @@ export const backend = api({
       expect(env["COGNITO_CLIENT_ID"]).toEqual({ Ref: "EhrUserPoolClient" });
       expect(env["SYNCPLOY_AUTH_EHR_USER_POOL_ID"]).toEqual({ Ref: "EhrUserPool" });
       expect(env["SYNCPLOY_AUTH_EHR_CLIENT_ID"]).toEqual({ Ref: "EhrUserPoolClient" });
+    });
+  });
+
+  describe("HTTP Self-Invocation with Template Literals and Lambda URLs", () => {
+    const testDir = path.join(tmpdir(), `syncploy-test-http-templates-${Date.now()}`);
+
+    beforeAll(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+      const code = `
+import { api } from "@syncploy/sdk";
+
+export const loopApi = api({
+  method: "POST",
+  path: "/loop",
+  concurrency: 5,
+}, async () => {
+  // Realistic template literal form calling own endpoint
+  await fetch(\`\${process.env.API_URL}/loop\`);
+  // Realistic full Lambda URL calling own endpoint
+  await fetch("https://xyz.lambda-url.us-east-1.on.aws/loop");
+  // External Stripe API with coincident name
+  await fetch("https://api.stripe.com/v1/loop");
+  return { ok: true };
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+    });
+
+    afterAll(async () => {
+      await fs.rm(testDir, { recursive: true, force: true });
+    });
+
+    it("extracts httpInvoked for template literal and lambda-url self-calls, skipping external Stripe", async () => {
+      const compiler = new Compiler(testDir);
+      const graph = await compiler.parse();
+      const apiRoute = graph.apis.find((a) => a.id === "loopApi");
+      expect(apiRoute).toBeDefined();
+      expect(apiRoute?.mutations?.httpInvoked).toContain("loopApi");
+
+      const validator = new (await import("../src/validator")).GraphValidator();
+      const validation = validator.validate(graph);
+      expect(validation.warnings.some((w) => w.code === "WARN_HTTP_RECURSIVE_LOOP")).toBe(true);
+    });
+  });
+
+  describe("Tarjan Attribution & Multi-Construct Suppression", () => {
+    const testDir = path.join(tmpdir(), `syncploy-test-scc-suppress-${Date.now()}`);
+
+    beforeAll(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+      const code = `
+import { Table } from "@syncploy/sdk";
+
+// syncploy-ignore ERR_RECURSIVE_LOOP reason="Suppressed on Table construct instead of stream handler"
+export const tbl = new Table("tbl", {
+  partitionKey: { name: "id", type: "string" },
+  stream: "NEW_IMAGE",
+});
+
+export const streamWorker = tbl.stream({
+  concurrency: 2,
+}, async (event) => {
+  await tbl.put({ id: "1" });
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+    });
+
+    afterAll(async () => {
+      await fs.rm(testDir, { recursive: true, force: true });
+    });
+
+    it("allows suppressing ERR_RECURSIVE_LOOP on any construct in the SCC", async () => {
+      const compiler = new Compiler(testDir);
+      const graph = await compiler.parse();
+      const validator = new (await import("../src/validator")).GraphValidator();
+      const validation = validator.validate(graph);
+
+      // Loop is suppressed via comment on Table tbl!
+      expect(validation.valid).toBe(true);
+      expect(validation.errors.length).toBe(0);
+      expect(validation.suppressions).toBeDefined();
+      expect(validation.suppressions?.some((s) => s.code === "ERR_RECURSIVE_LOOP")).toBe(true);
+      expect(validation.suppressions?.[0]?.reason).toContain("Suppressed on Table construct");
     });
   });
 });

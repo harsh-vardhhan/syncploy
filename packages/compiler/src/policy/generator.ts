@@ -390,8 +390,10 @@ export function generateDeployPolicy(
       Sid: "BudgetsManagement",
       Effect: "Allow",
       Action: [
+        "budgets:CreateBudget",
         "budgets:ViewBudget",
         "budgets:ModifyBudget",
+        "budgets:DeleteBudget",
       ],
       Resource: [`arn:aws:budgets::${accountId}:budget/*`],
     });

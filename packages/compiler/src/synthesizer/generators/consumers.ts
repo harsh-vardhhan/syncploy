@@ -60,6 +60,10 @@ export function generateQueueConsumers(
       funcProps["ReservedConcurrentExecutions"] = consumer.concurrency;
     }
 
+    funcProps["Tags"] = [
+      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+    ];
+
     resources[funcKey] = {
       Type: "AWS::Lambda::Function",
       Properties: funcProps,
@@ -125,6 +129,10 @@ export function generateStreamConsumers(
     if (consumer.concurrency !== undefined) {
       funcProps["ReservedConcurrentExecutions"] = consumer.concurrency;
     }
+
+    funcProps["Tags"] = [
+      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+    ];
 
     resources[funcKey] = {
       Type: "AWS::Lambda::Function",
@@ -216,6 +224,10 @@ export function generateTopicSubscribers(
     if (subscriber.concurrency !== undefined) {
       funcProps["ReservedConcurrentExecutions"] = subscriber.concurrency;
     }
+
+    funcProps["Tags"] = [
+      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+    ];
 
     resources[funcKey] = {
       Type: "AWS::Lambda::Function",

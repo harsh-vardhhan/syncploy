@@ -12,6 +12,7 @@ import type {
   AlarmIR,
   DeliveryStreamIR,
   AuthIR,
+  BudgetIR,
   EventBindingIR,
   ElectroEntityIR,
 } from "../types";
@@ -31,6 +32,7 @@ import {
   extractAlarm,
   extractDeliveryStream,
   extractAuth,
+  extractBudget,
 } from "./extractors/constructs";
 import { extractEventBinding } from "./extractors/events";
 import { enrichTablesWithElectroEntities } from "./extractors/electrodb-enricher";
@@ -76,6 +78,7 @@ export class Parser {
     const auths: AuthIR[] = [];
     const bindings: EventBindingIR[] = [];
     const electroEntities: ElectroEntityIR[] = [];
+    let budget: BudgetIR | undefined;
 
     const context: ParseContext = {
       varToTableName: {},
@@ -274,6 +277,12 @@ export class Parser {
             context.varToAuthName[decl.getName()] = authResult.authName;
             continue;
           }
+
+          const budgetResult = extractBudget(decl, sourceFile, context);
+          if (budgetResult) {
+            budget = budgetResult;
+            continue;
+          }
         }
       }
 
@@ -311,6 +320,7 @@ export class Parser {
       bindings,
       auths,
       electroEntities,
+      budget,
     };
   }
 }

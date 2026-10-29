@@ -27,6 +27,9 @@ export function generateTopics(
         Endpoint: s.endpoint,
       }));
     }
+    topicProps["Tags"] = [
+      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+    ];
     resources[resourceKey] = {
       Type: "AWS::SNS::Topic",
       Properties: topicProps,

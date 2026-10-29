@@ -8,19 +8,27 @@ export function generateBudget(
   // Only synthesize when explicitly requested/configured
   if (!graph.budget) return;
 
-  const budgetProps: any = {
-    Budget: {
-      BudgetName: { "Fn::Sub": "${AWS::StackName}-budget" },
-      BudgetType: "COST",
-      TimeUnit: "MONTHLY",
-      BudgetLimit: {
-        Amount: graph.budget.amount,
-        Unit: graph.budget.unit || "USD",
-      },
-      CostFilters: {
-        TagKeyValue: [{ "Fn::Sub": "user:StackName$${AWS::StackName}" }],
-      },
+  const budgetKey = graph.budget.logicalId || "StackBudget";
+  const threshold = graph.budget.threshold ?? 80;
+
+  const budgetInner: any = {
+    BudgetName: graph.budget.budgetName || { "Fn::Sub": "${AWS::StackName}-budget" },
+    BudgetType: "COST",
+    TimeUnit: "MONTHLY",
+    BudgetLimit: {
+      Amount: graph.budget.amount,
+      Unit: graph.budget.unit || "USD",
     },
+  };
+
+  if (graph.budget.filterByStack) {
+    budgetInner.CostFilters = {
+      TagKeyValue: [{ "Fn::Sub": "user:StackName$${AWS::StackName}" }],
+    };
+  }
+
+  const budgetProps: any = {
+    Budget: budgetInner,
   };
 
   const targetTopic = graph.budget.topicName
@@ -38,7 +46,7 @@ export function generateBudget(
         Notification: {
           NotificationType: "ACTUAL",
           ComparisonOperator: "GREATER_THAN",
-          Threshold: 80,
+          Threshold: threshold,
           ThresholdType: "PERCENTAGE",
         },
         Subscribers: [
@@ -51,7 +59,7 @@ export function generateBudget(
     ];
   }
 
-  resources["StackBudget"] = {
+  resources[budgetKey] = {
     Type: "AWS::Budgets::Budget",
     Properties: budgetProps,
   };

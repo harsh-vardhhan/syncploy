@@ -151,16 +151,16 @@ export function extractMutationsFromNode(
           const urlArg = callArgs[0]!;
           let rawUrl: string | undefined;
 
-          if (urlArg.isKind(SyntaxKind.StringLiteral)) {
-            rawUrl = urlArg.getLiteralValue();
-          } else if (urlArg.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) {
+          if (urlArg.isKind(SyntaxKind.StringLiteral) || urlArg.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) {
             rawUrl = urlArg.getLiteralValue();
           }
 
           if (rawUrl) {
             let isExternal = false;
-            try {
-              if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+            let urlPath: string | undefined;
+
+            if (rawUrl.startsWith("http://") || rawUrl.startsWith("https://")) {
+              try {
                 const parsed = new URL(rawUrl);
                 const host = parsed.hostname.toLowerCase();
                 isExternal =
@@ -168,19 +168,48 @@ export function extractMutationsFromNode(
                   !host.includes("127.0.0.1") &&
                   !host.includes("execute-api") &&
                   !host.includes("lambda-url");
+                if (!isExternal) {
+                  urlPath = parsed.pathname;
+                }
+              } catch {
+                isExternal = true;
               }
-            } catch {
-              // Ignore invalid URL
+            } else if (rawUrl.startsWith("/")) {
+              urlPath = rawUrl;
             }
 
-            if (!isExternal) {
+            if (!isExternal && urlPath) {
               for (const api of knownApis) {
                 const normPath = api.path.startsWith("/") ? api.path : `/${api.path}`;
-                if (rawUrl.startsWith("/")) {
-                  if (rawUrl === normPath || rawUrl.startsWith(`${normPath}/`)) {
-                    if (!httpInvoked.includes(api.id)) {
-                      httpInvoked.push(api.id);
-                    }
+                if (urlPath === normPath || urlPath.startsWith(`${normPath}/`)) {
+                  if (!httpInvoked.includes(api.id)) {
+                    httpInvoked.push(api.id);
+                  }
+                }
+              }
+            }
+          } else if (urlArg.isKind(SyntaxKind.TemplateExpression)) {
+            const templateText = urlArg.getText().toLowerCase();
+            const isExternal =
+              templateText.includes("stripe.com") ||
+              templateText.includes("github.com") ||
+              templateText.includes("slack.com") ||
+              templateText.includes("twilio.com") ||
+              templateText.includes("sendgrid.net");
+
+            if (!isExternal) {
+              const spans = urlArg.getTemplateSpans();
+              const tailText = spans.length > 0 ? spans[spans.length - 1]!.getLiteral().getLiteralText() : "";
+              for (const api of knownApis) {
+                const normPath = api.path.startsWith("/") ? api.path : `/${api.path}`;
+                if (
+                  tailText === normPath ||
+                  tailText.startsWith(`${normPath}/`) ||
+                  tailText.endsWith(normPath) ||
+                  (normPath !== "/" && tailText.includes(normPath))
+                ) {
+                  if (!httpInvoked.includes(api.id)) {
+                    httpInvoked.push(api.id);
                   }
                 }
               }

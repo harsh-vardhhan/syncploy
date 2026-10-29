@@ -10,6 +10,7 @@ export * from "./alarm";
 export * from "./auth";
 export * from "./delivery-stream";
 export * from "./container";
+export * from "./budget";
 export * from "./types";
 import type { ContainerOptions } from "./container";
 import type { Duration, MemorySize, CorsOptions, PolicyStatement } from "./types";
@@ -42,6 +43,11 @@ export interface RequestContext {
 
 export type IngressType = "api-gateway" | "function-url";
 
+export interface ApiThrottleOptions {
+  rateLimit?: number;
+  burstLimit?: number;
+}
+
 export interface ApiOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "OPTIONS";
   path: string;
@@ -50,6 +56,8 @@ export interface ApiOptions {
   timeout?: Duration;
   memory?: MemorySize;
   concurrency?: number;
+  throttle?: ApiThrottleOptions;
+  detailedMetrics?: boolean;
   cors?: CorsOptions | boolean;
   policies?: PolicyStatement[];
   environment?: Record<string, string>;

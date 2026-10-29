@@ -62,12 +62,12 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
         );
       }
     } else {
-      // API Gateway route concurrency guard
-      if (api.concurrency === undefined) {
+      // API Gateway route concurrency & throttling guard
+      if (api.concurrency === undefined && api.throttle === undefined) {
         ctx.addWarning(
           "WARN_DOW_UNRESERVED_CONCURRENCY",
           api.id,
-          `API Gateway route '${api.id}' (${api.method} ${api.path}) has no 'concurrency' limit. Under a DDoS attack or traffic surge, Lambda will scale to account limits (1,000+ executions) causing severe Denial-of-Wallet. Consider configuring 'concurrency: <number>'.`,
+          `API Gateway route '${api.id}' (${api.method} ${api.path}) has neither 'concurrency' nor 'throttle' configured. Under a DDoS attack or traffic surge, Lambda will scale to account limits (1,000+ executions) causing severe Denial-of-Wallet. Consider configuring 'concurrency: <number>' or 'throttle: { rateLimit, burstLimit }'.`,
           api.sourceFile
         );
       }

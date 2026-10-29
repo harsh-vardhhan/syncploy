@@ -23,6 +23,18 @@ export interface ValidationOptions {
 }
 
 export interface ValidationContext {
-  addError(code: string, constructId: string, message: string, sourceFile?: string): void;
-  addWarning(code: string, constructId: string, message: string, sourceFile?: string): void;
+  addError(
+    code: string,
+    constructId: string,
+    message: string,
+    sourceFile?: string,
+    candidateConstructIds?: string[]
+  ): void;
+  addWarning(
+    code: string,
+    constructId: string,
+    message: string,
+    sourceFile?: string,
+    candidateConstructIds?: string[]
+  ): void;
 }

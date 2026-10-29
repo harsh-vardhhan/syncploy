@@ -12,8 +12,8 @@ export function generateApiGateway(
   resources: Record<string, any>,
   outputs: Record<string, any>
 ): void {
-  const hasApiGateway = graph.apis.some((a) => a.ingress !== "function-url");
-  if (!hasApiGateway) return;
+  const httpApis = (graph.apis || []).filter((a) => a.ingress !== "function-url");
+  if (httpApis.length === 0) return;
 
   resources["HttpApi"] = {
     Type: "AWS::ApiGatewayV2::HttpApi",
@@ -25,21 +25,39 @@ export function generateApiGateway(
         AllowMethods: ["*"],
         AllowHeaders: ["*"],
       },
+      Tags: {
+        "user:StackName": { "Fn::Sub": "${AWS::StackName}" },
+      },
     },
   };
 
+  const routeSettings: Record<string, any> = {};
+  for (const api of httpApis) {
+    if (api.throttle || api.detailedMetrics !== undefined) {
+      const normPath = api.path.startsWith("/") ? api.path : `/${api.path}`;
+      const apiGatewayPath = normPath.replace(/:([a-zA-Z0-9_]+)/g, "{$1}");
+      const routeKey = `${api.method} ${apiGatewayPath}`;
+      const s: any = {};
+      if (api.throttle?.burstLimit !== undefined) s.ThrottlingBurstLimit = api.throttle.burstLimit;
+      if (api.throttle?.rateLimit !== undefined) s.ThrottlingRateLimit = api.throttle.rateLimit;
+      if (api.detailedMetrics !== undefined) s.DetailedMetricsEnabled = api.detailedMetrics;
+      routeSettings[routeKey] = s;
+    }
+  }
+
+  const stageProps: any = {
+    ApiId: { Ref: "HttpApi" },
+    StageName: "$default",
+    AutoDeploy: true,
+  };
+
+  if (Object.keys(routeSettings).length > 0) {
+    stageProps.RouteSettings = routeSettings;
+  }
+
   resources["HttpApiStage"] = {
     Type: "AWS::ApiGatewayV2::Stage",
-    Properties: {
-      ApiId: { Ref: "HttpApi" },
-      StageName: "$default",
-      AutoDeploy: true,
-      DefaultRouteSettings: {
-        DetailedMetricsEnabled: true,
-        ThrottlingBurstLimit: 100,
-        ThrottlingRateLimit: 50,
-      },
-    },
+    Properties: stageProps,
   };
 
   outputs["ApiEndpoint"] = {
@@ -113,6 +131,10 @@ export function generateLambdaApis(
     if (api.concurrency !== undefined) {
       funcProps["ReservedConcurrentExecutions"] = api.concurrency;
     }
+
+    funcProps["Tags"] = [
+      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+    ];
 
     resources[funcKey] = {
       Type: "AWS::Lambda::Function",

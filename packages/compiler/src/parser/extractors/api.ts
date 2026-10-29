@@ -95,6 +95,29 @@ export function extractApiRoute(
   const memory = extractMemory(optionsObj.getProperty("memory"));
   const concurrency = extractNumber(optionsObj.getProperty("concurrency"));
   const cors = extractCors(optionsObj.getProperty("cors"));
+
+  let throttle: { rateLimit?: number; burstLimit?: number } | undefined;
+  const throttleProp = optionsObj.getProperty("throttle");
+  if (throttleProp && throttleProp.isKind(SyntaxKind.PropertyAssignment)) {
+    const init = throttleProp.getInitializer();
+    if (init && init.isKind(SyntaxKind.ObjectLiteralExpression)) {
+      const rate = extractNumber(init.getProperty("rateLimit"));
+      const burst = extractNumber(init.getProperty("burstLimit"));
+      if (rate !== undefined || burst !== undefined) {
+        throttle = {
+          ...(rate !== undefined ? { rateLimit: rate } : {}),
+          ...(burst !== undefined ? { burstLimit: burst } : {}),
+        };
+      }
+    }
+  }
+
+  const detailedMetricsProp = optionsObj.getProperty("detailedMetrics");
+  const detailedMetrics =
+    detailedMetricsProp && detailedMetricsProp.isKind(SyntaxKind.PropertyAssignment)
+      ? detailedMetricsProp.getInitializer()?.getText() === "true"
+      : undefined;
+
   const policies = extractPolicies(optionsObj.getProperty("policies"));
   const environment = extractEnvironment(optionsObj.getProperty("environment"));
   const container = extractContainer(optionsObj.getProperty("container"));
@@ -127,6 +150,8 @@ export function extractApiRoute(
     timeout,
     memory,
     concurrency,
+    throttle,
+    detailedMetrics,
     cors,
     policies,
     environment,

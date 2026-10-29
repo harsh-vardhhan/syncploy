@@ -51,6 +51,8 @@ export interface ApiRouteIR {
   timeout?: number | undefined; // in seconds
   memory?: number | undefined; // in MB
   concurrency?: number | undefined; // ReservedConcurrentExecutions
+  throttle?: { rateLimit?: number | undefined; burstLimit?: number | undefined } | undefined;
+  detailedMetrics?: boolean | undefined;
   cors?: CorsConfig | boolean | undefined;
   policies?: PolicyStatementIR[] | undefined;
   environment?: Record<string, string> | undefined;
@@ -321,9 +323,16 @@ export interface ElectroEntityIR {
 }
 
 export interface BudgetIR {
+  id: string;
   amount: number;
   unit?: string | undefined;
   topicName?: string | undefined;
+  threshold?: number | undefined;
+  logicalId?: string | undefined;
+  budgetName?: string | undefined;
+  filterByStack?: boolean | undefined;
+  sourceFile?: string | undefined;
+  suppressions?: Record<string, string> | undefined;
 }
 
 export interface ResourceGraph {

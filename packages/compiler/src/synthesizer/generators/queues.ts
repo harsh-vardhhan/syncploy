@@ -25,7 +25,10 @@ export function generateQueues(
       }
       resources[dlqKey] = {
         Type: "AWS::SQS::Queue",
-        ...(Object.keys(dlqProps).length > 0 ? { Properties: dlqProps } : {}),
+        Properties: {
+          ...dlqProps,
+          Tags: [{ Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } }],
+        },
       };
 
       queueProps["RedrivePolicy"] = {
@@ -33,6 +36,10 @@ export function generateQueues(
         maxReceiveCount: queue.deadLetterQueue.maxReceiveCount,
       };
     }
+
+    queueProps["Tags"] = [
+      { Key: "user:StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+    ];
 
     resources[resourceKey] = {
       Type: "AWS::SQS::Queue",
