@@ -14,21 +14,29 @@ import {
   Flame,
 } from "lucide-react";
 
+function RunawayLiveTicker() {
+  const [bill, setBill] = useState(14820.5);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBill((prev) =>
+        prev > 88000 ? 14820.5 : prev + Math.floor(Math.random() * 85 + 25)
+      );
+    }, 160);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <span>
+      ${bill.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+    </span>
+  );
+}
+
 export function Hero() {
   const [copied, setCopied] = useState(false);
   const [activeScenario, setActiveScenario] = useState<"standard" | "syncploy">("standard");
-  const [billCounter, setBillCounter] = useState(14820.5);
   const installCmd = "bun add @syncploy/sdk";
-
-  // Automated background ticker showing the runaway bill risk on standard AWS
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setBillCounter((prev) =>
-        prev > 88000 ? 14820.5 : prev + Math.floor(Math.random() * 85 + 25)
-      );
-    }, 200);
-    return () => clearInterval(interval);
-  }, []);
 
   // Silky smooth card shuffle transition: automatically alternates active card in depth deck
   useEffect(() => {
@@ -220,17 +228,14 @@ export function Hero() {
             </div>
 
             {/* Depth Deck Container with Fixed Boundary to Prevent Any Layout Shift */}
-            <div className="relative w-full max-w-[420px] h-[245px] sm:h-[255px] mx-auto select-none">
+            <div className="relative w-full max-w-[420px] h-[255px] sm:h-[265px] mx-auto select-none">
               {/* Card 1: Standard AWS (The Risk) */}
               <div
                 onClick={() => setActiveScenario("standard")}
-                style={{
-                  animation: activeScenario === "standard" ? "card-overheat 2.5s infinite ease-in-out" : "none",
-                }}
                 className={`absolute inset-x-0 top-0 rounded-2xl p-5 sm:p-6 border text-white transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer will-change-transform ${
                   activeScenario === "standard"
                     ? "z-20 translate-x-0 translate-y-0 scale-100 rotate-0 opacity-100 bg-gradient-to-tr from-rose-950 via-slate-900 to-rose-950 border-rose-400 dark:border-rose-500/80 shadow-2xl shadow-rose-600/30 ring-1 ring-rose-500/40"
-                    : "z-10 translate-x-3 translate-y-4 sm:translate-x-5 sm:translate-y-5 scale-[0.93] rotate-2 opacity-65 hover:opacity-90 bg-gradient-to-tr from-rose-950/80 via-slate-900/90 to-rose-950/80 border-rose-500/30 shadow-lg"
+                    : "z-10 translate-x-4 translate-y-4 sm:translate-x-6 sm:translate-y-5 scale-[0.96] rotate-2 opacity-85 hover:opacity-100 bg-gradient-to-tr from-rose-950/95 via-slate-900/90 to-rose-950/95 border-rose-500/40 shadow-xl ring-1 ring-rose-500/20"
                 }`}
               >
                 {/* Header & Chip */}
@@ -256,7 +261,7 @@ export function Hero() {
                     <span className="text-[10px] font-mono text-rose-400 font-bold animate-pulse">+$148.00 / min</span>
                   </div>
                   <div className="font-mono text-3xl sm:text-4xl font-black text-rose-400 tracking-tight animate-pulse">
-                    ${billCounter.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <RunawayLiveTicker />
                     <span className="text-xs font-mono font-normal text-slate-400 ml-2">USD</span>
                   </div>
                 </div>
@@ -279,13 +284,10 @@ export function Hero() {
               {/* Card 2: With Syncploy (Vault Locked) */}
               <div
                 onClick={() => setActiveScenario("syncploy")}
-                style={{
-                  animation: activeScenario === "syncploy" ? "vault-lock 0.8s ease-out forwards" : "none",
-                }}
                 className={`absolute inset-x-0 top-0 rounded-2xl p-5 sm:p-6 border text-white transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer will-change-transform ${
                   activeScenario === "syncploy"
-                    ? "z-20 translate-x-0 translate-y-0 scale-100 rotate-0 opacity-100 bg-gradient-to-tr from-slate-900 via-emerald-950 to-slate-900 border-emerald-400 dark:border-cyan-500/80 shadow-2xl shadow-emerald-500/20 ring-1 ring-emerald-500/40"
-                    : "z-10 translate-x-3 translate-y-4 sm:translate-x-5 sm:translate-y-5 scale-[0.93] -rotate-2 opacity-65 hover:opacity-90 bg-gradient-to-tr from-slate-900/90 via-emerald-950/80 to-slate-900/90 border-emerald-500/30 shadow-lg"
+                    ? "z-20 translate-x-0 translate-y-0 scale-100 rotate-0 opacity-100 bg-gradient-to-tr from-slate-900 via-emerald-950 to-slate-900 border-emerald-400 dark:border-cyan-500/80 shadow-2xl shadow-emerald-500/25 ring-1 ring-emerald-500/50"
+                    : "z-10 translate-x-4 translate-y-4 sm:translate-x-6 sm:translate-y-5 scale-[0.96] rotate-2 opacity-85 hover:opacity-100 bg-gradient-to-tr from-slate-900/95 via-emerald-950/90 to-slate-900/95 border-emerald-500/40 shadow-xl ring-1 ring-emerald-500/20"
                 }`}
               >
                 {/* Ambient Card Gloss */}
