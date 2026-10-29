@@ -1,12 +1,39 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Copy, Check, Terminal, Shield, Zap, RefreshCw, Bot } from "lucide-react";
+import {
+  ArrowRight,
+  Copy,
+  Check,
+  Terminal,
+  Shield,
+  Zap,
+  RefreshCw,
+  Bot,
+  Lock,
+  Flame,
+  CheckCircle2,
+} from "lucide-react";
 
 export function Hero() {
   const [copied, setCopied] = useState(false);
+  const [cardMode, setCardMode] = useState<"syncploy" | "standard">("syncploy");
+  const [billCounter, setBillCounter] = useState(14.2);
   const installCmd = "bun add @syncploy/sdk";
+
+  useEffect(() => {
+    if (cardMode === "standard") {
+      const interval = setInterval(() => {
+        setBillCounter((prev) =>
+          prev > 48000 ? 1284.5 : prev + Math.floor(Math.random() * 85 + 25)
+        );
+      }, 80);
+      return () => clearInterval(interval);
+    } else {
+      setBillCounter(0.42);
+    }
+  }, [cardMode]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(installCmd);
@@ -151,6 +178,127 @@ export function Hero() {
             >
               /llms.txt &rarr;
             </a>
+          </div>
+        </div>
+
+        {/* Denial-of-Wallet Live Shield Credit Card Graphic */}
+        <div className="pt-2 max-w-lg mx-auto">
+          {/* Interactive Mode Toggle */}
+          <div className="p-1 rounded-2xl bg-slate-100 dark:bg-[#151822] border border-slate-200 dark:border-[#262B3D] inline-flex items-center gap-1.5 shadow-xs mb-4">
+            <button
+              type="button"
+              onClick={() => setCardMode("syncploy")}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                cardMode === "syncploy"
+                  ? "bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-md shadow-emerald-600/30 scale-[1.02]"
+                  : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <Shield className="h-3.5 w-3.5" />
+              <span>With Syncploy (Vault Locked)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCardMode("standard")}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                cardMode === "standard"
+                  ? "bg-rose-600 text-white shadow-md shadow-rose-600/30 scale-[1.02]"
+                  : "text-slate-600 dark:text-neutral-400 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <Flame className="h-3.5 w-3.5" />
+              <span>Standard AWS (The Risk)</span>
+            </button>
+          </div>
+
+          {/* Physical Stylized Card */}
+          <div
+            style={{
+              animation:
+                cardMode === "standard"
+                  ? "card-overheat 2.5s infinite ease-in-out"
+                  : "vault-lock 0.8s ease-out forwards",
+            }}
+            className={`relative mx-auto w-full rounded-2xl p-5 sm:p-6 border text-white transition-all duration-700 transform ${
+              cardMode === "standard"
+                ? "bg-gradient-to-tr from-rose-950 via-slate-900 to-rose-950 border-rose-400 dark:border-rose-500/80 shadow-2xl shadow-rose-600/30 -rotate-1"
+                : "bg-gradient-to-tr from-slate-900 via-emerald-950 to-slate-900 border-emerald-400 dark:border-cyan-500/80 shadow-2xl shadow-emerald-500/20 dark:shadow-cyan-500/30 rotate-0"
+            }`}
+          >
+            {/* Ambient Card Gloss */}
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
+
+            {/* Card Header & Chip */}
+            <div className="relative flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-7 rounded-md bg-amber-400/90 border border-amber-300 flex items-center justify-center shadow-xs">
+                  <div className="w-5 h-4 border border-amber-600/60 rounded-xs bg-amber-400/40" />
+                </div>
+                <span className="text-[10px] font-mono tracking-widest text-slate-300 uppercase">EMV SECURE</span>
+              </div>
+              <div className="font-mono text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                <span>AWS CLOUD</span>
+                {cardMode === "standard" ? (
+                  <Flame className="h-4 w-4 text-rose-400 animate-bounce" />
+                ) : (
+                  <Lock className="h-4 w-4 text-emerald-400" />
+                )}
+              </div>
+            </div>
+
+            {/* Card Number / Spend Ticker */}
+            <div className="relative space-y-1 mb-5 text-left">
+              <div className="text-[10px] font-mono text-slate-300 uppercase tracking-widest flex items-center justify-between">
+                <span>Live Month-To-Date Spend</span>
+                <span className="text-[10px] font-mono text-slate-400">
+                  {cardMode === "standard" ? "+$148.00 / min" : "$0.00 / idle"}
+                </span>
+              </div>
+              <div
+                className={`font-mono text-3xl sm:text-4xl font-black tracking-tight transition-all duration-300 ${
+                  cardMode === "standard"
+                    ? "text-rose-400 animate-pulse"
+                    : "text-emerald-400"
+                }`}
+              >
+                ${billCounter.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <span className="text-xs font-mono font-normal text-slate-400 ml-2">USD</span>
+              </div>
+            </div>
+
+            {/* Card Footer */}
+            <div className="relative flex items-center justify-between text-[11px] font-mono text-slate-300 pt-2 border-t border-white/10 text-left">
+              <div>
+                <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Cardholder</span>
+                <span className="text-white font-semibold">DEV ACCOUNT #9482</span>
+              </div>
+              <div className="text-right">
+                <span className="text-[9px] block text-slate-400 uppercase tracking-wider">Limit Status</span>
+                <span
+                  className={`font-bold ${
+                    cardMode === "standard" ? "text-rose-400 animate-pulse" : "text-cyan-400"
+                  }`}
+                >
+                  {cardMode === "standard" ? "UNBOUNDED RISK" : "VAULT SEALED (MAX $4.80)"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Explanatory Caption */}
+          <div className="mt-3 text-center text-xs font-mono">
+            {cardMode === "standard" ? (
+              <span className="text-rose-600 dark:text-rose-400 font-semibold inline-flex items-center justify-center gap-1.5">
+                <Flame className="h-3.5 w-3.5 shrink-0" />
+                <span>Uncapped concurrency: 1 rogue loop can drain your bank limit overnight.</span>
+              </span>
+            ) : (
+              <span className="text-emerald-700 dark:text-emerald-400 font-semibold inline-flex items-center justify-center gap-1.5">
+                <Shield className="h-3.5 w-3.5 shrink-0" />
+                <span>Mathematical cost ceiling: reserved concurrency &amp; rate limits cap maximum burn.</span>
+              </span>
+            )}
           </div>
         </div>
 
