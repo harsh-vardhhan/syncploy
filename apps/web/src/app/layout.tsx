@@ -5,9 +5,37 @@ import { Footer } from "@/components/Footer";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
-  title: "Syncploy - The Terraform for AWS Serverless",
+  title: {
+    default: "Syncploy — The Zero-DoW Serverless Framework for AWS",
+    template: "%s | Syncploy",
+  },
   description:
-    "Type-safe infrastructure synthesized straight from your TypeScript code — zero YAML, zero state files, zero data-loss replacements.",
+    "Build on AWS. Sleep Through the Night. The pure TypeScript serverless framework with compile-time Denial-of-Wallet immunity.",
+  keywords: [
+    "aws",
+    "serverless",
+    "denial of wallet",
+    "zero dow",
+    "ddos protection",
+    "lambda",
+    "dynamodb",
+    "typescript",
+    "cloudformation",
+  ],
+  openGraph: {
+    title: "Syncploy — The Zero-DoW Serverless Framework for AWS",
+    description:
+      "Build on AWS. Sleep Through the Night. Stop paying the PaaS tax out of fear of AWS.",
+    url: "https://www.syncploy.com",
+    siteName: "Syncploy",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Syncploy — The Zero-DoW Serverless Framework for AWS",
+    description:
+      "Build on AWS. Sleep Through the Night. Stop paying the PaaS tax out of fear of AWS.",
+  },
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },

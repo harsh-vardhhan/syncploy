@@ -1,4 +1,5 @@
 import React from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DOCS_DATA } from "@/data/docs";
 import Link from "next/link";
@@ -7,6 +8,16 @@ import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const doc = DOCS_DATA.find((d) => d.slug === slug);
+  if (!doc) return { title: "Documentation" };
+  return {
+    title: doc.title,
+    description: doc.description,
+  };
 }
 
 export async function generateStaticParams() {
