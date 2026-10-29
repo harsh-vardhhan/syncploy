@@ -26,7 +26,7 @@ console.log(`✓ Copied ${DOCS_DATA.length} markdown docs to public/docs/*.md`);
 // 2. Generate public/llms.txt
 const llmsTxtContent = `# Syncploy
 
-> The Terraform for AWS Serverless. Infrastructure-from-Code (IfC) compiler and runtime SDK for TypeScript. Write idiomatic TypeScript; synthesize 1:1 CloudFormation with zero YAML, zero state files, and zero data-loss replacements.
+> The Zero-DoW (Denial of Wallet) Serverless Framework for AWS. Pure TypeScript framework with compile-time Denial-of-Wallet immunity. Write idiomatic TypeScript; synthesize 1:1 CloudFormation with zero YAML, zero state files, and zero data-loss replacements.
 
 Syncploy is a static compiler and SDK for Pure AWS Serverless. Instead of maintaining handwritten YAML (SAM / Serverless Framework) or imperative multi-language graphs (AWS CDK / Pulumi), developers author application logic in standard TypeScript. The Syncploy compiler statically analyzes the AST (ts-morph), infers the serverless infrastructure graph, validates event cycles, and deterministically synthesizes 1:1 CloudFormation templates with zero stateful replacements.
 
@@ -132,7 +132,7 @@ console.log("✓ Generated public/llms.txt");
 // 3. Generate public/llms-full.txt
 let llmsFullContent = `# Syncploy — Full Documentation Knowledge Base
 
-> The Terraform for AWS Serverless. Infrastructure-from-Code (IfC) compiler and runtime SDK for TypeScript.
+> The Zero-DoW (Denial of Wallet) Serverless Framework for AWS. Pure TypeScript framework with compile-time Denial-of-Wallet immunity.
 > Complete combined documentation bundle for AI coding agents and LLMs.
 
 ---

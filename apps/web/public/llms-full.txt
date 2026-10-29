@@ -1,6 +1,6 @@
 # Syncploy — Full Documentation Knowledge Base
 
-> The Terraform for AWS Serverless. Infrastructure-from-Code (IfC) compiler and runtime SDK for TypeScript.
+> The Zero-DoW (Denial of Wallet) Serverless Framework for AWS. Pure TypeScript framework with compile-time Denial-of-Wallet immunity.
 > Complete combined documentation bundle for AI coding agents and LLMs.
 
 ---
