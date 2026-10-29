@@ -189,7 +189,7 @@ export function RuleExplorer() {
             <div
               key={rule.id}
               id={rule.docsAnchor}
-              className="rounded-2xl border border-slate-200 dark:border-slate-800/90 bg-white dark:bg-slate-900/60 shadow-sm overflow-hidden hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+              className="rounded-2xl border border-slate-200 dark:border-slate-800/90 bg-white dark:bg-slate-900/60 shadow-sm overflow-hidden hover:border-slate-300 dark:hover:border-slate-700 transition-all scroll-mt-28"
             >
               {/* Card Header */}
               <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800/70 space-y-3">

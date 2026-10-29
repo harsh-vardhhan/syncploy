@@ -210,12 +210,22 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
     }
 
     if (line.startsWith("## ")) {
+      const title = line.replace("## ", "").trim();
+      const id = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
       elements.push(
         <h2
           key={`h2-${i}`}
-          className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight mt-10 mb-3 border-b border-slate-200 dark:border-[#232736] pb-2"
+          id={id}
+          className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight mt-10 mb-3 border-b border-slate-200 dark:border-[#232736] pb-2 scroll-mt-24 group flex items-center justify-between"
         >
-          {line.replace("## ", "")}
+          <span>{title}</span>
+          <a
+            href={`#${id}`}
+            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-opacity text-base font-normal"
+            title="Direct link to heading"
+          >
+            #
+          </a>
         </h2>
       );
       i++;
@@ -223,12 +233,22 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
     }
 
     if (line.startsWith("### ")) {
+      const title = line.replace("### ", "").trim();
+      const id = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
       elements.push(
         <h3
           key={`h3-${i}`}
-          className="text-lg font-semibold text-slate-900 dark:text-white tracking-tight mt-6 mb-2"
+          id={id}
+          className="text-lg font-semibold text-slate-900 dark:text-white tracking-tight mt-6 mb-2 scroll-mt-24 group flex items-center justify-between"
         >
-          {line.replace("### ", "")}
+          <span>{title}</span>
+          <a
+            href={`#${id}`}
+            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-opacity text-sm font-normal"
+            title="Direct link to heading"
+          >
+            #
+          </a>
         </h3>
       );
       i++;

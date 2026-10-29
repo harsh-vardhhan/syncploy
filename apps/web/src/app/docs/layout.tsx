@@ -36,7 +36,7 @@ export default function DocsLayout({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col lg:flex-row gap-8">
+    <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 flex flex-col lg:flex-row gap-8 justify-between">
       {/* Mobile/Tablet Docs Navigator (visible on < lg) */}
       <div className="lg:hidden w-full">
         <button
@@ -192,7 +192,7 @@ export default function DocsLayout({
       </aside>
 
       {/* Main Content Pane */}
-      <div className="flex-1 min-w-0 max-w-4xl pb-16">{children}</div>
+      <div className="flex-1 min-w-0 pb-16">{children}</div>
     </div>
   );
 }

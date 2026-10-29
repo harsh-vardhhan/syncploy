@@ -903,38 +903,11 @@ export const badStreamWorker = patientTable.stream({ batchSize: 50 }, async (rec
 
 ---
 
-## 4. Comprehensive Audit Rules Reference
+## 4. Pre-Flight Denial-of-Wallet Rules Catalog
 
-Below is the complete 26-rule audit catalog enforced by Syncploy's pre-flight compiler:
+Below is the complete 26-rule catalog enforced by Syncploy's pre-flight compiler before synthesis. Each rule is executed deterministically in $<1\text{ms}$ during AST parsing.
 
-| Rule Code | Severity | Layer | Service | Risk & Description | Remediation |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| `ERR_RECURSIVE_LOOP` | **Fatal Error** | Recursion | DynamoDB, SQS, S3 | Exponential self-amplifying Lambda cascades | Break mutation cycle or use downstream queue |
-| `ERR_SQS_TIMEOUT_MISMATCH` | **Fatal Error** | Recursion | Amazon SQS | Queue visibility shorter than consumer timeout | Set `visibilityTimeout >= 6 * timeout` |
-| `WARN_SQS_VISIBILITY_TIMEOUT_SHORT` | Warning | Recursion | Amazon SQS | Visibility is below AWS 6x safety ratio | Increase visibilityTimeout to $\ge 6\times$ timeout |
-| `WARN_DOW_UNRESERVED_CONCURRENCY` | Warning | Compute | Function URL / API Gateway | Unthrottled DDoS scales Lambdas to account limits | Add `concurrency: <number>` to cap blast radius |
-| `WARN_DOW_PUBLIC_API_BURST` | Warning | Compute | Lambda & CORS | Wildcard CORS endpoint with high memory/timeout | Configure `concurrency` or restrict allowOrigins |
-| `WARN_DOW_STREAM_UNBOUNDED` | Warning | Compute | DynamoDB Streams | Shard split bursts spawn uncontrolled parallel workers | Configure `concurrency: <number>` on stream |
-| `WARN_DOW_STREAM_RETRY_UNLIMITED` | Warning | Recursion | DynamoDB Streams | Unlimited retries (-1) locks shards for 24 hours | Configure `retryAttempts: 3` and attach DLQ |
-| `WARN_DOW_STREAM_MISSING_DLQ` | Warning | Recursion | DynamoDB Streams | Active stream consumer has no failure destination | Configure `onFailure: "myDlqQueue"` |
-| `WARN_DOW_MISSING_DLQ` | Warning | Recursion | Amazon SQS | Poison-pill messages retry continuously for 14 days | Add `deadLetterQueue: { maxReceiveCount: 3 }` |
-| `WARN_DOW_DYNAMODB_SCAN` | Warning | Recursion | Amazon DynamoDB | $O(N)$ read amplification drains Read Capacity Units | Use indexed `query()` or ElectroDB secondary index |
-| `WARN_HTTP_RECURSIVE_LOOP` | Warning | Recursion | HTTP Ingress | Endpoint invokes itself via internal HTTP fetch | Call shared TypeScript domain logic directly |
-| `INFO_DOW_LOG_ROTATION` | Advisory | Storage | CloudWatch Logs | Never Expire log streams accumulate storage fees | Auto-synthesizes `RetentionInDays: 14` |
-| `INFO_DOW_S3_MULTIPART_ABORT` | Advisory | Storage | Amazon S3 | Abandoned multipart upload fragments stored forever | Auto-synthesizes `DaysAfterInitiation: 7` rule |
-| `WARN_DOW_SMS_TOLL_FRAUD` | Warning | Governance | SNS & Cognito | Premium international SMS toll fraud ($0.50+/SMS) | Use email auth, set SNS SMS account spend limits |
-| `WARN_DOW_HIGH_BLAST_RADIUS` | Warning | Governance | AWS Budgets | Stack compute liability $> \$100/\text{mo}$ without budget | Declare `new Budget("monthly-cap", ...)` |
-| `WARN_DOW_CONCURRENCY_BUDGET_EXCEEDED` | Warning | Compute | Lambda Quotas | Stack reserved concurrency exceeds 900 of 1,000 limit | Request Service Quota increase or reduce caps |
-| `ERR_BUDGET_INVALID_AMOUNT` | **Fatal Error** | Governance | AWS Budgets | Budget amount is zero, negative, or missing | Set positive static literal (e.g. `amount: 50`) |
-| `ERR_BUDGET_INVALID_THRESHOLD` | **Fatal Error** | Governance | AWS Budgets | Budget threshold percentage invalid or negative | Set positive percentage literal (e.g. `threshold: 80`) |
-| `ERR_BUDGET_INVALID_UNIT` | **Fatal Error** | Governance | AWS Budgets | Currency unit is not a 3-letter ISO code | Use standard code like `'USD'` or `'EUR'` |
-| `ERR_BUDGET_INVALID_FILTER` | **Fatal Error** | Governance | AWS Budgets | Stack filter expression is dynamic or invalid | Pass static boolean `filterByStack: true` |
-| `ERR_BUDGET_UNRESOLVED_TOPIC` | **Fatal Error** | Governance | AWS Budgets & SNS | Notification topic does not exist in stack | Declare `new Topic(...)` or check topic name |
-| `ERR_DUPLICATE_BUDGET_ID` | **Fatal Error** | Governance | AWS Budgets | Two budgets share the same identifier | Use unique identifiers for each Budget |
-| `ERR_DUPLICATE_BUDGET_NAME` | **Fatal Error** | Governance | AWS Budgets | Two budgets specify identical physical budgetName | AWS Budgets names are account-global; use unique names |
-| `WARN_DOW_BUDGET_NO_NOTIFICATION` | Warning | Governance | AWS Budgets | Budget has no alert topic configured | Configure `topic: myAlertTopic` |
-| `WARN_DOW_BUDGET_TAG_ACTIVATION` | Advisory | Governance | AWS Billing | Stack-scoped filters report $0 without tag activation | Activate 'StackName' in AWS Billing Console |
-| `ERR_STATEFUL_REPLACEMENT` | **Fatal Error** | Governance | CloudFormation | Destructive table or bucket replacement intercepted | Match physical resource name or pass bypass flag |
+You can inspect, search, and copy verified code implementations for any rule in the **Interactive Rule Explorer** below or navigate directly using the **Rule Directory** in the right sidebar.
 
 ---
 
