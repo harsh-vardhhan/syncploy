@@ -1,7 +1,7 @@
 {
   "name": "@syncploy/sdk",
   "version": "0.1.7",
-  "description": "Infrastructure-from-Code (IfC) Runtime SDK for Pure AWS Serverless",
+  "description": "The Zero-DoW (Denial of Wallet) Serverless Framework SDK for AWS",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -31,8 +31,9 @@
   "keywords": [
     "aws",
     "serverless",
-    "infrastructure-from-code",
-    "ifc",
+    "denial-of-wallet",
+    "zero-dow",
+    "ddos-protection",
     "lambda",
     "dynamodb",
     "s3",

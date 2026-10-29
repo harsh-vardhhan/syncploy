@@ -4,8 +4,8 @@
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/harsh-vardhhan/syncploy/blob/main/LICENSE)
 [![GitHub](https://img.shields.io/badge/github-syncploy-black.svg)](https://github.com/harsh-vardhhan/syncploy)
 
-> **Runtime and type definitions for Syncploy — the Infrastructure-from-Code (IfC) Compiler for Pure AWS Serverless.**  
-> Declare serverless compute, storage, queues, and event pipelines directly in TypeScript with automatic least-privilege IAM and zero YAML.
+> **Runtime and type definitions for Syncploy — the Zero-DoW (Denial of Wallet) Serverless Framework for AWS.**  
+> Declare serverless compute, storage, queues, and event pipelines directly in TypeScript with compile-time Denial-of-Wallet immunity and zero YAML.
 
 ---
 

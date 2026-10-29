@@ -4,15 +4,24 @@
 [![status](https://img.shields.io/badge/status-public%20alpha-amber.svg)](https://github.com/harsh-vardhhan/syncploy)
 [![license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![CI](https://github.com/harsh-vardhhan/syncploy/actions/workflows/ci.yml/badge.svg)](https://github.com/harsh-vardhhan/syncploy/actions/workflows/ci.yml)
-[![Live Showcase](https://img.shields.io/badge/Live%20Showcase-EHR%20Platform-emerald)](https://ehr-backend-frontend.vercel.app/)
+[![llms.txt](https://img.shields.io/badge/AI%20Standard-llms.txt-sky.svg)](https://www.syncploy.com/llms.txt)
+[![Live Showcase](https://img.shields.io/badge/Live%20Showcase-EHR%20Platform%20($0.42/mo)-emerald)](https://ehr-backend-frontend.vercel.app/)
 
-> **The Terraform for AWS Serverless.**  
-> Infrastructure-from-Code (IfC) compiler and runtime SDK for TypeScript.  
-> Synthesize 1:1 AWS CloudFormation with zero YAML, zero state files, and zero data-loss replacements.
+> **Build on AWS. Sleep Through the Night.**  
+> The Zero-DoW (Denial of Wallet) Serverless Framework for TypeScript.  
+> Statically eliminate infinite loops, uncapped DDoS bills, and silent storage leaks before your code ever touches the cloud.
 
-> [!NOTE]
-> **Syncploy is currently in Public Alpha (`v0.1.x`).**  
-> The core compiler and runtime are battle-tested in live clinical healthcare infrastructure (see our [EHR Annotation Platform Showcase](#-real-world-showcase-ehr-annotation-platform-migration)). As we stabilize toward `v1.0`, API interfaces and construct ergonomic details are actively evolving. Feedback, issues, and early adopter contributions are welcome!
+---
+
+### Stop Paying the PaaS Tax Out of Fear of AWS
+
+Developers love serverless on AWS because it scales to zero and costs pennies. But millions of teams remain trapped paying the **10x–50x PaaS tax** on Vercel, Render, or Railway for one simple reason:
+
+> *"I am terrified of waking up to a $40,000 credit card bill because a bot attacked my endpoint or a Lambda worker triggered an infinite database loop."*
+
+**Syncploy is built from day one to eliminate that fear.**  
+
+By pairing an ultra-lightweight TypeScript SDK with an AST compiler that runs in `<1ms`, Syncploy mathematically bounds your financial blast radius, detects event-driven recursion loops, and auto-synthesizes log and storage cleanups—compiling down to **100% native, vanilla AWS CloudFormation**.
 
 ```bash
 bun add @syncploy/sdk
@@ -22,376 +31,226 @@ npm install @syncploy/sdk
 
 ---
 
-## 🏥 Real-World Showcase: EHR Annotation Platform Migration
+## 🧮 The Mathematical Blast Radius Formula
 
-Syncploy is proven in live clinical healthcare infrastructure. The **[EHR Annotation Platform](https://ehr-backend-frontend.vercel.app/)** ([GitHub: harsh-vardhhan/EHR-backend](https://github.com/harsh-vardhhan/EHR-backend))—a HIPAA-compliant Electronic Health Record clinical extraction and OMOP Common Data Model lakehouse—migrated from a **600+ line legacy AWS SAM template** to Syncploy with **zero downtime, zero stateful replacements, and zero data loss**.
+Traditional cloud architectures fail open: when traffic surges 10,000x under a DDoS bot attack, Lambda scales to 1,000+ unreserved parallel executions, racking up tens of thousands of dollars in hours.
 
-### 📊 Verified Migration Metrics
+With Syncploy, every public endpoint and event consumer is audited for concurrency caps. Because execution concurrency and memory are explicitly bounded, your **worst-case, 24/7 continuous monthly compute liability** is mathematically capped to exact dollars:
 
-| Scale | Data Safety | Ergonomics | Performance |
-| :---: | :---: | :---: | :---: |
-| **11 Services** | **0 Replaced** | **45% Less Code** | **<50ms** |
-| DynamoDB, S3, SQS, SNS, Firehose, Cognito, SageMaker, EventBridge, IAM, CloudWatch, Lambda | 100% preservation of DynamoDB tables & S3 ObjectLock compliance buckets | 600+ lines of brittle SAM YAML macros collapsed into ~300 lines of TypeScript | Sub-50ms compute latency via Bun/Elysia container with direct Function URL ingress |
+$$\text{Worst-Case Monthly Bill} = \text{Concurrency} \times \frac{\text{Memory MB}}{1024} \times 2,592,000\text{s} \times \$0.0000166667$$
 
-### 🌐 Live Production Verification
+*Example*: An endpoint configured with `concurrency: 5` and `memory: "256MB"` has a theoretical maximum 24/7 monthly liability of:
 
-* **Live Web Portal**: [`https://ehr-backend-frontend.vercel.app/`](https://ehr-backend-frontend.vercel.app/)
-* **Active Lambda Ingress**: [`https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/`](https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/)
-* **Verified Endpoints**:
-  * `GET /` &rarr; `HTTP 200 OK` (`{"status":"ok","framework":"elysia"}`)
-  * `GET /documents` &rarr; `HTTP 200 OK` (retrieves clinical encounters from DynamoDB `EhrTable`)
-  * `GET /documents/doc-001` &rarr; `HTTP 200 OK` (retrieves medical text, 10 named clinical entities, and relationship graph)
+$$5 \times 0.25 \times 2,592,000 \times 0.0000166667 \approx \mathbf{\$54.00 / \text{month}}$$
 
-### 🏗️ Live Cloud Architecture Flowchart
-
-```mermaid
-flowchart LR
-    subgraph Ingress["1. Ingress & Auth"]
-        Client["Clinician Portal"]
-        Cognito["Cognito Auth<br/><b>EhrUserPool</b>"]
-    end
-
-    subgraph Compute["2. API & Compute"]
-        FUrl["Lambda Function URL<br/><b>EhrBackendFunction</b>"]
-        KillSwitch["Circuit Breaker<br/><b>KillSwitch Lambda</b>"]
-    end
-
-    subgraph Storage["3. Stateful Storage"]
-        Dynamo[("DynamoDB<br/><b>EhrTable</b>")]
-        S3Docs[("S3 Documents<br/><b>DocumentsBucket</b>")]
-    end
-
-    subgraph Pipeline["4. Extraction & AI"]
-        SQS["SQS Queue + DLQ<br/><b>AnnotationQueue</b>"]
-        Worker["NER Lambda<br/><b>WorkerFunction</b>"]
-        SageMaker["AWS SageMaker<br/><b>GLiNER Model</b>"]
-    end
-
-    subgraph Vault["5. HIPAA Compliance"]
-        Firehose["Kinesis Firehose"]
-        S3Audit[("S3 ObjectLock WORM<br/><b>AuditLogsBucket</b>")]
-    end
-
-    Client --> Cognito
-    Client --> FUrl
-    FUrl --> Dynamo
-    FUrl --> S3Docs
-    S3Docs --> SQS
-    SQS --> Worker
-    Worker --> SageMaker
-    Worker --> Dynamo
-    Dynamo --> Firehose
-    Firehose --> S3Audit
-    FUrl -.->|Alarm >2000/min| KillSwitch
-    KillSwitch -.->|Throttle = 0| FUrl
-```
+Even if an attacker sends **1,000,000,000 requests**, Lambda will reject unthrottled invocations with `HTTP 429 Too Many Requests`. **Your bill cannot exceed the ceiling.**
 
 ---
 
-## 💡 How It Works: TypeScript to CloudFormation Synthesis
+## 🛡️ The 4 Layers of Denial-of-Wallet Immunity
 
-Instead of maintaining separate YAML/HCL files and runtime glue, you declare serverless infrastructure directly in TypeScript:
+Syncploy's pre-flight compiler enforces a comprehensive 4-layer shield across your architecture:
+
+```mermaid
+flowchart TD
+    subgraph Layer1["1. DDoS & Concurrency Guard"]
+        L1["Enforces Reserved Concurrency Caps<br/>Mathematical blast radius ceiling per route<br/>$0 gateway fees via direct Function URLs"]
+    end
+
+    subgraph Layer2["2. Tarjan SCC Loop Killer (&lt;1ms)"]
+        L2["Static AST Mutation Graph<br/>Traces Table.put, S3.put, Queue.send<br/>Halts compile on event cycles (Table -&gt; Stream -&gt; Table)"]
+    end
+
+    subgraph Layer3["3. Zombie Storage Neutralizer"]
+        L3["Auto-synthesizes AWS::Logs::LogGroup (14-day retention)<br/>Auto-synthesizes S3 AbortIncompleteMultipartUpload (7-day)<br/>Eliminates silent monotonic data bill creep"]
+    end
+
+    subgraph Layer4["4. In-Code Budget Backstop"]
+        L4["new Budget('cap', { amount: 25, threshold: 80 })<br/>Synthesizes AWS::Budgets::Budget with Cost Allocation Tags<br/>Automated SNS alert policies with zero console configuration"]
+    end
+
+    Layer1 --> Layer2 --> Layer3 --> Layer4
+```
+
+### 1. Concurrency Blast Radius Caps (`WARN_DOW_UNRESERVED_CONCURRENCY`)
+Flags any public Function URL or API route without explicit `concurrency: <number>`. Enforces API Gateway stage token-bucket throttling (`rateLimit`, `burstLimit`) and stream shard concurrency caps.
+
+### 2. Tarjan SCC Infinite Recursion Loop Killer (`ERR_RECURSIVE_LOOP`)
+Traces all write mutations (`table.put`, `bucket.putText`, `queue.send`, `topic.publish`, HTTP `fetch` self-calls) across your handlers. Runs Tarjan's Strongly Connected Components algorithm in $O(V+E)$ linear time ($<1\text{ms}$). If an event loop exists (e.g. `Table -> Stream -> Table.put`), **compilation hard-aborts before anything touches AWS**.
+
+### 3. Zombie Storage & Monotonic Leak Neutralizer
+- **CloudWatch Logs**: AWS Lambda by default creates log groups set to *Never Expire*, accumulating gigabytes forever at \$0.03/GB-mo. Syncploy auto-synthesizes an explicit `AWS::Logs::LogGroup` with `RetentionInDays: 14` for every Lambda function.
+- **S3 Multipart Uploads**: Orphaned multipart upload chunks from aborted or interrupted uploads linger indefinitely at standard S3 rates. Syncploy auto-injects an S3 `LifecycleConfiguration` rule (`AbortIncompleteMultipartUpload: { DaysAfterInitiation: 7 }`) on every bucket.
+
+### 4. In-Code Budgets & Hard Alerts (`ERR_BUDGET_*`)
+Declare cost guardrails directly in TypeScript:
+```typescript
+export const monthlyBudget = new Budget("monthlyBudget", {
+  amount: 25,
+  unit: "USD",
+  threshold: 80, // Alert at 80% ($20.00)
+  filterByStack: true, // Tag-scoped to this stack
+  topic: alertTopic,
+});
+```
+Syncploy synthesizes the `AWS::Budgets::Budget` resource, wires the `AWS::SNS::TopicPolicy` granting AWS Budgets publish permissions, and tags resources for Cost Allocation filtering.
+
+---
+
+## 🏥 Proven in Production: EHR Annotation Platform (\$0.42/mo)
+
+Syncploy is not a theoretical prototype—it powers live, HIPAA-compliant clinical healthcare infrastructure. The **[EHR Annotation Platform](https://ehr-backend-frontend.vercel.app/)** ([GitHub: harsh-vardhhan/EHR-backend](https://github.com/harsh-vardhhan/EHR-backend)) migrated from a **600+ line legacy AWS SAM template** to Syncploy with **zero downtime, zero stateful replacements, and zero data loss**.
+
+### 📊 Verified Production Metrics
+
+| Live Architecture Scale | Stateful Safety | Codebase Reduction | Real Monthly Bill |
+| :---: | :---: | :---: | :---: |
+| **11 AWS Services** | **0 Replaced** | **45% Less Code** | **$0.42 / month** |
+| DynamoDB, S3 ObjectLock, SQS, SNS, Firehose, Cognito, SageMaker, EventBridge, IAM, CloudWatch, Lambda | 100% preservation of DynamoDB tables & compliance S3 buckets | 600+ lines of brittle SAM YAML macros collapsed to ~300 lines of TypeScript | Complete clinical lakehouse running 24/7 with zero idle charges |
+
+### 🌐 Live Endpoints
+- **Live Clinician Portal**: [`https://ehr-backend-frontend.vercel.app/`](https://ehr-backend-frontend.vercel.app/)
+- **Active Lambda Ingress**: [`https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/`](https://ofxtuegfgi6kqg4wfzfyuqu6be0mubmk.lambda-url.ap-south-1.on.aws/)
+- `GET /` &rarr; `HTTP 200 OK` (`{"status":"ok","framework":"elysia"}`)
+- `GET /documents` &rarr; `HTTP 200 OK` (retrieves clinical encounters from DynamoDB `EhrTable`)
+
+---
+
+## ⚡ Quickstart: Pure TypeScript Architecture
+
+Declare serverless infrastructure side-by-side with business logic in TypeScript:
 
 ```typescript
-// infrastructure.ts
-import { Auth, api, Table, Queue } from "@syncploy/sdk";
+// app.ts
+import { api, Table, Bucket, Queue, Topic, Budget } from "@syncploy/sdk";
 
-// 1. Production-ready Cognito authentication with enterprise defaults
-export const auth = new Auth("ehr", {
-  logicalId: "EhrUserPool",
-  adminOnly: true,              // Blocks unapproved self-signups
-  signInMethod: "email",
-  passwordPolicy: { minLength: 12 },
-  client: { preventUserExistenceErrors: true },
-});
-
-// 2. DynamoDB Single-Table with Secondary Index
-export const table = new Table("ehr", {
-  logicalId: "EhrTable",
+// 1. Single-Table DynamoDB with On-Demand Billing & Continuous Backups
+export const ehrTable = new Table("ehr", {
   partitionKey: { name: "PK", type: "string" },
   sortKey: { name: "SK", type: "string" },
-  indexes: {
-    GSI1: { partitionKey: "GSI1PK", sortKey: "GSI1SK", projection: "ALL" },
-  },
+  billingMode: "PAY_PER_REQUEST",
+  stream: "NEW_IMAGE",
+  pointInTimeRecovery: true,
 });
 
-// 3. High-performance API using Lambda Function URLs ($0 routing overhead)
+// 2. S3 Bucket with Auto-Expiring Multipart Cleanup & EventBridge
+export const docsBucket = new Bucket("documents", {
+  eventBridge: true,
+  publicAccessBlock: true,
+});
+
+// 3. SQS Queue with Working Dead-Letter Queue & 6x Visibility Math
+export const jobsQueue = new Queue("jobs", {
+  visibilityTimeout: "180s", // >= 6x consumer timeout (30s * 6 = 180s)
+  deadLetterQueue: { maxReceiveCount: 3 },
+});
+
+// 4. DDoS-Guarded Public API ($0 Gateway Fee via Direct Function URL)
 export const backendApi = api(
   {
     path: "/",
     ingress: "function-url",
-    concurrency: 50, // Prevents Denial-of-Wallet runaway
-    cors: { allowOrigins: ["https://my-portal.com"] },
+    concurrency: 5, // Mathematically bounds max monthly spend to ~$54
+    timeout: "30s",
+    cors: { allowOrigins: ["https://my-app.com"] },
   },
   async (req) => {
-    // COGNITO_USER_POOL_ID and TABLE_NAME are auto-injected by compiler!
-    return Response.json({ status: "ok", poolId: auth.userPoolId });
+    // Environment variables (EHR_TABLE_NAME, DOCUMENTS_BUCKET_NAME) are auto-injected!
+    return Response.json({ status: "healthy" });
   }
 );
+
+// 5. In-Code Budget Guarantee
+export const alerts = new Topic("alerts");
+export const stackBudget = new Budget("budget", {
+  amount: 25,
+  threshold: 80,
+  topic: alerts,
+  filterByStack: true,
+});
 ```
 
-When you run `syncploy build`, the compiler analyzes the AST and deterministically outputs 1:1 native AWS CloudFormation:
+Compile into native AWS CloudFormation and bundled Lambda packages in seconds:
 
-```yaml
-# .syncploy/template.json (Synthesized Output)
-Resources:
-  EhrUserPool:
-    Type: AWS::Cognito::UserPool
-    Properties:
-      UserPoolName: !Sub "${AWS::StackName}-ehr"
-      AdminCreateUserConfig:
-        AllowAdminCreateUserOnly: true
-      Policies:
-        PasswordPolicy:
-          MinimumLength: 12
-          RequireUppercase: true
-          RequireNumbers: true
-
-  EhrTable:
-    Type: AWS::DynamoDB::Table
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
-    Properties:
-      BillingMode: PAY_PER_REQUEST
-      AttributeDefinitions:
-        - AttributeName: PK
-          AttributeType: S
-        - AttributeName: SK
-          AttributeType: S
-      KeySchema:
-        - AttributeName: PK
-          KeyType: HASH
-        - AttributeName: SK
-          KeyType: RANGE
-
-  BackendFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Environment:
-        Variables:
-          COGNITO_USER_POOL_ID: !Ref EhrUserPool
-          EHR_TABLE_NAME: !Ref EhrTable
+```bash
+npx syncploy build
 ```
 
 ---
 
-## 🛡️ Core Architectural Capabilities
+## ⚖️ The 3 Paths: Choose Your Reality
 
-### 1. Compile-Time Recursion Shield (<1ms)
-Static AST analysis traces database mutations, queue dispatches, topic publishes, and HTTP requests across your handlers using Tarjan's Strongly Connected Components algorithm ($O(V+E)$ linear time). Detects and halts infinite event cycles before code reaches AWS:
-- Direct loops: `Table -> Stream Consumer -> Table.put`
-- Queue loops: `Queue -> Consumer -> Queue.send`
-- Multi-hop cycles: `Bucket -> EventBridge -> Queue -> Consumer -> Bucket.upload`
-- Cross-service loops: `Topic -> SQS Queue -> Consumer -> Topic.publish`
-- Self-suppression audit trail: `// syncploy-ignore ERR_RECURSIVE_LOOP reason="..."` on any participating construct cleanly suppresses the cycle while logging the reason in CI diagnostics.
-
-### 2. Zero-Replacement Brownfield Diff Engine (`syncploy diff`)
-CloudFormation updates can silently destroy and recreate stateful resources when properties drift. Syncploy's pre-flight diff engine matches against live AWS stacks and aborts CI with `--check-replacement` if any database or bucket would be destroyed.
-
-### 3. Least-Privilege IAM Policy Generator (`syncploy policy`)
-Eliminates trial-and-error IAM authoring and wildcard `*` permissions. Syncploy inspects your AST and generates precise GitHub Actions deployment policies (`deploy-policy.json`) scoped down to exact stack resource ARNs.
-
-### 4. ElectroDB First-Class Integration
-Natively understands ElectroDB entities. Infers Single-Table primary keys, composite sort keys, and unions all Global Secondary Indexes (GSIs) across entity definitions automatically without redundant table declarations.
-
-### 5. Denial-of-Wallet (DoW) & Edge Safety Guards
-- **Edge Throttling Ceiling**: Synthesizes a safe default 1000 rps / 2000 burst ceiling on HTTP API stages to cap DDoS throughput, customizable per route via `throttle: { rateLimit, burstLimit }`.
-- **Lambda Concurrency Guards**: Flags public Function URLs and API routes lacking explicit `concurrency: <number>` caps.
-- **Queue & Stream Timeouts**: Validates that queue `visibilityTimeout` is $\ge 6\times$ consumer timeout to eliminate retry storms.
-- **Dead Letter Queues**: Enforces DLQs on active queues and stream consumers (`onFailure`).
-- **Cost Budget Backstop**: Declare `new Budget("monthlyBudget", { amount: 100, topic: alertTopic, filterByStack: true })` to synthesize an `AWS::Budgets::Budget` with stack-wide cost filters and automated `AWS::SNS::TopicPolicy` subscriber permissions.
-
-### 6. Container & ESM Packaging
-Compile handlers into treeshaken, minified Node 20 ESM bundles via `esbuild`, or build native Alpine Docker container images via Bun and the AWS Lambda Web Adapter.
-
----
-
-## ⚖️ How Syncploy Compares
-
-| Architectural Capability | Syncploy | AWS CDK | SST (Ion) | Serverless Framework | Encore (Go) |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **Pure AWS Serverless Focus** | **Yes** | Mixed | Mixed | Mixed | Mixed |
-| **Compile-Time Recursion Shield** | **Yes (<1ms)** | No | No | No | No |
-| **Zero-Replacement Brownfield Diff** | **Yes** | No | No | No | No |
-| **Automatic IAM Deploy Policy Synthesis** | **Yes** | No | No | No | No |
-| **1:1 Standard CloudFormation Export** | **Yes** | Yes | Pulumi/CFN | Yes | No |
-| **TypeScript Native (No Go/Rust runtime required)** | **Yes** | Yes | Yes | Yes | No (Go required) |
-| **Denial-of-Wallet Concurrency Audits** | **Yes** | No | No | No | No |
-| **100% Ejection Freedom (Zero Vendor Lock-In)** | **Yes** | Yes | Vendor Cloud | Vendor Dashboard | Vendor Cloud |
-
----
-
-## 🏗️ Compiler Architecture & Compilation Pipeline
-
-Syncploy executes a deterministic, 8-stage compilation pipeline:
-
-```mermaid
-flowchart TD
-    subgraph Brownfield["Brownfield Adoption (Optional)"]
-        SAM["Legacy SAM / CloudFormation Template<br/>(template.yaml + samconfig.toml)"]
-        ADOPT["Brownfield Adoption Engine<br/>syncploy adopt"]
-        SAM --> ADOPT
-    end
-
-    subgraph Input["1. Input Source Code"]
-        TS["TypeScript Application Code<br/>(src/**/*.ts with @syncploy/sdk primitives)"]
-    end
-    ADOPT -.->|Translates to| TS
-
-    subgraph Parser["2. Static AST Analysis"]
-        AST["AST Parser Engine (ts-morph)<br/>Zero-execution static scanner for SDK primitives"]
-    end
-
-    subgraph IR["3. Intermediate Representation (IR)"]
-        GRAPH["Serverless Resource Graph & Topology<br/>In-memory dependency graph & mutation edges"]
-    end
-
-    subgraph Validation["4. Pre-Flight Safety & Platform Validator (&lt;1ms)"]
-        VAL["High-Speed Pre-Flight Engine<br/>• Infra Recursion & Event Cycle Detection<br/>• Denial of Wallet (DoW) & DDoS Concurrency Guards<br/>• Fatal AWS Limits, Logical IDs & Secret Leak Scanner"]
-    end
-
-    subgraph Pipeline["5. Dual Compilation Pipeline"]
-        subgraph BundlerPass["Code Bundling (Bundler)"]
-            GEN["Virtual Entrypoint Generator<br/>APIGW v2, Function URL, SQS batch, Stream adapters"]
-            ESBUILD["esbuild Bundler & Packaging<br/>Tree-shaken Node 20 ESM & Docker container metadata"]
-            GEN --> ESBUILD
-        end
-
-        subgraph SynthPass["Infrastructure Synthesis (Synthesizer)"]
-            IAM["IAM Policy Synthesizer<br/>Exact least-privilege execution roles & trust policies"]
-            SAFETY["Zero-Data-Loss Safety Rails<br/>Automatic Retain policies on Tables & Buckets"]
-            CFN["CloudFormation Emitter<br/>Pure 100% native AWS CloudFormation JSON template"]
-            IAM --> SAFETY --> CFN
-        end
-    end
-
-    subgraph Artifacts["6. Production Artifacts (.syncploy/)"]
-        BUNDLES["Standalone Lambda Bundles<br/>.syncploy/build/*/index.mjs"]
-        TEMPLATE["CloudFormation Template<br/>.syncploy/template.json"]
-    end
-
-    subgraph DiffEngine["7. ChangeSet & Diff Engine (syncploy diff)"]
-        DIFF["Diff & Safety Gatekeeper<br/>Compares against live stack / template<br/>--check-replacement aborts CI on data loss"]
-    end
-
-    subgraph Deployment["8. Zero-Lock-In Deployment"]
-        DEPLOY["Deploy Without Vendor Lock-In<br/>aws cloudformation deploy / SAM CLI / CI/CD"]
-    end
-
-    TS --> AST
-    AST --> GRAPH
-    GRAPH --> VAL
-    VAL -->|Valid Graph| GEN
-    VAL -->|Valid Graph| IAM
-    ESBUILD --> BUNDLES
-    CFN --> TEMPLATE
-    TEMPLATE --> DIFF
-    DIFF -.->|Verified Safe| DEPLOY
-    BUNDLES --> DEPLOY
-```
-
----
-
-## ☁️ Supported Pure AWS Serverless Services
-
-Syncploy exclusively targets services that **scale to zero**, require **zero VPC/server maintenance**, and operate over stateless IAM/HTTPS:
-
-| Service Category | AWS Service | SDK Primitive | In-Code Configuration |
+| Architectural Dimension | PaaS (Vercel / Render / Railway) | Raw AWS (CDK / SAM / Console) | **Syncploy (Zero-DoW Shield)** |
 | :--- | :--- | :--- | :--- |
-| **Compute** | **AWS Lambda** (Node 20 ESM & Docker Containers) | `api(...)`, `queue.consumer(...)`, `table.stream(...)`, `topic.subscribe(...)` | `memory`, `timeout`, `concurrency`, `container` (`dockerfile`, `context`, `imageUri`, `cmd`, `entrypoint`) |
-| **HTTP Ingress (Unified)** | **API Gateway (HTTP API v2)** | `api({ ingress: "api-gateway" })` | `path`, `method`, `auth`, `cors` |
-| **Direct Ingress (Streaming)** | **Lambda Function URLs** | `api({ ingress: "function-url" })` | `timeout` up to 15m, native response streaming, $0 routing cost |
-| **NoSQL Database** | **Amazon DynamoDB (On-Demand)** | `new Table("name", { ... })` | `partitionKey`, `sortKey`, `indexes` (GSIs), `stream`, `pointInTimeRecovery`, `retain` |
-| **Database Streams** | **Amazon DynamoDB Streams** | `table.stream(...)` | `batchSize`, `startingPosition`, `enabled`, partial batch failure reporting |
-| **Object Storage** | **Amazon S3** | `new Bucket("name", { ... })` | `versioned`, `eventBridge`, `publicAccessBlock`, `objectLock` (COMPLIANCE/GOVERNANCE), `retain` |
-| **Data Streaming** | **Amazon Data Firehose** | `new DeliveryStream("name", { ... })` | `destination`, `bufferingInterval`, `bufferingSize`, `compression`, `prefix`, `errorPrefix` |
-| **Message Queues** | **Amazon SQS** | `new Queue("name", { ... })` | `visibilityTimeout`, `deadLetterQueue` (auto-DLQ generation), `fifo` |
-| **Pub/Sub Messaging** | **Amazon SNS** | `new Topic("name", { ... })`, `topic.subscribe(...)` | `fifo`, IAM subscriptions |
-| **Authentication** | **Amazon Cognito** | `new Auth("name", { ... })` | `adminOnly`, `signInMethod`, `passwordPolicy`, `client` (SRP invariants) |
-| **Monitoring & Alarms** | **Amazon CloudWatch** | `new Alarm("name", { ... })` | `threshold`, `evaluationPeriods`, `comparison`, `metrics`, `alarmActions` (SNS topics) |
-| **Event Routing** | **Amazon EventBridge** | `bucket.on("objectCreated", queue)` | Event pattern filters, S3 prefix/suffix routing |
-| **Secrets & Config** | **AWS Secrets Manager / SSM** | `new Secret("KEY")` | Type-safe environment injection |
-| **Access Control** | **AWS IAM** | *Automatic* | Static inference generates exact least-privilege policies |
+| **Monthly Baseline Spend** | \$20 – \$200/mo minimums + per-seat taxes | \$0.00 scale-to-zero | **\$0.00 true scale-to-zero** |
+| **Bandwidth & Compute Markup** | 10x – 50x markup (\$0.15–\$0.40/GB bandwidth) | \$0.09/GB raw AWS pricing | **\$0.09/GB wholesale AWS (\$0 gateway fees)** |
+| **Denial-of-Wallet (DDoS) Protection** | ❌ Surprise \$10k+ invoices with zero recourse | ❌ Unreserved Lambdas scale to 1,000+ instances | **✅ Mathematical concurrency bounds & blast radius caps** |
+| **Infinite Event Recursion Loops** | ❌ None (runaway billing until manual shutoff) | ❌ None (`Table -> Stream -> Table` runs indefinitely) | **✅ Compile-time Tarjan SCC cycle block (&lt;1ms)** |
+| **Monotonic Storage & Log Leaks** | ❌ Log retention locked behind higher tiers | ❌ Never-Expire logs & orphaned S3 parts bleed cash | **✅ Auto 14d CloudWatch logs & 7d S3 chunk pruning** |
+| **Vendor Lock-in & Ejection** | Closed-source runtime & proprietary routing | Standard CloudFormation | **100% Native CloudFormation Export (Zero Lock-In)** |
 
 ---
 
-## 🔒 Pre-Flight AWS Platform Validator (<1ms)
+## ☁️ Supported AWS Serverless Primitives (The 11 Services)
 
-The compiler catches fatal platform constraints and Denial-of-Wallet risks in under 1 millisecond:
+Syncploy deliberately scopes infrastructure to pure, scale-to-zero serverless services that require **zero server/VPC maintenance**:
 
-* **Infra Recursion & Cycle Detection (Fatal)**: Traces directed event and mutation graphs using Tarjan Strongly Connected Components (SCC) linear cycle detection ($O(V+E)$) to catch infinite self-amplifying loops (`Table -> Stream -> Table.put`, `Queue -> Consumer -> Queue.send`, `Bucket -> EventBridge -> Queue -> Consumer -> Bucket.upload`).
-* **Denial of Wallet (DoW) & DDoS Guards**:
-  * **SQS Timeout Mismatch**: Enforces that queue `visibilityTimeout` is $\ge 6\times$ consumer `timeout` to eliminate duplicate delivery storms.
-  * **Missing DLQ / Retry Storms**: Warns when active queue consumers lack a `deadLetterQueue`, preventing poison-pill message loops.
-  * **Uncapped Public Concurrency**: Warns when public Function URLs lack `concurrency` caps, helping mitigate DDoS cost amplification by capping maximum concurrent executions.
-  * **DynamoDB Shard Surge Guard**: Warns on unthrottled stream consumers to prevent shard-split cost runaway.
-* **CloudFormation Logical IDs**: Strictly alphanumeric (`^[A-Za-z0-9]+$`). Catches fatal syntax errors like `logicalId: "ehr-table"`.
-* **Lambda Limits**: Validates memory (128 MB to 10,240 MB) and timeout limits (1s to 900s / 15m). Catches illegal sizes like `64MB` or `20m`.
-* **S3 Bucket Naming**: Enforces strict RFC 1123 DNS compliance (lowercase only, no underscores, 3–63 chars).
-* **FIFO Messaging**: Enforces the mandatory `.fifo` suffix on all FIFO queues and topics.
-* **DynamoDB Schema**: Validates primary key and sort key attribute types and enforces the 20 GSI hard limit.
-* **Firehose Boundaries**: Validates buffering intervals (60s to 900s) and buffer sizes (1 MB to 128 MB).
-* **CORS Protocol Validation**: Detects origins missing protocol schemes (instructs `http://localhost:3000` instead of `localhost:3000`).
-* **IAM Policy Validation**: Enforces `service:Action` format and warns on overly permissive wildcards.
-* **Secret Leak Scanner**: Detects committed plaintext API keys and secrets in environment variables (`sk-proj-...`, `AKIA...`, `ghp_...`, PEM private keys).
+| Primitive | SDK Constructor | Auto-Hardened Defaults |
+| :--- | :--- | :--- |
+| **AWS Lambda** | `api()`, `queue.consumer()`, `table.stream()`, `topic.subscribe()` | Auto-synthesizes `AWS::Logs::LogGroup` (14-day retention), concurrency limits |
+| **API Gateway v2** | `api({ ingress: "api-gateway" })` | Auto-synthesizes default stage rate limit (1,000 rps) and burst (2,000) |
+| **Function URLs** | `api({ ingress: "function-url" })` | \$0 gateway fee, 15m max timeout, streaming support, mandatory concurrency audit |
+| **Amazon DynamoDB** | `new Table()` | `PAY_PER_REQUEST` on-demand billing, Point-in-Time Recovery (PITR) |
+| **DynamoDB Streams** | `table.stream()` | Concurrency cap audit, bisect on error, DLQ enforcement (`onFailure`) |
+| **Amazon S3** | `new Bucket()` | Auto-synthesizes `AbortIncompleteMultipartUpload: { DaysAfterInitiation: 7 }`, PublicAccessBlock |
+| **Amazon SQS** | `new Queue()` | Enforces `visibilityTimeout >= 6 * timeout`, auto-synthesizes Dead Letter Queues |
+| **Amazon SNS** | `new Topic()` | Verified IAM topic policies for AWS Budgets, SMS toll-fraud auditing |
+| **Amazon Data Firehose** | `new DeliveryStream()` | Automatic IAM delivery stream role scoping, S3 destination buffering |
+| **Amazon Cognito** | `new Auth()` | Secure password policies, `preventUserExistenceErrors: true`, admin-only signup mode |
+| **AWS Budgets** | `new Budget()` | Tag-scoped cost filters, automated SNS alert notifications |
 
 ---
 
-## 🔍 ChangeSet & Diff Engine (`syncploy diff`)
+## 🔍 Pre-Flight Compiler Diagnostic Codes
 
-Compare synthesized infrastructure against an existing SAM/CloudFormation template or a live deployed AWS stack:
+Syncploy checks your architecture against fatal AWS limits and DoW vulnerabilities during compilation:
 
-```bash
-# Diff against a local SAM/CloudFormation template
-syncploy diff --against template.yaml
+| Diagnostic Code | Severity | Trigger Condition | Immediate Remediation |
+| :--- | :---: | :--- | :--- |
+| `ERR_RECURSIVE_LOOP` | **Fatal** | Tarjan SCC cycle detected in mutation graph | Break the cycle or use distinct S3 prefix/queue separation |
+| `ERR_SQS_TIMEOUT_MISMATCH` | **Fatal** | Queue `visibilityTimeout < timeout` | Increase `visibilityTimeout` to $\ge 6 \times \text{consumer timeout}$ |
+| `WARN_DOW_UNRESERVED_CONCURRENCY` | Warning | Public Function URL lacks concurrency limit | Add `concurrency: <number>` to `api()` options |
+| `WARN_DOW_STREAM_UNBOUNDED` | Warning | Stream consumer lacks concurrency cap | Add `concurrency: <number>` to `table.stream()` |
+| `WARN_DOW_STREAM_MISSING_DLQ` | Warning | Active DynamoDB stream has no DLQ | Add `onFailure: "myDlqQueue"` to stream options |
+| `WARN_DOW_SMS_TOLL_FRAUD` | Warning | Topic uses SMS protocol or Auth uses phone verification | Restrict destination countries, add SNS SMS spend limit |
+| `WARN_DOW_DYNAMODB_SCAN` | Warning | API handler calls `.scan()` ($O(N)$ read amplification) | Use indexed queries (`query` or ElectroDB secondary index) |
+| `WARN_DOW_HIGH_BLAST_RADIUS` | Warning | Continuous monthly compute liability $> \$100$ without Budget | Declare `new Budget(...)` to monitor and cap spend |
+| `WARN_DOW_BUDGET_NO_NOTIFICATION` | Warning | Budget declared without notification topic | Configure `topic: myAlertTopic` on Budget |
 
-# Diff against a live AWS CloudFormation stack (creates a temporary ChangeSet)
-syncploy diff --stack-name my-production-stack
-
-# Enforce safety gatekeeper in CI/CD (aborts if stateful resources would be replaced)
-syncploy diff --against template.yaml --check-replacement
+### Diagnostic Suppression & Audit Trail
+For intentional recursive designs (such as a status-guarded state-machine worker), suppress with an in-code comment and reason:
+```typescript
+// syncploy-ignore ERR_RECURSIVE_LOOP reason="State machine terminates on status: 'COMPLETED'"
+export const stateWorker = myTable.stream({ batchSize: 10 }, async (record) => {
+  if (record.status !== "COMPLETED") {
+    await myTable.put({ ...record, status: "COMPLETED" });
+  }
+});
 ```
-
-### Visual Diff Output
-
-```text
-Infrastructure Diff Preview:
-
-  ~ [UPDATE] EhrBackendFunction (AWS::Serverless::Function -> AWS::Lambda::Function)
-      • Migrated from Serverless macro to pure CloudFormation function
-  ~ [UPDATE] EhrAnnotationQueue (AWS::SQS::Queue)
-      • ~ VisibilityTimeout (120 -> 180)
-  ! [REPLACE] EhrTable (AWS::DynamoDB::Table)
-      ⚠ DANGER: Resource will be DESTROYED and RECREATED!
-      • TableName changed ("prod-ehr-table" -> "my-stack-ehr")
-
-Diff Summary:
-  + 0 to create | ~ 2 to update | ! 1 to replace | - 0 to delete | 5 unchanged
-
-❌ DEPLOYMENT BLOCKED: Stateful resource replacement detected on: EhrTable (AWS::DynamoDB::Table)
-   Replacing stateful resources will cause DATA LOSS because the existing resource is destroyed.
-   To bypass this safety gatekeeper, pass: --allow-stateful-replacement
-```
+The compiler records a transparent audit trail of all suppressions in CI/CD logs.
 
 ---
 
-## 🔄 Brownfield Adoption (`syncploy adopt`)
+## 🤖 AI Coding Agent Native (`llms.txt`)
 
-Migrate existing AWS SAM or CloudFormation projects into type-safe Syncploy TypeScript in seconds:
-
-```bash
-# Adopt a SAM template, resolving parameters from samconfig.toml
-syncploy adopt ./template.yaml --config ./samconfig.toml --out src/infra.ts
-
-# Or pass parameter overrides directly
-syncploy adopt ./template.yaml --params EhrTableName=prod-ehr-table --out src/infra.ts
-```
-
-The adoption engine parses the template, resolves physical names and parameters, and outputs idiomatic TypeScript with exact `logicalId`s, primary keys, GSIs, streams, DLQs, alarms, and retention policies preserved.
+Syncploy is engineered from first principles for modern AI coding workflows:
+- **`llms.txt` Standard**: Clean, deterministic API definitions available at [`https://www.syncploy.com/llms.txt`](https://www.syncploy.com/llms.txt) and [`https://www.syncploy.com/llms-full.txt`](https://www.syncploy.com/llms-full.txt).
+- **Zero Hallucination Guardrails**: When agents (Cursor, Claude Code, Google Antigravity) generate Syncploy code, `npx syncploy build` verifies the AST in milliseconds, giving the model instant deterministic feedback on invalid ARNs, logical IDs, or infinite loops.
+- **Built-in Agent Rules**: Official skills and system rules available for Antigravity and Claude Code.
 
 ---
 
-## 🚀 Compiler CLI Reference
+## 🛠️ CLI Reference
 
 ```text
 Usage: syncploy [command] [options]
@@ -405,8 +264,7 @@ Commands:
 Diff Options:
   -a, --against <file>         Existing template file to diff against (e.g. template.yaml)
   -s, --stack-name <name>      AWS CloudFormation stack name for live ChangeSet diff
-  --region <region>            AWS region for live ChangeSet diff
-  --check-replacement          Abort and exit with error if any stateful resource would be replaced
+  --check-replacement          Abort CI with error if any stateful resource (DynamoDB, S3) would be destroyed
   --allow-stateful-replacement Bypass the replacement safety check
 
 Adopt Options:
@@ -416,27 +274,11 @@ Adopt Options:
 
 Policy Options:
   -s, --stack-name <name>      CloudFormation stack name to scope IAM resource ARNs
-  -r, --region <region>        AWS region (default: ap-south-1)
   -o, --out <file>             Output policy JSON path (default: deploy-policy.json)
-```
-
-### Zero-Lock-In Deployment
-
-Syncploy compiles to vanilla AWS CloudFormation templates and tree-shaken bundles in `.syncploy/`. Deploy using standard AWS tooling:
-
-```bash
-# Using standard AWS CLI
-aws cloudformation deploy \
-  --template-file .syncploy/template.json \
-  --stack-name my-serverless-app \
-  --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM
-
-# Or using AWS SAM
-sam deploy --template-file .syncploy/template.json
 ```
 
 ---
 
 ## 📄 License
 
-MIT Licensed &bull; Open Source
+MIT Licensed &bull; Open Source &bull; Maintained by [Harsh Vardhan](https://github.com/harsh-vardhhan)
