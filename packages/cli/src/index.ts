@@ -96,10 +96,31 @@ program
 
       const duration = (performance.now() - startTime).toFixed(1);
       console.log(pc.green(`\n✔ Build succeeded in ${pc.bold(`${duration}ms`)}`));
-      console.log(`  ${pc.dim("Template:")} ${output.templatePath}`);
+
+      const cfnInfo = output.cfnStats
+        ? ` (${pc.bold(`${output.cfnStats.templateSizeKB} KB`)} • ${pc.cyan(`${output.cfnStats.resourceCount}/500 Resources`)} • ${pc.cyan(`${output.cfnStats.outputCount}/60 Outputs`)})`
+        : "";
+      console.log(`  ${pc.dim("Template:")}  ${output.templatePath}${cfnInfo}`);
+
+      const lambdaCount = Object.keys(output.lambdaBundles).length;
       console.log(
-        `  ${pc.dim("Artifacts:")} ${Object.keys(output.lambdaBundles).length} Lambdas in ${output.distDir}/build/`
+        `  ${pc.dim("Artifacts:")} ${lambdaCount} Lambda bundle${lambdaCount === 1 ? "" : "s"} in ${output.distDir}/build/`
       );
+
+      if (output.bundleStats) {
+        for (const [id, stats] of Object.entries(output.bundleStats)) {
+          let badge = pc.dim(`(${stats.sizeMB} MB)`);
+          if (stats.sizeMB > 50) {
+            badge = pc.red(pc.bold(`[CRITICAL - ${stats.sizeMB} MB > 50MB direct zip ceiling]`));
+          } else if (stats.sizeMB > 35) {
+            badge = pc.yellow(`[HEAVY - ${stats.sizeMB} MB]`);
+          }
+          console.log(`    ${pc.dim("•")} ${pc.bold(id)}: ${badge}`);
+          if (stats.warning) {
+            console.log(`      ${pc.yellow(`⚠ ${stats.warning}`)}`);
+          }
+        }
+      }
     } catch (err: any) {
       console.error(pc.red(`\n✖ Build failed: ${err.message}`));
       process.exit(1);

@@ -9,6 +9,7 @@ import type {
   DeliveryStreamIR,
   AlarmIR,
   AuthIR,
+  CloudFormationStats,
 } from "../types";
 import {
   getTableLogicalId,
@@ -44,6 +45,8 @@ export * from "./logical-ids";
 export * from "./roles";
 
 export class Synthesizer {
+  public lastStats?: CloudFormationStats;
+
   constructor(public readonly workDir: string) {}
 
   public getTableLogicalId(tableOrName: TableIR | string, graph?: ResourceGraph): string {
@@ -286,18 +289,61 @@ export class Synthesizer {
     // 16. AWS Cost Guardrail (AWS::Budgets::Budget)
     generateBudget(graph, resources);
 
+    // Deterministically sort Resources and Outputs alphabetically
+    const sortedResources: Record<string, any> = {};
+    for (const key of Object.keys(resources).sort()) {
+      sortedResources[key] = resources[key];
+    }
+
+    const sortedOutputs: Record<string, any> = {};
+    for (const key of Object.keys(outputs).sort()) {
+      sortedOutputs[key] = outputs[key];
+    }
+
+    const resourceCount = Object.keys(sortedResources).length;
+    const outputCount = Object.keys(sortedOutputs).length;
+
+    // CloudFormation Hard Limit Sentinels
+    if (resourceCount > 500) {
+      throw new Error(
+        `[ERR_CFN_RESOURCE_LIMIT] CloudFormation template exceeds AWS 500 resource limit (${resourceCount} resources synthesized). Split the application into smaller microservices or nested stacks.`
+      );
+    }
+
+    if (outputCount > 60) {
+      throw new Error(
+        `[ERR_CFN_OUTPUT_LIMIT] CloudFormation template exceeds AWS 60 output limit (${outputCount} outputs synthesized).`
+      );
+    }
+
     const template = {
       AWSTemplateFormatVersion: "2010-09-09",
       Description: "Synthesized by Syncploy",
-      Resources: resources,
-      Outputs: outputs,
+      Resources: sortedResources,
+      Outputs: sortedOutputs,
     };
 
     const templateDir = path.join(this.workDir, ".syncploy");
     await fs.mkdir(templateDir, { recursive: true });
 
     const templatePath = path.join(templateDir, "template.json");
-    await fs.writeFile(templatePath, JSON.stringify(template, null, 2), "utf-8");
+    const templateContent = JSON.stringify(template, null, 2);
+    const templateSizeBytes = Buffer.byteLength(templateContent, "utf-8");
+
+    if (templateSizeBytes > 1048576) {
+      throw new Error(
+        `[ERR_CFN_TEMPLATE_SIZE_LIMIT] CloudFormation template size (${(templateSizeBytes / 1024).toFixed(1)} KB) exceeds the maximum 1MB AWS S3 limit.`
+      );
+    }
+
+    this.lastStats = {
+      resourceCount,
+      outputCount,
+      templateSizeBytes,
+      templateSizeKB: Number((templateSizeBytes / 1024).toFixed(1)),
+    };
+
+    await fs.writeFile(templatePath, templateContent, "utf-8");
 
     return templatePath;
   }

@@ -6,6 +6,13 @@ export interface BundlerOptions {
   minify?: boolean;
 }
 
+export interface BundleResult {
+  bundlePath: string;
+  sizeBytes: number;
+  sizeMB: number;
+  warning?: string | undefined;
+}
+
 export class Bundler {
   constructor(public readonly workDir: string) {}
 
@@ -13,7 +20,7 @@ export class Bundler {
     id: string,
     entrypointPath: string,
     options: BundlerOptions = {}
-  ): Promise<string> {
+  ): Promise<BundleResult> {
     const outDir = path.join(this.workDir, ".syncploy", "build", id);
     await fs.mkdir(outDir, { recursive: true });
 
@@ -93,6 +100,22 @@ export class Bundler {
       },
     });
 
-    return outFile;
+    const stat = await fs.stat(outFile);
+    const sizeBytes = stat.size;
+    const sizeMB = Number((sizeBytes / (1024 * 1024)).toFixed(2));
+
+    let warning: string | undefined;
+    if (sizeBytes > 50 * 1024 * 1024) {
+      warning = `Lambda '${id}' bundle is ${sizeMB}MB, exceeding the 50MB direct zip upload ceiling. Consider using packageType: "Image".`;
+    } else if (sizeBytes > 35 * 1024 * 1024) {
+      warning = `Lambda '${id}' bundle is ${sizeMB}MB, approaching the 50MB direct zip upload ceiling.`;
+    }
+
+    return {
+      bundlePath: outFile,
+      sizeBytes,
+      sizeMB,
+      warning,
+    };
   }
 }

@@ -362,10 +362,25 @@ export interface ResourceGraph {
   budget?: BudgetIR | undefined;
 }
 
+export interface CloudFormationStats {
+  resourceCount: number;
+  outputCount: number;
+  templateSizeBytes: number;
+  templateSizeKB: number;
+}
+
+export interface BundleStats {
+  sizeBytes: number;
+  sizeMB: number;
+  warning?: string | undefined;
+}
+
 export interface BuildOutput {
   distDir: string;
   templatePath: string;
   lambdaBundles: Record<string, string>; // apiId or consumerId -> bundlePath
+  bundleStats?: Record<string, BundleStats> | undefined;
+  cfnStats?: CloudFormationStats | undefined;
 }
 
 export interface BuildOptions {

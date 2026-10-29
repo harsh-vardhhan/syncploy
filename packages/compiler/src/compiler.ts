@@ -4,7 +4,7 @@ import { EntrypointGenerator } from "./entrypoint";
 import { Bundler } from "./bundler";
 import { Synthesizer } from "./synthesizer";
 import { GraphValidator, formatDiagnostics } from "./validator";
-import type { BuildOutput, BuildOptions, ResourceGraph } from "./types";
+import type { BuildOutput, BuildOptions, ResourceGraph, BundleStats } from "./types";
 
 export class Compiler {
   private parser: Parser;
@@ -51,42 +51,49 @@ export class Compiler {
     // 3. Generate entrypoints and bundle Lambdas
     const lambdaBundles: Record<string, string> = {};
     const lambdaArtifactDirs: Record<string, string> = {};
+    const bundleStats: Record<string, BundleStats> = {};
 
     for (const api of graph.apis) {
       const entrypointPath = await this.entrypointGen.generateApi(api);
-      const bundlePath = await this.bundler.bundle(api.id, entrypointPath);
-      lambdaBundles[api.id] = bundlePath;
-      lambdaArtifactDirs[api.id] = path.dirname(bundlePath);
+      const res = await this.bundler.bundle(api.id, entrypointPath);
+      lambdaBundles[api.id] = res.bundlePath;
+      lambdaArtifactDirs[api.id] = path.dirname(res.bundlePath);
+      bundleStats[api.id] = { sizeBytes: res.sizeBytes, sizeMB: res.sizeMB, warning: res.warning };
     }
 
     for (const consumer of graph.consumers) {
       const entrypointPath = await this.entrypointGen.generateConsumer(consumer);
-      const bundlePath = await this.bundler.bundle(consumer.id, entrypointPath);
-      lambdaBundles[consumer.id] = bundlePath;
-      lambdaArtifactDirs[consumer.id] = path.dirname(bundlePath);
+      const res = await this.bundler.bundle(consumer.id, entrypointPath);
+      lambdaBundles[consumer.id] = res.bundlePath;
+      lambdaArtifactDirs[consumer.id] = path.dirname(res.bundlePath);
+      bundleStats[consumer.id] = { sizeBytes: res.sizeBytes, sizeMB: res.sizeMB, warning: res.warning };
     }
 
     for (const streamConsumer of graph.tableStreams) {
       const entrypointPath = await this.entrypointGen.generateTableStream(streamConsumer);
-      const bundlePath = await this.bundler.bundle(streamConsumer.id, entrypointPath);
-      lambdaBundles[streamConsumer.id] = bundlePath;
-      lambdaArtifactDirs[streamConsumer.id] = path.dirname(bundlePath);
+      const res = await this.bundler.bundle(streamConsumer.id, entrypointPath);
+      lambdaBundles[streamConsumer.id] = res.bundlePath;
+      lambdaArtifactDirs[streamConsumer.id] = path.dirname(res.bundlePath);
+      bundleStats[streamConsumer.id] = { sizeBytes: res.sizeBytes, sizeMB: res.sizeMB, warning: res.warning };
     }
 
     for (const subscriber of graph.topicSubscribers) {
       const entrypointPath = await this.entrypointGen.generateTopicSubscriber(subscriber);
-      const bundlePath = await this.bundler.bundle(subscriber.id, entrypointPath);
-      lambdaBundles[subscriber.id] = bundlePath;
-      lambdaArtifactDirs[subscriber.id] = path.dirname(bundlePath);
+      const res = await this.bundler.bundle(subscriber.id, entrypointPath);
+      lambdaBundles[subscriber.id] = res.bundlePath;
+      lambdaArtifactDirs[subscriber.id] = path.dirname(res.bundlePath);
+      bundleStats[subscriber.id] = { sizeBytes: res.sizeBytes, sizeMB: res.sizeMB, warning: res.warning };
     }
 
-    // 3. Synthesize CloudFormation template
+    // 4. Synthesize CloudFormation template
     const templatePath = await this.synthesizer.synthesize(graph, lambdaArtifactDirs);
 
     return {
       distDir: path.join(this.projectRoot, ".syncploy"),
       templatePath,
       lambdaBundles,
+      bundleStats,
+      cfnStats: this.synthesizer.lastStats,
     };
   }
 }
