@@ -2,15 +2,12 @@
 
 import React, { useState } from "react";
 import {
-  DollarSign,
   AlertOctagon,
   ShieldCheck,
   Calendar,
   Filter,
   BarChart3,
   Layers,
-  Sparkles,
-  ArrowDownRight,
   Info,
 } from "lucide-react";
 
@@ -116,9 +113,9 @@ export function AwsCostExplorerMock() {
       {/* =========================================================================
           MOCK AWS MANAGEMENT CONSOLE / COST EXPLORER UI
           ========================================================================= */}
-      <div className="rounded-3xl border border-slate-300 dark:border-[#2A3042] bg-[#0F131D] text-white shadow-2xl overflow-hidden font-sans">
-        {/* Top AWS Console Bar */}
-        <div className="bg-[#1B2234] border-b border-[#2A334B] px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="rounded-3xl border border-slate-200 dark:border-[#2A3042] bg-white dark:bg-[#0F131D] text-slate-900 dark:text-white shadow-xl dark:shadow-2xl overflow-hidden font-sans">
+        {/* Top AWS Console Bar (Iconic AWS Console Dark Navy Header) */}
+        <div className="bg-[#232F3E] text-white border-b border-[#344458] px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
           {/* Left: AWS Logo & Breadcrumbs */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 font-bold tracking-tight text-[#FF9900]">
@@ -131,39 +128,39 @@ export function AwsCostExplorerMock() {
           </div>
 
           {/* Right: Account & Region */}
-          <div className="flex items-center gap-3 font-mono text-[11px] text-slate-400">
+          <div className="flex items-center gap-3 font-mono text-[11px] text-slate-300">
             <span className="hidden md:inline">Account: 8492-3841-1029 (Production)</span>
-            <span className="bg-[#26314A] px-2 py-0.5 rounded text-slate-200">us-east-1 (N. Virginia)</span>
+            <span className="bg-[#141d28] px-2 py-0.5 rounded text-slate-200 border border-[#344458]">us-east-1 (N. Virginia)</span>
           </div>
         </div>
 
         {/* Sub-Header / Filters Bar */}
-        <div className="bg-[#141A29] border-b border-[#222B3F] p-4 sm:px-6 flex flex-wrap items-center justify-between gap-4 text-xs">
+        <div className="bg-slate-50 dark:bg-[#141A29] border-b border-slate-200 dark:border-[#222B3F] p-4 sm:px-6 flex flex-wrap items-center justify-between gap-4 text-xs text-slate-700 dark:text-slate-200">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="inline-flex items-center gap-1.5 bg-[#1F273B] px-3 py-1.5 rounded-lg border border-[#2D3854] text-slate-200">
+            <div className="inline-flex items-center gap-1.5 bg-white dark:bg-[#1F273B] px-3 py-1.5 rounded-lg border border-slate-200 dark:border-[#2D3854] text-slate-800 dark:text-slate-200 shadow-xs">
               <Calendar className="h-3.5 w-3.5 text-[#FF9900]" />
               <span className="font-medium">Date Range: Oct 22 &ndash; Oct 28, 2026</span>
             </div>
 
-            <div className="inline-flex items-center gap-1.5 bg-[#1F273B] px-3 py-1.5 rounded-lg border border-[#2D3854] text-slate-200">
-              <Filter className="h-3.5 w-3.5 text-cyan-400" />
+            <div className="inline-flex items-center gap-1.5 bg-white dark:bg-[#1F273B] px-3 py-1.5 rounded-lg border border-slate-200 dark:border-[#2D3854] text-slate-800 dark:text-slate-200 shadow-xs">
+              <Filter className="h-3.5 w-3.5 text-cyan-500 dark:text-cyan-400" />
               <span>Granularity: <strong>Daily</strong></span>
             </div>
 
-            <div className="inline-flex items-center gap-1.5 bg-[#1F273B] px-3 py-1.5 rounded-lg border border-[#2D3854] text-slate-200">
-              <Layers className="h-3.5 w-3.5 text-indigo-400" />
+            <div className="inline-flex items-center gap-1.5 bg-white dark:bg-[#1F273B] px-3 py-1.5 rounded-lg border border-slate-200 dark:border-[#2D3854] text-slate-800 dark:text-slate-200 shadow-xs">
+              <Layers className="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400" />
               <span>Group by: <strong>Service</strong></span>
             </div>
           </div>
 
           {/* Total Spend Badge */}
           <div className="flex items-center gap-3">
-            <span className="text-slate-400 text-xs">7-Day Total Spend:</span>
+            <span className="text-slate-500 dark:text-slate-400 text-xs">7-Day Total Spend:</span>
             <span
               className={`font-mono text-base sm:text-lg font-extrabold px-3 py-1 rounded-lg border ${
                 viewMode === "standard"
-                  ? "bg-rose-950/80 border-rose-500/60 text-rose-400 animate-pulse"
-                  : "bg-emerald-950/80 border-emerald-500/60 text-emerald-400"
+                  ? "bg-rose-50 dark:bg-rose-950/80 border-rose-300 dark:border-rose-500/60 text-rose-600 dark:text-rose-400 animate-pulse"
+                  : "bg-emerald-50 dark:bg-emerald-950/80 border-emerald-300 dark:border-emerald-500/60 text-emerald-600 dark:text-emerald-400"
               }`}
             >
               {viewMode === "standard"
@@ -174,33 +171,33 @@ export function AwsCostExplorerMock() {
         </div>
 
         {/* Main Chart Area */}
-        <div className="p-6 sm:p-8 space-y-6">
+        <div className="p-6 sm:p-8 space-y-6 bg-white dark:bg-[#0F131D]">
           <div className="flex items-center justify-between">
-            <h4 className="text-xs font-mono uppercase text-slate-400 font-semibold tracking-wider">
+            <h4 className="text-xs font-mono uppercase text-slate-500 dark:text-slate-400 font-semibold tracking-wider">
               Daily Amortized Costs (USD) &bull; Click any bar to inspect telemetry
             </h4>
-            <span className="text-[11px] font-mono text-slate-400">
+            <span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
               {viewMode === "standard" ? "Mode: Unprotected CloudFormation" : "Mode: Syncploy Compile-Time Shield"}
             </span>
           </div>
 
           {/* Simulated Bar Chart */}
-          <div className="h-72 w-full flex items-end justify-between gap-2 sm:gap-6 pt-10 pb-4 border-b border-[#222B3F] relative">
+          <div className="h-72 w-full flex items-end justify-between gap-2 sm:gap-6 pt-10 pb-4 border-b border-slate-200 dark:border-[#222B3F] relative">
             {/* Horizontal Grid lines */}
-            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 text-[10px] font-mono text-slate-400">
-              <div className="border-b border-dashed border-slate-500 w-full flex justify-between">
+            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-40 dark:opacity-20 text-[10px] font-mono text-slate-400 dark:text-slate-500">
+              <div className="border-b border-dashed border-slate-300 dark:border-slate-500 w-full flex justify-between">
                 <span>$45,000</span>
                 <span>$45,000</span>
               </div>
-              <div className="border-b border-dashed border-slate-500 w-full flex justify-between">
+              <div className="border-b border-dashed border-slate-300 dark:border-slate-500 w-full flex justify-between">
                 <span>$30,000</span>
                 <span>$30,000</span>
               </div>
-              <div className="border-b border-dashed border-slate-500 w-full flex justify-between">
+              <div className="border-b border-dashed border-slate-300 dark:border-slate-500 w-full flex justify-between">
                 <span>$15,000</span>
                 <span>$15,000</span>
               </div>
-              <div className="border-b border-slate-600 w-full flex justify-between">
+              <div className="border-b border-slate-300 dark:border-slate-600 w-full flex justify-between">
                 <span>$0.00</span>
                 <span>$0.00</span>
               </div>
@@ -249,10 +246,10 @@ export function AwsCostExplorerMock() {
                       isSpike && isStandard
                         ? "bg-gradient-to-t from-rose-700 via-rose-500 to-amber-400 border border-rose-300 shadow-2xl"
                         : isSpike && !isStandard
-                        ? "bg-emerald-500 border border-emerald-300"
+                        ? "bg-emerald-500 border border-emerald-400 dark:border-emerald-300"
                         : isSelected
-                        ? "bg-indigo-500 border border-indigo-300"
-                        : "bg-[#2A354E] hover:bg-[#3B4A6E]"
+                        ? "bg-indigo-600 dark:bg-indigo-500 border border-indigo-400 dark:border-indigo-300"
+                        : "bg-slate-200 hover:bg-slate-300 dark:bg-[#2A354E] dark:hover:bg-[#3B4A6E]"
                     }`}
                   >
                     {/* Pulsing glow on the spike */}
@@ -263,17 +260,17 @@ export function AwsCostExplorerMock() {
 
                   {/* Day Label */}
                   <div className="mt-3 text-center">
-                    <div className={`text-xs font-mono font-bold ${isSelected ? "text-white" : "text-slate-400"}`}>
+                    <div className={`text-xs font-mono font-bold ${isSelected ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400"}`}>
                       {pt.day}
                     </div>
                     <div className="text-[10px] font-mono text-slate-500 hidden sm:block">{pt.date}</div>
                     <div
                       className={`text-[10px] font-mono font-bold mt-1 ${
                         isSpike && isStandard
-                          ? "text-rose-400 font-extrabold"
+                          ? "text-rose-600 dark:text-rose-400 font-extrabold"
                           : isSpike && !isStandard
-                          ? "text-emerald-400"
-                          : "text-slate-400"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-slate-600 dark:text-slate-400"
                       }`}
                     >
                       {cost > 1000 ? `$${(cost / 1000).toFixed(1)}k` : `$${cost.toFixed(2)}`}
@@ -285,17 +282,17 @@ export function AwsCostExplorerMock() {
           </div>
 
           {/* Selected Day Telemetry Card */}
-          <div className="rounded-2xl border border-[#273248] bg-[#141A29] p-5 sm:p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#222B3F] pb-4">
+          <div className="rounded-2xl border border-slate-200 dark:border-[#273248] bg-slate-50/80 dark:bg-[#141A29] p-5 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-[#222B3F] pb-4">
               <div className="flex items-center gap-3">
-                <span className="p-2 rounded-lg bg-[#1F273B] text-slate-300">
+                <span className="p-2 rounded-lg bg-white dark:bg-[#1F273B] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-transparent">
                   <Info className="h-4 w-4" />
                 </span>
                 <div>
-                  <h5 className="text-sm font-bold text-white">
+                  <h5 className="text-sm font-bold text-slate-900 dark:text-white">
                     Audit Breakdown for {activePoint.date} ({activePoint.day})
                   </h5>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     {selectedDayIndex === 5
                       ? "High-impact incident window &bull; Denial-of-Wallet stress event"
                       : "Standard operational traffic window"}
@@ -304,10 +301,10 @@ export function AwsCostExplorerMock() {
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">Recorded Daily Cost:</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">Recorded Daily Cost:</span>
                 <span
                   className={`font-mono text-base font-bold ${
-                    viewMode === "standard" && selectedDayIndex === 5 ? "text-rose-400" : "text-emerald-400"
+                    viewMode === "standard" && selectedDayIndex === 5 ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
                   }`}
                 >
                   ${(viewMode === "standard" ? activePoint.standard : activePoint.syncploy).toLocaleString("en-US", {
@@ -325,11 +322,11 @@ export function AwsCostExplorerMock() {
                 <div
                   className={`p-4 rounded-xl border ${
                     viewMode === "standard"
-                      ? "border-rose-500/50 bg-rose-950/30 text-rose-200"
-                      : "border-[#26314A] bg-[#101420] text-slate-400"
+                      ? "border-rose-300 dark:border-rose-500/50 bg-rose-50 dark:bg-rose-950/30 text-rose-950 dark:text-rose-200"
+                      : "border-slate-200 dark:border-[#26314A] bg-white dark:bg-[#101420] text-slate-600 dark:text-slate-400"
                   }`}
                 >
-                  <div className="flex items-center gap-2 text-rose-400 font-bold text-xs uppercase mb-2">
+                  <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 font-bold text-xs uppercase mb-2">
                     <AlertOctagon className="h-4 w-4 shrink-0" />
                     <span>Without Syncploy (AWS Disaster)</span>
                   </div>
@@ -343,7 +340,7 @@ export function AwsCostExplorerMock() {
                     <li>
                       • <strong>VPC NAT Gateway:</strong> $1,440.00 &bull; Idle gateway left running in private subnet.
                     </li>
-                    <li className="text-rose-400 font-semibold pt-1">
+                    <li className="text-rose-600 dark:text-rose-400 font-semibold pt-1">
                       Result: Bank card frozen. Account disabled.
                     </li>
                   </ul>
@@ -353,17 +350,17 @@ export function AwsCostExplorerMock() {
                 <div
                   className={`p-4 rounded-xl border ${
                     viewMode === "syncploy"
-                      ? "border-emerald-500/50 bg-emerald-950/30 text-emerald-200"
-                      : "border-[#26314A] bg-[#101420] text-slate-400"
+                      ? "border-emerald-300 dark:border-emerald-500/50 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-950 dark:text-emerald-200"
+                      : "border-slate-200 dark:border-[#26314A] bg-white dark:bg-[#101420] text-slate-600 dark:text-slate-400"
                   }`}
                 >
-                  <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs uppercase mb-2">
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-bold text-xs uppercase mb-2">
                     <ShieldCheck className="h-4 w-4 shrink-0" />
                     <span>With Syncploy (Compile-Time Shield)</span>
                   </div>
                   <ul className="text-xs space-y-1.5 leading-relaxed">
                     <li>
-                      • <strong>Tarjan SCC Shield:</strong> Recursive stream loop caught locally in 0.7ms at <code className="font-mono bg-black/40 px-1 py-0.5 rounded text-emerald-300">syncploy build</code>. 0 resources touched AWS.
+                      • <strong>Tarjan SCC Shield:</strong> Recursive stream loop caught locally in 0.7ms at <code className="font-mono bg-emerald-100 dark:bg-black/40 px-1 py-0.5 rounded text-emerald-800 dark:text-emerald-300">syncploy build</code>. 0 resources touched AWS.
                     </li>
                     <li>
                       • <strong>Edge Stage Throttling:</strong> API Gateway stage dropped 4,200,000 bot requests at edge for $0.00.
@@ -371,7 +368,7 @@ export function AwsCostExplorerMock() {
                     <li>
                       • <strong>Concurrency Ceiling:</strong> Lambda execution capped at 5 instances (max $14/mo worst-case liability).
                     </li>
-                    <li className="text-emerald-400 font-semibold pt-1">
+                    <li className="text-emerald-600 dark:text-emerald-400 font-semibold pt-1">
                       Result: Normal Saturday sleep. Total spend: $0.16.
                     </li>
                   </ul>
@@ -381,9 +378,9 @@ export function AwsCostExplorerMock() {
 
             {/* AWS Service Breakdown Table */}
             <div className="overflow-x-auto pt-2">
-              <table className="w-full text-left text-xs text-slate-300">
+              <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
                 <thead>
-                  <tr className="border-b border-[#222B3F] text-slate-400 font-mono uppercase text-[11px]">
+                  <tr className="border-b border-slate-200 dark:border-[#222B3F] text-slate-500 dark:text-slate-400 font-mono uppercase text-[11px]">
                     <th className="py-2.5">Service Name</th>
                     <th className="py-2.5">Usage Metric</th>
                     <th className="py-2.5 text-right">Standard AWS</th>
@@ -391,41 +388,41 @@ export function AwsCostExplorerMock() {
                     <th className="py-2.5 text-right">Cost Variance</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1F273B] font-mono">
+                <tbody className="divide-y divide-slate-200 dark:divide-[#1F273B] font-mono">
                   <tr>
-                    <td className="py-3 text-white font-medium">AWS Lambda</td>
-                    <td className="py-3 text-slate-400">Invocations &amp; GB-Seconds</td>
-                    <td className="py-3 text-right text-rose-400">$26,420.00</td>
-                    <td className="py-3 text-right text-emerald-400">$0.08</td>
-                    <td className="py-3 text-right text-emerald-300 font-bold">-99.99%</td>
+                    <td className="py-3 text-slate-900 dark:text-white font-medium">AWS Lambda</td>
+                    <td className="py-3 text-slate-500 dark:text-slate-400">Invocations &amp; GB-Seconds</td>
+                    <td className="py-3 text-right text-rose-600 dark:text-rose-400">$26,420.00</td>
+                    <td className="py-3 text-right text-emerald-600 dark:text-emerald-400">$0.08</td>
+                    <td className="py-3 text-right text-emerald-600 dark:text-emerald-300 font-bold">-99.99%</td>
                   </tr>
                   <tr>
-                    <td className="py-3 text-white font-medium">Amazon DynamoDB</td>
-                    <td className="py-3 text-slate-400">Write Request Units (WRU)</td>
-                    <td className="py-3 text-right text-rose-400">$13,120.00</td>
-                    <td className="py-3 text-right text-emerald-400">$0.05</td>
-                    <td className="py-3 text-right text-emerald-300 font-bold">-99.99%</td>
+                    <td className="py-3 text-slate-900 dark:text-white font-medium">Amazon DynamoDB</td>
+                    <td className="py-3 text-slate-500 dark:text-slate-400">Write Request Units (WRU)</td>
+                    <td className="py-3 text-right text-rose-600 dark:text-rose-400">$13,120.00</td>
+                    <td className="py-3 text-right text-emerald-600 dark:text-emerald-400">$0.05</td>
+                    <td className="py-3 text-right text-emerald-600 dark:text-emerald-300 font-bold">-99.99%</td>
                   </tr>
                   <tr>
-                    <td className="py-3 text-white font-medium">Amazon VPC</td>
-                    <td className="py-3 text-slate-400">NAT Gateway Hours &amp; Data</td>
-                    <td className="py-3 text-right text-rose-400">$1,440.00</td>
-                    <td className="py-3 text-right text-emerald-400">$0.00</td>
-                    <td className="py-3 text-right text-emerald-300 font-bold">-100.0%</td>
+                    <td className="py-3 text-slate-900 dark:text-white font-medium">Amazon VPC</td>
+                    <td className="py-3 text-slate-500 dark:text-slate-400">NAT Gateway Hours &amp; Data</td>
+                    <td className="py-3 text-right text-rose-600 dark:text-rose-400">$1,440.00</td>
+                    <td className="py-3 text-right text-emerald-600 dark:text-emerald-400">$0.00</td>
+                    <td className="py-3 text-right text-emerald-600 dark:text-emerald-300 font-bold">-100.0%</td>
                   </tr>
                   <tr>
-                    <td className="py-3 text-white font-medium">Data Transfer &amp; CloudWatch</td>
-                    <td className="py-3 text-slate-400">Egress &amp; Ingestion Logs</td>
-                    <td className="py-3 text-right text-rose-400">$1,200.40</td>
-                    <td className="py-3 text-right text-emerald-400">$0.03</td>
-                    <td className="py-3 text-right text-emerald-300 font-bold">-99.97%</td>
+                    <td className="py-3 text-slate-900 dark:text-white font-medium">Data Transfer &amp; CloudWatch</td>
+                    <td className="py-3 text-slate-500 dark:text-slate-400">Egress &amp; Ingestion Logs</td>
+                    <td className="py-3 text-right text-rose-600 dark:text-rose-400">$1,200.40</td>
+                    <td className="py-3 text-right text-emerald-600 dark:text-emerald-400">$0.03</td>
+                    <td className="py-3 text-right text-emerald-600 dark:text-emerald-300 font-bold">-99.97%</td>
                   </tr>
-                  <tr className="border-t-2 border-[#2D3854] font-bold text-sm">
-                    <td className="py-3 text-white">Total Stack Cost</td>
-                    <td className="py-3 text-slate-400 font-normal">7-Day Period</td>
-                    <td className="py-3 text-right text-rose-400">$42,180.40</td>
-                    <td className="py-3 text-right text-emerald-400">$0.32</td>
-                    <td className="py-3 text-right text-emerald-300 font-black">-99.99%</td>
+                  <tr className="border-t-2 border-slate-300 dark:border-[#2D3854] font-bold text-sm">
+                    <td className="py-3 text-slate-900 dark:text-white">Total Stack Cost</td>
+                    <td className="py-3 text-slate-500 dark:text-slate-400 font-normal">7-Day Period</td>
+                    <td className="py-3 text-right text-rose-600 dark:text-rose-400">$42,180.40</td>
+                    <td className="py-3 text-right text-emerald-600 dark:text-emerald-400">$0.32</td>
+                    <td className="py-3 text-right text-emerald-600 dark:text-emerald-300 font-black">-99.99%</td>
                   </tr>
                 </tbody>
               </table>

@@ -107,33 +107,33 @@ export function DenialOfWalletShowcase() {
           <div
             className={`relative rounded-3xl p-6 sm:p-8 border transition-all duration-700 overflow-hidden ${
               mode === "standard"
-                ? "bg-gradient-to-br from-rose-950/40 via-[#181014] to-[#0A0507] border-rose-500/50 shadow-2xl shadow-rose-500/20"
-                : "bg-gradient-to-br from-emerald-950/40 via-[#0B1716] to-[#050C0C] border-cyan-500/50 shadow-2xl shadow-cyan-500/20"
+                ? "bg-gradient-to-br from-rose-50/80 via-white to-rose-50/40 dark:from-rose-950/40 dark:via-[#181014] dark:to-[#0A0507] border-rose-300 dark:border-rose-500/50 shadow-xl dark:shadow-2xl shadow-rose-500/10 dark:shadow-rose-500/20"
+                : "bg-gradient-to-br from-emerald-50/80 via-white to-cyan-50/40 dark:from-emerald-950/40 dark:via-[#0B1716] dark:to-[#050C0C] border-emerald-300 dark:border-cyan-500/50 shadow-xl dark:shadow-2xl shadow-emerald-500/10 dark:shadow-cyan-500/20"
             }`}
           >
             {/* Live Status Badge */}
-            <div className="flex items-center justify-between border-b border-slate-700/30 pb-4 mb-6">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/30 pb-4 mb-6">
               <div className="flex items-center gap-2">
                 <span
                   className={`h-2.5 w-2.5 rounded-full ${
-                    mode === "standard" ? "bg-rose-500 animate-ping" : "bg-emerald-400"
+                    mode === "standard" ? "bg-rose-500 animate-ping" : "bg-emerald-500"
                   }`}
                 />
                 <span
                   className={`text-xs font-mono font-bold tracking-wider uppercase ${
-                    mode === "standard" ? "text-rose-400" : "text-emerald-400"
+                    mode === "standard" ? "text-rose-600 dark:text-rose-400" : "text-emerald-600 dark:text-emerald-400"
                   }`}
                 >
                   {mode === "standard" ? "CRITICAL: UNBOUNDED SCALE" : "PROTECTED: VAULT SEALED"}
                 </span>
               </div>
               <div className="text-right">
-                <span className="text-[10px] font-mono uppercase text-slate-400 dark:text-neutral-500">
+                <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-neutral-400">
                   Current Billing Velocity
                 </span>
                 <div
                   className={`text-sm font-mono font-bold ${
-                    mode === "standard" ? "text-rose-400" : "text-cyan-400"
+                    mode === "standard" ? "text-rose-600 dark:text-rose-400" : "text-cyan-600 dark:text-cyan-400"
                   }`}
                 >
                   {mode === "standard" ? "+$148.00 / min" : "$0.00 / idle"}
@@ -143,10 +143,16 @@ export function DenialOfWalletShowcase() {
 
             {/* The Stylized Credit Card */}
             <div
-              className={`relative mx-auto w-full max-w-sm rounded-2xl p-6 border transition-all duration-700 transform ${
+              style={{
+                animation:
+                  mode === "standard"
+                    ? "card-overheat 2.5s infinite ease-in-out"
+                    : "vault-lock 0.8s ease-out forwards",
+              }}
+              className={`relative mx-auto w-full max-w-sm rounded-2xl p-6 border text-white transition-all duration-700 transform ${
                 mode === "standard"
-                  ? "bg-gradient-to-tr from-slate-900 via-rose-950/80 to-slate-900 border-rose-500/80 shadow-2xl shadow-rose-600/30 rotate-[-1deg]"
-                  : "bg-gradient-to-tr from-slate-900 via-[#102220] to-slate-900 border-cyan-500/80 shadow-2xl shadow-cyan-500/30 rotate-0"
+                  ? "bg-gradient-to-tr from-rose-950 via-slate-900 to-rose-950 border-rose-400 dark:border-rose-500/80 shadow-2xl shadow-rose-600/30 rotate-[-1deg]"
+                  : "bg-gradient-to-tr from-slate-900 via-emerald-950 to-slate-900 border-emerald-400 dark:border-cyan-500/80 shadow-2xl shadow-emerald-500/20 dark:shadow-cyan-500/30 rotate-0"
               }`}
             >
               {/* Card Header & Chip */}
@@ -155,12 +161,12 @@ export function DenialOfWalletShowcase() {
                   <div className="w-9 h-7 rounded-md bg-amber-400/80 border border-amber-300 flex items-center justify-center shadow-xs">
                     <div className="w-5 h-4 border border-amber-600/60 rounded-xs" />
                   </div>
-                  <span className="text-[11px] font-mono text-slate-400">EMV SECURE</span>
+                  <span className="text-[11px] font-mono text-slate-300">EMV SECURE</span>
                 </div>
-                <div className="font-mono text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                <div className="font-mono text-xs font-bold text-slate-200 flex items-center gap-1.5">
                   <span>AWS CLOUD</span>
                   {mode === "standard" ? (
-                    <Flame className="h-4 w-4 text-rose-500 animate-bounce" />
+                    <Flame className="h-4 w-4 text-rose-400 animate-bounce" />
                   ) : (
                     <Lock className="h-4 w-4 text-emerald-400" />
                   )}
@@ -169,7 +175,7 @@ export function DenialOfWalletShowcase() {
 
               {/* Card Number / Ticker */}
               <div className="space-y-1 mb-6">
-                <div className="text-[10px] font-mono text-slate-400 uppercase tracking-widest">
+                <div className="text-[10px] font-mono text-slate-300 uppercase tracking-widest">
                   Live Month-To-Date Spend
                 </div>
                 <div
@@ -182,13 +188,13 @@ export function DenialOfWalletShowcase() {
               </div>
 
               {/* Card Footer */}
-              <div className="flex items-center justify-between text-[11px] font-mono text-slate-400">
+              <div className="flex items-center justify-between text-[11px] font-mono text-slate-300">
                 <div>
-                  <span className="text-[9px] block text-slate-500 uppercase">Cardholder</span>
-                  <span className="text-slate-200 font-semibold">DEV ACCOUNT #9482</span>
+                  <span className="text-[9px] block text-slate-400 uppercase">Cardholder</span>
+                  <span className="text-white font-semibold">DEV ACCOUNT #9482</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-[9px] block text-slate-500 uppercase">Limit Status</span>
+                  <span className="text-[9px] block text-slate-400 uppercase">Limit Status</span>
                   <span
                     className={`font-bold ${
                       mode === "standard" ? "text-rose-400 animate-pulse" : "text-cyan-400"
@@ -227,16 +233,16 @@ export function DenialOfWalletShowcase() {
             </div>
 
             {/* Explanatory Caption */}
-            <div className="mt-6 text-center text-xs font-mono text-slate-400 dark:text-neutral-400">
+            <div className="mt-6 text-center text-xs font-mono text-slate-600 dark:text-neutral-400">
               {mode === "standard" ? (
-                <span className="text-rose-400 font-semibold flex items-center justify-center gap-1.5">
+                <span className="text-rose-600 dark:text-rose-400 font-semibold flex items-center justify-center gap-1.5">
                   <AlertTriangle className="h-4 w-4" />
                   Uncapped concurrency: 1 rogue loop can burn your entire bank limit overnight.
                 </span>
               ) : (
-                <span className="text-emerald-400 font-semibold flex items-center justify-center gap-1.5">
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center justify-center gap-1.5">
                   <Shield className="h-4 w-4" />
-                  Mathematical ceiling enforced: Lambda concurrency & API rate limits cap maximum burn.
+                  Mathematical ceiling enforced: Lambda concurrency &amp; API rate limits cap maximum burn.
                 </span>
               )}
             </div>
