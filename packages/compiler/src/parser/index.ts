@@ -36,7 +36,7 @@ import {
 } from "./extractors/constructs";
 import { extractEventBinding } from "./extractors/events";
 import { enrichTablesWithElectroEntities } from "./extractors/electrodb-enricher";
-import { unwrapExpression } from "./extractors/ast-utils";
+import { unwrapExpression, isSyncployConstruct, extractString } from "./extractors/ast-utils";
 
 export * from "./types";
 export * from "./extractors/ast-utils";
@@ -73,6 +73,16 @@ export class Parser {
       `!${this.projectRoot}/**/node_modules/**`,
       `!${this.projectRoot}/**/dist/**`,
       `!${this.projectRoot}/**/.syncploy/**`,
+      `!${this.projectRoot}/**/*.spec.ts`,
+      `!${this.projectRoot}/**/*.spec.tsx`,
+      `!${this.projectRoot}/**/*.test.ts`,
+      `!${this.projectRoot}/**/*.test.tsx`,
+      `!${this.projectRoot}/**/__tests__/**`,
+      `!${this.projectRoot}/**/.next/**`,
+      `!${this.projectRoot}/**/.turbo/**`,
+      `!${this.projectRoot}/**/coverage/**`,
+      `!${this.projectRoot}/**/frontend/**`,
+      `!${this.projectRoot}/**/scripts/test-*.ts`,
     ]);
 
     const apis: ApiRouteIR[] = [];
@@ -109,7 +119,7 @@ export class Parser {
 
         if (init.isKind(SyntaxKind.CallExpression)) {
           const callExpr = init.getExpression();
-          if (callExpr.getText() === "api") {
+          if (isSyncployConstruct(callExpr, "api", sourceFile)) {
             const callArgs = init.getArguments();
             const firstArg = unwrapExpression(callArgs[0]);
             let apiPath = "/";
@@ -119,7 +129,8 @@ export class Parser {
               const pProp = (firstArg as any).getProperty("path");
               if (pProp && pProp.isKind(SyntaxKind.PropertyAssignment)) {
                 const pInit = pProp.getInitializer();
-                if (pInit?.isKind(SyntaxKind.StringLiteral)) apiPath = pInit.getLiteralValue();
+                const str = extractString(pInit);
+                if (str) apiPath = str;
               }
             }
             context.knownApis.push({ id: decl.getName(), path: apiPath });
@@ -132,19 +143,20 @@ export class Parser {
         const className = expr.getText();
         const args = init.getArguments();
         const varName = decl.getName();
+        const firstArgStr = args.length > 0 ? extractString(args[0]) : undefined;
 
-        if (className === "Table" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
-          context.varToTableName[varName] = args[0].getLiteralValue();
-        } else if (className === "Bucket" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
-          context.varToBucketName[varName] = args[0].getLiteralValue();
-        } else if (className === "Queue" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
-          context.varToQueueName[varName] = args[0].getLiteralValue();
-        } else if (className === "Topic" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
-          context.varToTopicName[varName] = args[0].getLiteralValue();
-        } else if (className === "DeliveryStream" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
-          context.varToDeliveryStreamName[varName] = args[0].getLiteralValue();
-        } else if (className === "Auth" && args.length > 0 && args[0]?.isKind(SyntaxKind.StringLiteral)) {
-          context.varToAuthName[varName] = args[0].getLiteralValue();
+        if (isSyncployConstruct(expr, "Table", sourceFile) && firstArgStr) {
+          context.varToTableName[varName] = firstArgStr;
+        } else if (isSyncployConstruct(expr, "Bucket", sourceFile) && firstArgStr) {
+          context.varToBucketName[varName] = firstArgStr;
+        } else if (isSyncployConstruct(expr, "Queue", sourceFile) && firstArgStr) {
+          context.varToQueueName[varName] = firstArgStr;
+        } else if (isSyncployConstruct(expr, "Topic", sourceFile) && firstArgStr) {
+          context.varToTopicName[varName] = firstArgStr;
+        } else if (isSyncployConstruct(expr, "DeliveryStream", sourceFile) && firstArgStr) {
+          context.varToDeliveryStreamName[varName] = firstArgStr;
+        } else if (isSyncployConstruct(expr, "Auth", sourceFile) && firstArgStr) {
+          context.varToAuthName[varName] = firstArgStr;
         } else if (className === "Entity" || className.endsWith(".Entity")) {
           const entity = extractElectroEntity(decl, sourceFile);
           if (entity) {

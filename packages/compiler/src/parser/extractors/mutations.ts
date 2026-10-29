@@ -1,6 +1,41 @@
 import { Node, SourceFile, SyntaxKind, ObjectLiteralExpression } from "ts-morph";
 import type { FunctionMutationsIR, BucketMutationIR } from "../../types";
 
+function findDeclarationInFile(file: SourceFile, name: string, depth = 0): Node | undefined {
+  if (depth > 6) return undefined;
+  const fn = file.getFunction(name);
+  if (fn) return fn;
+  const vr = file.getVariableDeclaration(name);
+  if (vr) return vr.getInitializer() || vr;
+  const cls = file.getClass(name);
+  if (cls) return cls;
+
+  for (const exp of file.getExportDeclarations()) {
+    const mod = exp.getModuleSpecifierSourceFile();
+    if (!mod || mod.getFilePath().includes("/node_modules/")) continue;
+    if (exp.isTypeOnly()) continue;
+    const named = exp.getNamedExports().find((ne) => (ne.getAliasNode()?.getText() || ne.getName()) === name);
+    if (named) {
+      return findDeclarationInFile(mod, named.getName(), depth + 1);
+    }
+    if (!exp.getNamedExports().length) {
+      const found = findDeclarationInFile(mod, name, depth + 1);
+      if (found) return found;
+    }
+  }
+
+  for (const imp of file.getImportDeclarations()) {
+    const mod = imp.getModuleSpecifierSourceFile();
+    if (!mod || mod.getFilePath().includes("/node_modules/")) continue;
+    const named = imp.getNamedImports().find((ni) => (ni.getAliasNode()?.getText() || ni.getName()) === name);
+    if (named) {
+      return findDeclarationInFile(mod, named.getName(), depth + 1);
+    }
+  }
+
+  return undefined;
+}
+
 export function extractMutationsFromNode(
   handlerNode: Node | undefined,
   sourceFile: SourceFile,
@@ -17,14 +52,9 @@ export function extractMutationsFromNode(
 
   if (handlerNode.isKind(SyntaxKind.Identifier)) {
     const identName = handlerNode.getText();
-    const varDecl = sourceFile.getVariableDeclaration(identName);
-    if (varDecl && varDecl.getInitializer()) {
-      targetNode = varDecl.getInitializer()!;
-    } else {
-      const funcDecl = sourceFile.getFunction(identName);
-      if (funcDecl) {
-        targetNode = funcDecl;
-      }
+    const resolved = findDeclarationInFile(sourceFile, identName);
+    if (resolved) {
+      targetNode = resolved;
     }
   }
 
@@ -104,28 +134,10 @@ export function extractMutationsFromNode(
 
         // Cross-module resolution: check imported functions and variables
         if (!localFunc && !localVar) {
-          for (const importDecl of currFile.getImportDeclarations()) {
-            const namedImports = importDecl.getNamedImports();
-            const matchedImport = namedImports.find(
-              (ni) => (ni.getAliasNode()?.getText() || ni.getName()) === fnName
-            );
-            if (matchedImport) {
-              const targetSourceFile = importDecl.getModuleSpecifierSourceFile();
-              if (targetSourceFile && !targetSourceFile.getFilePath().includes("/node_modules/")) {
-                const importedFunc = targetSourceFile.getFunction(matchedImport.getName());
-                if (importedFunc && !visitedNodes.has(importedFunc)) {
-                  visitedNodes.add(importedFunc);
-                  nodesToScan.push(importedFunc);
-                }
-                const importedVar = targetSourceFile.getVariableDeclaration(matchedImport.getName());
-                const importedInit = importedVar?.getInitializer();
-                if (importedInit && !visitedNodes.has(importedInit)) {
-                  visitedNodes.add(importedInit);
-                  nodesToScan.push(importedInit);
-                }
-              }
-              break;
-            }
+          const resolved = findDeclarationInFile(currFile, fnName);
+          if (resolved && !visitedNodes.has(resolved)) {
+            visitedNodes.add(resolved);
+            nodesToScan.push(resolved);
           }
         }
       }
@@ -224,6 +236,59 @@ export function extractMutationsFromNode(
         const methodName = expr.getName();
         const baseCaller = callerText.includes(".") ? callerText.split(".").pop()! : callerText;
 
+        // Traverse into service / helper object methods (e.g. documentsService.fetchAndIngestDocument or this.audit.createAuditLog)
+        if (
+          !localVarToTableName[callerText] &&
+          !localVarToTableName[baseCaller] &&
+          !localVarToBucketName[callerText] &&
+          !localVarToBucketName[baseCaller] &&
+          !localVarToQueueName[callerText] &&
+          !localVarToQueueName[baseCaller] &&
+          !localVarToTopicName[callerText] &&
+          !localVarToTopicName[baseCaller]
+        ) {
+          let resolvedMethod: Node | undefined;
+
+          // 1. If 'this.prop.method()', check current class property
+          if (callerText.startsWith("this.")) {
+            const classDecl = curr.getFirstAncestorByKind(SyntaxKind.ClassDeclaration);
+            if (classDecl) {
+              const propName = callerText.replace(/^this\./, "");
+              const prop = classDecl.getProperty(propName);
+              const propTypeNode = prop?.getTypeNode()?.getText() || prop?.getInitializer()?.getText();
+              const targetClassName = propTypeNode?.replace(/^new\s+/, "")?.replace(/\(.*$/, "")?.trim();
+              if (targetClassName) {
+                const targetDecl = findDeclarationInFile(currFile, targetClassName);
+                if (targetDecl && targetDecl.isKind(SyntaxKind.ClassDeclaration)) {
+                  resolvedMethod = (targetDecl as any).getMethod(methodName);
+                }
+              }
+            }
+          }
+
+          // 2. Direct object reference (e.g. documentsService.fetchAndIngestDocument)
+          if (!resolvedMethod) {
+            const declNode = findDeclarationInFile(currFile, baseCaller);
+            if (declNode) {
+              if (declNode.isKind(SyntaxKind.NewExpression)) {
+                const clsExpr = (declNode as any).getExpression();
+                const clsName = clsExpr.getText();
+                const clsDecl = findDeclarationInFile(declNode.getSourceFile(), clsName);
+                if (clsDecl && clsDecl.isKind(SyntaxKind.ClassDeclaration)) {
+                  resolvedMethod = (clsDecl as any).getMethod(methodName);
+                }
+              } else if (declNode.isKind(SyntaxKind.ClassDeclaration)) {
+                resolvedMethod = (declNode as any).getMethod(methodName);
+              }
+            }
+          }
+
+          if (resolvedMethod && !visitedNodes.has(resolvedMethod)) {
+            visitedNodes.add(resolvedMethod);
+            nodesToScan.push(resolvedMethod);
+          }
+        }
+
         // Check Table writes (standard SDK methods + ElectroDB mutations)
         const tblName = localVarToTableName[callerText] || localVarToTableName[baseCaller];
         if (
@@ -319,10 +384,19 @@ export function extractMutationsFromNode(
             if (cmdNode.isKind(SyntaxKind.NewExpression)) {
               const cmdName = cmdNode.getExpression().getText();
               const cmdArgs = cmdNode.getArguments();
-              const inputObj =
-                cmdArgs.length > 0 && cmdArgs[0]?.isKind(SyntaxKind.ObjectLiteralExpression)
-                  ? (cmdArgs[0] as ObjectLiteralExpression)
-                  : undefined;
+              let inputObj: ObjectLiteralExpression | undefined;
+              if (cmdArgs.length > 0 && cmdArgs[0]) {
+                const arg = cmdArgs[0];
+                if (arg.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                  inputObj = arg as ObjectLiteralExpression;
+                } else if (arg.isKind(SyntaxKind.Identifier)) {
+                  const varDecl = currFile.getVariableDeclaration(arg.getText());
+                  const init = varDecl?.getInitializer();
+                  if (init && init.isKind(SyntaxKind.ObjectLiteralExpression)) {
+                    inputObj = init as ObjectLiteralExpression;
+                  }
+                }
+              }
 
               if (inputObj) {
                 // DynamoDB Write Commands
@@ -481,6 +555,25 @@ export function extractMutationsFromNode(
                     }
                     if (resolvedTop && !topicsPublished.includes(resolvedTop)) {
                       topicsPublished.push(resolvedTop);
+                    }
+                  }
+                }
+
+                // Firehose PutRecordCommand / PutRecordBatchCommand
+                if (cmdName === "PutRecordCommand" || cmdName === "PutRecordBatchCommand") {
+                  const dsProp = inputObj.getProperty("DeliveryStreamName");
+                  if (dsProp && dsProp.isKind(SyntaxKind.PropertyAssignment)) {
+                    const init = dsProp.getInitializer();
+                    let resolvedDs: string | undefined;
+                    if (init?.isKind(SyntaxKind.StringLiteral)) {
+                      resolvedDs = init.getLiteralValue();
+                    } else if (init) {
+                      const txt = init.getText();
+                      const base = txt.includes(".") ? txt.split(".").pop()! : txt;
+                      resolvedDs = (localVarToDeliveryStreamName && (localVarToDeliveryStreamName[txt] || localVarToDeliveryStreamName[base]));
+                    }
+                    if (resolvedDs && !deliveryStreamsWritten.includes(resolvedDs)) {
+                      deliveryStreamsWritten.push(resolvedDs);
                     }
                   }
                 }

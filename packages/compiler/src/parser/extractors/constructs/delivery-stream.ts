@@ -12,6 +12,7 @@ import {
   extractMemory,
   extractString,
   getNodeLocation,
+  isSyncployConstruct,
 } from "../ast-utils";
 
 export function extractDeliveryStream(
@@ -21,16 +22,16 @@ export function extractDeliveryStream(
 ): { deliveryStream: DeliveryStreamIR; streamName: string } | undefined {
   const init = decl.getInitializer();
   if (!init || !init.isKind(SyntaxKind.NewExpression)) return undefined;
-  if (init.getExpression().getText() !== "DeliveryStream") return undefined;
+  if (!isSyncployConstruct(init.getExpression(), "DeliveryStream", sourceFile)) return undefined;
 
   const varName = decl.getName();
   const args = init.getArguments();
-  if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
+  const streamName = args.length > 0 ? extractString(args[0]) : undefined;
+  if (!streamName) {
     throw new Error(
       `DeliveryStream '${varName}' in ${sourceFile.getFilePath()} must have a string literal name as first argument.`
     );
   }
-  const streamName = args[0].getLiteralValue();
 
   let destinationBucketName = "";
   let prefix: string | undefined;

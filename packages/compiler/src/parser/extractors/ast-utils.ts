@@ -36,6 +36,77 @@ export function unwrapExpression(node: Node | undefined): Node | undefined {
   return curr;
 }
 
+export function isNodeExported(decl: any, sourceFile?: SourceFile): boolean {
+  if (decl.isExported && decl.isExported()) return true;
+  const sf = sourceFile || decl.getSourceFile();
+  const name = decl.getName();
+  for (const exp of sf.getExportDeclarations()) {
+    for (const named of exp.getNamedExports()) {
+      if ((named.getAliasNode()?.getText() || named.getName()) === name) return true;
+    }
+  }
+  return false;
+}
+
+export function isSyncployConstruct(
+  exprNode: Node | undefined,
+  expectedName: string,
+  sourceFile?: SourceFile
+): boolean {
+  if (!exprNode) return false;
+  const unwrapped = unwrapExpression(exprNode);
+  if (!unwrapped) return false;
+
+  const sf = sourceFile || unwrapped.getSourceFile();
+  const text = unwrapped.getText();
+
+  // Direct member access: syncploy.Table
+  if (unwrapped.isKind(SyntaxKind.PropertyAccessExpression)) {
+    return unwrapped.getName() === expectedName;
+  }
+
+  // Check direct name match
+  if (text === expectedName) {
+    for (const imp of sf.getImportDeclarations()) {
+      const moduleSpec = imp.getModuleSpecifierValue();
+      const named = imp.getNamedImports().find((ni) => ni.getName() === text);
+      if (named) {
+        if (
+          moduleSpec.includes("@syncploy/sdk") ||
+          moduleSpec.endsWith("/sdk") ||
+          moduleSpec.includes("sdk")
+        ) {
+          return true;
+        }
+        return false;
+      }
+    }
+    const localClass = sf.getClass(text);
+    if (localClass) return false;
+
+    return true;
+  }
+
+  // Check alias match: import { Table as DynamoTable } from "@syncploy/sdk"
+  for (const imp of sf.getImportDeclarations()) {
+    const moduleSpec = imp.getModuleSpecifierValue();
+    if (
+      moduleSpec.includes("@syncploy/sdk") ||
+      moduleSpec.endsWith("/sdk") ||
+      moduleSpec.includes("sdk")
+    ) {
+      for (const ni of imp.getNamedImports()) {
+        const alias = ni.getAliasNode()?.getText();
+        if (alias === text && ni.getName() === expectedName) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
 /**
  * Follows identifier references to their static initializer, across files and
  * import aliases. Returns the resolved initializer node (literal, expression,

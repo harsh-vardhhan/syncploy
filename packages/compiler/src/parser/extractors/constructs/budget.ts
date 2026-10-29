@@ -13,6 +13,7 @@ import {
   extractStringLiteral,
   resolveConstantInitializer,
   getNodeLocation,
+  isSyncployConstruct,
 } from "../ast-utils";
 
 export function extractBudget(
@@ -22,7 +23,7 @@ export function extractBudget(
 ): BudgetIR | undefined {
   const init = decl.getInitializer();
   if (!init || !init.isKind(SyntaxKind.NewExpression)) return undefined;
-  if (init.getExpression().getText() !== "Budget") return undefined;
+  if (!isSyncployConstruct(init.getExpression(), "Budget", sourceFile)) return undefined;
 
   const varName = decl.getName();
   const args = init.getArguments();

@@ -11,6 +11,7 @@ import {
   extractString,
   extractCommentSuppressions,
   getNodeLocation,
+  isSyncployConstruct,
 } from "../ast-utils";
 
 export function extractQueue(
@@ -19,16 +20,16 @@ export function extractQueue(
 ): { queue: QueueIR; queueName: string } | undefined {
   const init = decl.getInitializer();
   if (!init || !init.isKind(SyntaxKind.NewExpression)) return undefined;
-  if (init.getExpression().getText() !== "Queue") return undefined;
+  if (!isSyncployConstruct(init.getExpression(), "Queue", sourceFile)) return undefined;
 
   const varName = decl.getName();
   const args = init.getArguments();
-  if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
+  const queueName = args.length > 0 ? extractString(args[0]) : undefined;
+  if (!queueName) {
     throw new Error(
       `Queue '${varName}' in ${sourceFile.getFilePath()} must have a string literal name as first argument.`
     );
   }
-  const queueName = args[0].getLiteralValue();
 
   let visibilityTimeout: number | undefined;
   let deadLetterQueue: { maxReceiveCount: number; logicalId?: string | undefined; queueName?: string | undefined } | undefined;

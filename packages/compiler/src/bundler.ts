@@ -4,7 +4,8 @@ import * as esbuild from "esbuild";
 import { resolveTsConfigPaths } from "./parser/tsconfig-resolver";
 
 export interface BundlerOptions {
-  minify?: boolean;
+  minify?: boolean | undefined;
+  bundleAwsSdk?: boolean | undefined;
 }
 
 export interface BundleResult {
@@ -100,6 +101,7 @@ export class Bundler {
       outfile: outFile,
       nodePaths,
       alias: aliases,
+      external: options.bundleAwsSdk ? [] : ["@aws-sdk/*"],
       banner: {
         js: `import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);`,
       },

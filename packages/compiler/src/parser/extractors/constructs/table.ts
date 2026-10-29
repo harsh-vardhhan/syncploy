@@ -10,6 +10,7 @@ import {
   extractString,
   extractCommentSuppressions,
   getNodeLocation,
+  isSyncployConstruct,
 } from "../ast-utils";
 
 export function extractTable(
@@ -18,16 +19,16 @@ export function extractTable(
 ): { table: TableIR; tableName: string } | undefined {
   const init = decl.getInitializer();
   if (!init || !init.isKind(SyntaxKind.NewExpression)) return undefined;
-  if (init.getExpression().getText() !== "Table") return undefined;
+  if (!isSyncployConstruct(init.getExpression(), "Table", sourceFile)) return undefined;
 
   const varName = decl.getName();
   const args = init.getArguments();
-  if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
+  const tableName = args.length > 0 ? extractString(args[0]) : undefined;
+  if (!tableName) {
     throw new Error(
       `Table '${varName}' in ${sourceFile.getFilePath()} must have a string literal name as first argument.`
     );
   }
-  const tableName = args[0].getLiteralValue();
 
   let partitionKey = { name: "id", type: "string" as const };
   let sortKey: { name: string; type: "string" | "number" | "binary" } | undefined;

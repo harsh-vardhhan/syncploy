@@ -11,6 +11,7 @@ import {
   extractString,
   extractCommentSuppressions,
   getNodeLocation,
+  isSyncployConstruct,
 } from "../ast-utils";
 
 export function extractBucket(
@@ -19,16 +20,16 @@ export function extractBucket(
 ): { bucket: BucketIR; bucketName: string } | undefined {
   const init = decl.getInitializer();
   if (!init || !init.isKind(SyntaxKind.NewExpression)) return undefined;
-  if (init.getExpression().getText() !== "Bucket") return undefined;
+  if (!isSyncployConstruct(init.getExpression(), "Bucket", sourceFile)) return undefined;
 
   const varName = decl.getName();
   const args = init.getArguments();
-  if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
+  const bucketName = args.length > 0 ? extractString(args[0]) : undefined;
+  if (!bucketName) {
     throw new Error(
       `Bucket '${varName}' in ${sourceFile.getFilePath()} must have a string literal name as first argument.`
     );
   }
-  const bucketName = args[0].getLiteralValue();
 
   let versioned = false;
   let eventBridge = false;

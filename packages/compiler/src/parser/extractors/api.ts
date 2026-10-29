@@ -8,6 +8,8 @@ import type { ApiRouteIR, HttpMethod, IngressType } from "../../types";
 import type { ParseContext } from "../types";
 import {
   unwrapExpression,
+  isNodeExported,
+  isSyncployConstruct,
   extractDuration,
   extractMemory,
   extractNumber,
@@ -30,10 +32,10 @@ export function extractApiRoute(
   if (!init || !init.isKind(SyntaxKind.CallExpression)) return undefined;
 
   const expr = init.getExpression();
-  if (expr.getText() !== "api") return undefined;
+  if (!isSyncployConstruct(expr, "api", sourceFile)) return undefined;
 
   const varName = decl.getName();
-  const isExported = decl.isExported();
+  const isExported = isNodeExported(decl, sourceFile);
 
   if (!isExported) {
     throw new Error(
@@ -58,12 +60,12 @@ export function extractApiRoute(
   }
 
   const pathInitializer = pathProp.getInitializer();
-  if (!pathInitializer || !pathInitializer.isKind(SyntaxKind.StringLiteral)) {
+  const pathValue = extractString(pathInitializer);
+  if (!pathValue) {
     throw new Error(
-      `API endpoint '${varName}' path in ${sourceFile.getFilePath()} must be a string literal.`
+      `API endpoint '${varName}' path in ${sourceFile.getFilePath()} must be a string.`
     );
   }
-  const pathValue = pathInitializer.getLiteralValue();
 
   let methodValue: HttpMethod = "POST";
   const methodProp = optionsObj.getProperty("method");

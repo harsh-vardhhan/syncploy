@@ -10,6 +10,7 @@ import {
   extractNumber,
   extractString,
   getNodeLocation,
+  isSyncployConstruct,
 } from "../ast-utils";
 
 export function extractAuth(
@@ -18,16 +19,16 @@ export function extractAuth(
 ): { auth: AuthIR; authName: string } | undefined {
   const init = decl.getInitializer();
   if (!init || !init.isKind(SyntaxKind.NewExpression)) return undefined;
-  if (init.getExpression().getText() !== "Auth") return undefined;
+  if (!isSyncployConstruct(init.getExpression(), "Auth", sourceFile)) return undefined;
 
   const varName = decl.getName();
   const args = init.getArguments();
-  if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
+  const authName = args.length > 0 ? extractString(args[0]) : undefined;
+  if (!authName) {
     throw new Error(
       `Auth '${varName}' in ${sourceFile.getFilePath()} must have a string literal name as first argument.`
     );
   }
-  const authName = args[0].getLiteralValue();
 
   let signInMethod: AuthIR["signInMethod"] = "email";
   let autoVerify: ("email" | "phone")[] | undefined;

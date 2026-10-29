@@ -415,4 +415,5 @@ export interface BuildOutput {
 export interface BuildOptions {
   strict?: boolean | undefined;
   failOnDow?: boolean | undefined;
+  minify?: boolean | undefined;
 }

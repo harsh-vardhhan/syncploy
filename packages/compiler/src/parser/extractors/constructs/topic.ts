@@ -6,7 +6,7 @@ import {
 } from "ts-morph";
 import type { TopicIR } from "../../../types";
 import type { ParseContext } from "../../types";
-import { extractString, unwrapExpression, getNodeLocation } from "../ast-utils";
+import { extractString, unwrapExpression, getNodeLocation, isSyncployConstruct } from "../ast-utils";
 
 export function extractTopic(
   decl: VariableDeclaration,
@@ -15,16 +15,16 @@ export function extractTopic(
 ): { topic: TopicIR; topicName: string } | undefined {
   const init = decl.getInitializer();
   if (!init || !init.isKind(SyntaxKind.NewExpression)) return undefined;
-  if (init.getExpression().getText() !== "Topic") return undefined;
+  if (!isSyncployConstruct(init.getExpression(), "Topic", sourceFile)) return undefined;
 
   const varName = decl.getName();
   const args = init.getArguments();
-  if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
+  const topicName = args.length > 0 ? extractString(args[0]) : undefined;
+  if (!topicName) {
     throw new Error(
       `Topic '${varName}' in ${sourceFile.getFilePath()} must have a string literal name as first argument.`
     );
   }
-  const topicName = args[0].getLiteralValue();
 
   let fifo = false;
   let subscriptions: TopicIR["subscriptions"];

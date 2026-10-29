@@ -11,6 +11,7 @@ import {
   extractNumber,
   extractString,
   getNodeLocation,
+  isSyncployConstruct,
 } from "../ast-utils";
 
 export function extractAlarm(
@@ -20,16 +21,16 @@ export function extractAlarm(
 ): AlarmIR | undefined {
   const init = decl.getInitializer();
   if (!init || !init.isKind(SyntaxKind.NewExpression)) return undefined;
-  if (init.getExpression().getText() !== "Alarm") return undefined;
+  if (!isSyncployConstruct(init.getExpression(), "Alarm", sourceFile)) return undefined;
 
   const varName = decl.getName();
   const args = init.getArguments();
-  if (args.length === 0 || !args[0]?.isKind(SyntaxKind.StringLiteral)) {
+  const alarmName = args.length > 0 ? extractString(args[0]) : undefined;
+  if (!alarmName) {
     throw new Error(
       `Alarm '${varName}' in ${sourceFile.getFilePath()} must have a string literal name as first argument.`
     );
   }
-  const alarmName = args[0].getLiteralValue();
 
   let threshold = 0;
   let evaluationPeriods = 1;
