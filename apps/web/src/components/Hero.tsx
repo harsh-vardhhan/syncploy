@@ -74,37 +74,16 @@ export function Hero() {
           </Link>
         </div>
 
-        {/* Headline with Eyebrow */}
-        <div className="space-y-6 pt-2">
-          <div className="inline-flex items-center justify-center">
-            <span
-              className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white inline-flex items-center justify-center flex-wrap gap-x-2.5 sm:gap-x-4 underline decoration-indigo-500/80 dark:decoration-indigo-400/80 decoration-[3px] sm:decoration-[4px] underline-offset-8 sm:underline-offset-[12px]"
-              aria-label="Infrastructure from Code"
-            >
-              <span>Infrastructure</span>
-              <span className="relative inline-block font-black px-1 sm:px-1.5">
-                <span className="relative z-10 text-slate-400 dark:text-neutral-500 line-through decoration-rose-500 decoration-[3.5px] sm:decoration-[5px]">
-                  as
-                </span>
-                {/* Physical strike bar overlay to guarantee visibility across all displays */}
-                <span
-                  className="absolute top-1/2 -left-1 -right-1 h-[3.5px] sm:h-[5px] -translate-y-1/2 bg-rose-500 -rotate-6 rounded-full pointer-events-none z-20 shadow-xs"
-                  aria-hidden="true"
-                />
-                {/* 'from' annotation floating directly above */}
-                <span
-                  className="absolute -top-5 sm:-top-7 left-1/2 -translate-x-1/2 text-xs sm:text-sm font-mono font-black text-cyan-600 dark:text-cyan-400 -rotate-12 select-none bg-cyan-50 dark:bg-cyan-950/90 px-1.5 py-0.5 sm:px-2.5 sm:py-0.5 rounded-md border border-cyan-300 dark:border-cyan-700 shadow-sm whitespace-nowrap z-30"
-                  aria-hidden="true"
-                >
-                  from
-                </span>
-              </span>
-              <span>Code</span>
-            </span>
+        {/* Main Headline */}
+        <div className="space-y-4 pt-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-slate-100 dark:bg-[#151926] border border-slate-200 dark:border-[#262C40] text-xs font-mono font-semibold text-slate-700 dark:text-slate-300 shadow-xs">
+            <span className="text-indigo-600 dark:text-indigo-400 font-bold">ZERO-DOW FRAMEWORK</span>
+            <span className="text-slate-400 dark:text-slate-600">&bull;</span>
+            <span>PURE TYPESCRIPT FOR AWS</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 dark:text-white leading-[1.1]">
-            Build on AWS. <br className="hidden sm:inline" />
+          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.06]">
+            Build on AWS. <br />
             <span className="bg-gradient-to-r from-rose-600 via-indigo-600 to-emerald-600 dark:from-rose-400 dark:via-indigo-400 dark:to-emerald-400 bg-clip-text text-transparent">
               Sleep Through the Night.
             </span>
