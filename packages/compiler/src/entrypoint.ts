@@ -116,6 +116,11 @@ export async function handler(event: any) {
   } catch (error: any) {
     console.error("[Syncploy Handler Error]:", error);
     const statusCode = error.statusCode || 500;
+    const isProd = process.env.NODE_ENV === "production";
+    const errorMessage =
+      isProd && statusCode === 500
+        ? "Internal Server Error"
+        : error.message || "Internal Server Error";
     return {
       statusCode,
       headers: {
@@ -123,8 +128,8 @@ export async function handler(event: any) {
         "Access-Control-Allow-Origin": "*",
       },
       body: JSON.stringify({
-        error: error.name || "Error",
-        message: error.message || "Internal Server Error",
+        error: isProd && statusCode === 500 ? "InternalServerError" : (error.name || "Error"),
+        message: errorMessage,
       }),
     };
   }
