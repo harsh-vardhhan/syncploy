@@ -232,6 +232,51 @@ export function validateTopics(ctx: ValidationContext, graph: ResourceGraph): vo
             );
           }
         }
+      } else if (sub.protocol === "sqs") {
+        const isArn = sub.endpoint.startsWith("arn:aws:sqs:") || sub.endpoint.includes("${");
+        const matchesQueue = (graph.queues || []).some(
+          (q) => q.name === sub.endpoint || q.id === sub.endpoint || q.logicalId === sub.endpoint
+        );
+        if (!isArn && !matchesQueue) {
+          ctx.addError(
+            "ERR_SNS_SQS_ENDPOINT",
+            t.id,
+            `Topic '${t.name}': Subscription SQS endpoint '${sub.endpoint}' must be a valid SQS ARN or match a Queue in the stack.`,
+            t.sourceFile
+          );
+        }
+      } else if (sub.protocol === "firehose") {
+        const isArn = sub.endpoint.startsWith("arn:aws:firehose:") || sub.endpoint.includes("${");
+        const matchesStream = (graph.deliveryStreams || []).some(
+          (ds) => ds.name === sub.endpoint || ds.id === sub.endpoint || ds.logicalId === sub.endpoint
+        );
+        if (!isArn && !matchesStream) {
+          ctx.addError(
+            "ERR_SNS_FIREHOSE_ENDPOINT",
+            t.id,
+            `Topic '${t.name}': Subscription Firehose endpoint '${sub.endpoint}' must be a valid DeliveryStream ARN or match a DeliveryStream in the stack.`,
+            t.sourceFile
+          );
+        }
+      } else if (sub.protocol === "lambda") {
+        const isArn = sub.endpoint.startsWith("arn:aws:lambda:") || sub.endpoint.includes("${");
+        const allFunctions = [
+          ...graph.apis,
+          ...graph.consumers,
+          ...(graph.tableStreams || []),
+          ...(graph.topicSubscribers || []),
+        ];
+        const matchesFunc = allFunctions.some(
+          (f: any) => f.id === sub.endpoint || f.name === sub.endpoint || (f as any).functionName === sub.endpoint
+        );
+        if (!isArn && !matchesFunc) {
+          ctx.addError(
+            "ERR_SNS_LAMBDA_ENDPOINT",
+            t.id,
+            `Topic '${t.name}': Subscription Lambda endpoint '${sub.endpoint}' must be a valid Lambda ARN or match a function in the stack.`,
+            t.sourceFile
+          );
+        }
       }
     }
   }

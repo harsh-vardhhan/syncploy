@@ -55,8 +55,16 @@ export class Queue {
   }
 
   public get queueArn(): string {
-    const envKey = `SYNCPLOY_QUEUE_${this.name.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_ARN`;
-    return process.env[envKey] || `arn:aws:sqs:*:*:${this.name}`;
+    const upperName = this.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
+    const envKey = `SYNCPLOY_QUEUE_${upperName}_ARN`;
+    const val =
+      process.env[envKey] ||
+      process.env[`QUEUE_${upperName}_ARN`] ||
+      process.env[`${upperName}_QUEUE_ARN`];
+    if (val) return val;
+    throw new Error(
+      `Queue ARN for '${this.name}' is not set. Ensure '${envKey}' is populated in the environment.`
+    );
   }
 
   public getClient(): SQSClient {

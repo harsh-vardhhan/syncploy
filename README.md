@@ -319,11 +319,11 @@ Syncploy exclusively targets services that **scale to zero**, require **zero VPC
 
 The compiler catches fatal platform constraints and Denial-of-Wallet risks in under 1 millisecond:
 
-* **Infra Recursion & Cycle Detection (Fatal)**: Traces directed event and mutation graphs using DFS cycle detection to catch infinite self-amplifying loops (`Table -> Stream -> Table.put`, `Queue -> Consumer -> Queue.send`, `Bucket -> EventBridge -> Queue -> Consumer -> Bucket.upload`).
+* **Infra Recursion & Cycle Detection (Fatal)**: Traces directed event and mutation graphs using Tarjan Strongly Connected Components (SCC) linear cycle detection ($O(V+E)$) to catch infinite self-amplifying loops (`Table -> Stream -> Table.put`, `Queue -> Consumer -> Queue.send`, `Bucket -> EventBridge -> Queue -> Consumer -> Bucket.upload`).
 * **Denial of Wallet (DoW) & DDoS Guards**:
   * **SQS Timeout Mismatch**: Enforces that queue `visibilityTimeout` is $\ge 6\times$ consumer `timeout` to eliminate duplicate delivery storms.
   * **Missing DLQ / Retry Storms**: Warns when active queue consumers lack a `deadLetterQueue`, preventing poison-pill message loops.
-  * **Uncapped Public Concurrency**: Warns when public Function URLs lack `concurrency` caps, preventing DDoS billing attacks.
+  * **Uncapped Public Concurrency**: Warns when public Function URLs lack `concurrency` caps, helping mitigate DDoS cost amplification by capping maximum concurrent executions.
   * **DynamoDB Shard Surge Guard**: Warns on unthrottled stream consumers to prevent shard-split cost runaway.
 * **CloudFormation Logical IDs**: Strictly alphanumeric (`^[A-Za-z0-9]+$`). Catches fatal syntax errors like `logicalId: "ehr-table"`.
 * **Lambda Limits**: Validates memory (128 MB to 10,240 MB) and timeout limits (1s to 900s / 15m). Catches illegal sizes like `64MB` or `20m`.

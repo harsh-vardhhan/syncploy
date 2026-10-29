@@ -5,8 +5,46 @@ import {
   getBucketLogicalId,
   getQueueLogicalId,
   getDeliveryStreamLogicalId,
+  getFunctionLogicalId,
   resolvePhysicalName,
 } from "../logical-ids";
+
+/**
+ * Ensures exactly ONE AWS::SQS::QueuePolicy resource exists per queue,
+ * unioning all permission statements from SNS topics and EventBridge rules.
+ */
+export function addQueuePolicyStatement(
+  resources: Record<string, any>,
+  qLogicalId: string,
+  statement: any,
+  preferredLogicalId?: string
+): void {
+  // Find any existing AWS::SQS::QueuePolicy targeting qLogicalId
+  let policyKey = Object.keys(resources).find(
+    (k) =>
+      resources[k]?.Type === "AWS::SQS::QueuePolicy" &&
+      resources[k]?.Properties?.Queues?.some((q: any) => q.Ref === qLogicalId)
+  );
+
+  if (!policyKey) {
+    policyKey = preferredLogicalId || `QueuePolicy${qLogicalId}`;
+    resources[policyKey] = {
+      Type: "AWS::SQS::QueuePolicy",
+      Properties: {
+        Queues: [{ Ref: qLogicalId }],
+        PolicyDocument: {
+          Version: "2012-10-17",
+          Statement: [],
+        },
+      },
+    };
+  }
+
+  const statements: any[] = resources[policyKey].Properties.PolicyDocument.Statement;
+  if (!statements.some((s) => s.Sid && s.Sid === statement.Sid)) {
+    statements.push(statement);
+  }
+}
 
 export function generateTopics(
   graph: ResourceGraph,
@@ -32,31 +70,41 @@ export function generateTopics(
             const qLogicalId = getQueueLogicalId(matchingQueue, graph);
             endpointVal = { "Fn::GetAtt": [qLogicalId, "Arn"] };
 
-            // Synthesize AWS::SQS::QueuePolicy allowing SNS to publish to this Queue
-            const policyKey = `QueuePolicy${qLogicalId}From${resourceKey}`;
-            resources[policyKey] = {
-              Type: "AWS::SQS::QueuePolicy",
-              Properties: {
-                Queues: [{ Ref: qLogicalId }],
-                PolicyDocument: {
-                  Version: "2012-10-17",
-                  Statement: [
-                    {
-                      Sid: `AllowSNS${resourceKey}ToPublish`,
-                      Effect: "Allow",
-                      Principal: { Service: "sns.amazonaws.com" },
-                      Action: "sqs:SendMessage",
-                      Resource: { "Fn::GetAtt": [qLogicalId, "Arn"] },
-                      Condition: {
-                        ArnEquals: {
-                          "aws:SourceArn": { Ref: resourceKey },
-                        },
-                      },
-                    },
-                  ],
+            // Synthesize AWS::SQS::QueuePolicy allowing SNS to publish to this Queue (unioned across all topics)
+            addQueuePolicyStatement(resources, qLogicalId, {
+              Sid: `AllowSNS${resourceKey}ToPublish`,
+              Effect: "Allow",
+              Principal: { Service: "sns.amazonaws.com" },
+              Action: "sqs:SendMessage",
+              Resource: { "Fn::GetAtt": [qLogicalId, "Arn"] },
+              Condition: {
+                ArnEquals: {
+                  "aws:SourceArn": { Ref: resourceKey },
                 },
               },
-            };
+            });
+          }
+        } else if (s.protocol === "firehose") {
+          const matchingStream = (graph.deliveryStreams || []).find(
+            (ds) => ds.name === s.endpoint || ds.id === s.endpoint || ds.logicalId === s.endpoint
+          );
+          if (matchingStream) {
+            const dsLogicalId = getDeliveryStreamLogicalId(matchingStream, graph);
+            endpointVal = { "Fn::GetAtt": [dsLogicalId, "Arn"] };
+          }
+        } else if (s.protocol === "lambda") {
+          const allFunctions = [
+            ...graph.apis,
+            ...graph.consumers,
+            ...(graph.tableStreams || []),
+            ...(graph.topicSubscribers || []),
+          ];
+          const matchingFunc = allFunctions.find(
+            (f: any) => f.id === s.endpoint || f.name === s.endpoint || (f as any).functionName === s.endpoint
+          );
+          if (matchingFunc) {
+            const funcLogicalId = getFunctionLogicalId(matchingFunc);
+            endpointVal = { "Fn::GetAtt": [funcLogicalId, "Arn"] };
           }
         }
         return {
@@ -90,7 +138,6 @@ export function generateBindings(
     const bucketKey = getBucketLogicalId(binding.sourceBucketName, graph);
     const queueKey = getQueueLogicalId(binding.targetQueueName, graph);
     const ruleKey = binding.ruleLogicalId || `EventRule${cleanBucket}To${cleanQueue}`;
-    const policyKey = binding.queuePolicyLogicalId || `QueuePolicy${cleanQueue}EventBridge`;
 
     const detailPattern: any = {
       bucket: { name: [{ Ref: bucketKey }] },
@@ -121,28 +168,23 @@ export function generateBindings(
       },
     };
 
-    resources[policyKey] = {
-      Type: "AWS::SQS::QueuePolicy",
-      Properties: {
-        Queues: [{ Ref: queueKey }],
-        PolicyDocument: {
-          Version: "2012-10-17",
-          Statement: [
-            {
-              Effect: "Allow",
-              Principal: { Service: "events.amazonaws.com" },
-              Action: "sqs:SendMessage",
-              Resource: { "Fn::GetAtt": [queueKey, "Arn"] },
-              Condition: {
-                ArnEquals: {
-                  "aws:SourceArn": { "Fn::GetAtt": [ruleKey, "Arn"] },
-                },
-              },
-            },
-          ],
+    addQueuePolicyStatement(
+      resources,
+      queueKey,
+      {
+        Sid: `AllowEventBridge${cleanBucket}To${cleanQueue}`,
+        Effect: "Allow",
+        Principal: { Service: "events.amazonaws.com" },
+        Action: "sqs:SendMessage",
+        Resource: { "Fn::GetAtt": [queueKey, "Arn"] },
+        Condition: {
+          ArnEquals: {
+            "aws:SourceArn": { "Fn::GetAtt": [ruleKey, "Arn"] },
+          },
         },
       },
-    };
+      binding.queuePolicyLogicalId
+    );
   }
 }
 

@@ -387,7 +387,7 @@ export const monthlyBudget = new Budget("monthlyBudget", {
     expect(ruleRes.Type).toBe("AWS::Events::Rule");
     expect(ruleRes.Properties.EventPattern.detail.object.key[0].prefix).toBe("documents/");
 
-    const policyRes = res["QueuePolicyannotationsEventBridge"];
+    const policyRes = res["QueuePolicyQueueannotations"];
     expect(policyRes).toBeDefined();
     expect(policyRes.Type).toBe("AWS::SQS::QueuePolicy");
 
@@ -1402,8 +1402,8 @@ export const eventsTopic = new Topic("events", {
         "Fn::GetAtt": ["Queuejobs", "Arn"],
       });
 
-      // 2. Check QueuePolicy for SNS is synthesized
-      const queuePolicy = res["QueuePolicyQueuejobsFromTopicevents"];
+      // 2. Check unified QueuePolicy for SNS is synthesized
+      const queuePolicy = res["QueuePolicyQueuejobs"];
       expect(queuePolicy).toBeDefined();
       expect(queuePolicy.Type).toBe("AWS::SQS::QueuePolicy");
       expect(queuePolicy.Properties.PolicyDocument.Statement[0].Principal.Service).toBe("sns.amazonaws.com");
@@ -1445,6 +1445,157 @@ export const badBudget = new Budget("badBudget", {
       expect(validation.warnings.some((w) => w.code === "WARN_FUNCTION_URL_THROTTLE_UNSUPPORTED")).toBe(true);
       expect(validation.errors.some((e) => e.code === "ERR_BUDGET_INVALID_AMOUNT")).toBe(true);
       expect(validation.warnings.some((w) => w.code === "WARN_DOW_BUDGET_NO_NOTIFICATION")).toBe(true);
+    });
+  });
+
+  describe("Single-Policy SQS Unification & Firehose/Lambda Endpoint Resolution", () => {
+    const testDir = path.join(tmpdir(), `syncploy-test-unified-policy-${Date.now()}`);
+
+    beforeAll(async () => {
+      await fs.mkdir(testDir, { recursive: true });
+      const code = `
+import { Queue, Topic, Bucket, DeliveryStream, api, Budget } from "@syncploy/sdk";
+
+export const eventsQueue = new Queue("eventsQueue");
+export const analyticsStream = new DeliveryStream("analyticsStream", {
+  destinationBucket: "raw-data",
+});
+
+export const worker = api({ path: "/work" }, async () => ({ status: "ok" }));
+
+export const alphaTopic = new Topic("alphaTopic", {
+  subscriptions: [{ protocol: "sqs", endpoint: eventsQueue }],
+});
+
+export const betaTopic = new Topic("betaTopic", {
+  subscriptions: [
+    { protocol: "sqs", endpoint: eventsQueue },
+    { protocol: "firehose", endpoint: analyticsStream },
+  ],
+});
+
+export const rawBucket = new Bucket("raw-data");
+rawBucket.on("objectCreated", eventsQueue, { prefix: "uploads/" });
+
+export const budgetA = new Budget("budgetA", {
+  amount: 200,
+  budgetName: "company-cost-ceiling",
+  threshold: 90,
+  unit: "USD",
+  filterByStack: true,
+  topic: alphaTopic,
+});
+
+export const budgetB = new Budget("budgetB", {
+  amount: 300,
+  budgetName: "company-cost-ceiling", // deliberate duplicate budgetName
+  threshold: 85,
+  topic: betaTopic,
+});
+`;
+      await fs.writeFile(path.join(testDir, "app.ts"), code);
+    });
+
+    afterAll(async () => {
+      await fs.rm(testDir, { recursive: true, force: true });
+    });
+
+    it("merges all SNS and EventBridge statements into exactly ONE AWS::SQS::QueuePolicy per queue", async () => {
+      const compiler = new Compiler(testDir);
+      const graph = await compiler.parse();
+      const synthesizer = new Synthesizer(testDir);
+      const templatePath = await synthesizer.synthesize(graph, {});
+      const template = JSON.parse(await fs.readFile(templatePath, "utf-8"));
+      const res = template.Resources;
+
+      // Exactly ONE SQS QueuePolicy resource emitted for QueueeventsQueue
+      const queuePolicies = Object.keys(res).filter(
+        (k) =>
+          res[k].Type === "AWS::SQS::QueuePolicy" &&
+          res[k].Properties.Queues.some((q: any) => q.Ref === "QueueeventsQueue")
+      );
+      expect(queuePolicies.length).toBe(1);
+
+      const policyResource = res[queuePolicies[0]!];
+      expect(policyResource).toBeDefined();
+      const statements = policyResource.Properties.PolicyDocument.Statement;
+      // 3 merged statements: 2 from SNS topics (alphaTopic, betaTopic), 1 from S3 EventBridge
+      expect(statements.length).toBe(3);
+
+      const snsStatements = statements.filter((s: any) => s.Principal?.Service === "sns.amazonaws.com");
+      expect(snsStatements.length).toBe(2);
+
+      const ebStatements = statements.filter((s: any) => s.Principal?.Service === "events.amazonaws.com");
+      expect(ebStatements.length).toBe(1);
+
+      // Verify Firehose endpoint was resolved to GetAtt Arn
+      const betaTopicRes = res["TopicbetaTopic"];
+      expect(betaTopicRes).toBeDefined();
+      const firehoseSub = betaTopicRes.Properties.Subscription.find((s: any) => s.Protocol === "firehose");
+      expect(firehoseSub).toBeDefined();
+      expect(firehoseSub.Endpoint).toEqual({
+        "Fn::GetAtt": ["DeliveryStreamanalyticsStream", "Arn"],
+      });
+
+      // Verify Lambda environment has SYNCPLOY_QUEUE_<NAME>_ARN
+      const workerFunc = res["Functionworker"];
+      expect(workerFunc).toBeDefined();
+      const envVars = workerFunc.Properties.Environment.Variables;
+      expect(envVars["SYNCPLOY_QUEUE_EVENTSQUEUE_ARN"]).toEqual({
+        "Fn::GetAtt": ["QueueeventsQueue", "Arn"],
+      });
+    });
+
+    it("validates strict budget options and catches duplicate budgetName", async () => {
+      const compiler = new Compiler(testDir);
+      const graph = await compiler.parse();
+      const validator = new (await import("../src/validator")).GraphValidator();
+      const validation = validator.validate(graph);
+
+      // Duplicate budgetName flagged
+      expect(validation.errors.some((e) => e.code === "ERR_DUPLICATE_BUDGET_NAME")).toBe(true);
+    });
+
+    it("flags validation errors for invalid subscription endpoints and budget options", async () => {
+      const invalidDir = path.join(tmpdir(), `syncploy-test-invalid-options-${Date.now()}`);
+      await fs.mkdir(invalidDir, { recursive: true });
+      const badCode = `
+import { Topic, Budget } from "@syncploy/sdk";
+
+export const badEndpointsTopic = new Topic("badEndpoints", {
+  subscriptions: [
+    { protocol: "firehose", endpoint: "non-existent-stream" },
+    { protocol: "sqs", endpoint: "non-existent-queue" },
+    { protocol: "lambda", endpoint: "non-existent-func" },
+  ],
+});
+
+export const badThresholdBudget = new Budget("badThreshold", {
+  amount: 100,
+  threshold: 0,
+});
+
+export const badUnitBudget = new Budget("badUnit", {
+  amount: 100,
+  unit: "EUR",
+});
+`;
+      await fs.writeFile(path.join(invalidDir, "app.ts"), badCode);
+
+      try {
+        const compiler = new Compiler(invalidDir);
+        const graph = await compiler.parse();
+        const validator = new (await import("../src/validator")).GraphValidator();
+        const validation = validator.validate(graph);
+
+        expect(validation.errors.some((e) => e.code === "ERR_SNS_FIREHOSE_ENDPOINT")).toBe(true);
+        expect(validation.errors.some((e) => e.code === "ERR_SNS_SQS_ENDPOINT")).toBe(true);
+        expect(validation.errors.some((e) => e.code === "ERR_SNS_LAMBDA_ENDPOINT")).toBe(true);
+        expect(validation.errors.some((e) => e.code === "ERR_BUDGET_INVALID_THRESHOLD")).toBe(true);
+        expect(validation.errors.some((e) => e.code === "ERR_BUDGET_INVALID_UNIT")).toBe(true);
+      } finally {
+        await fs.rm(invalidDir, { recursive: true, force: true });
+      }
     });
   });
 });

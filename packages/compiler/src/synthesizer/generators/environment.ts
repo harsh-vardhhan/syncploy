@@ -38,6 +38,9 @@ export function buildCommonEnvironment(graph: ResourceGraph): Record<string, any
     envVars[`QUEUE_${upperName}_URL`] = { Ref: logicalId };
     envVars[`${upperName}_QUEUE_URL`] = { Ref: logicalId };
     envVars[queue.name] = { Ref: logicalId };
+    envVars[`SYNCPLOY_QUEUE_${upperName}_ARN`] = { "Fn::GetAtt": [logicalId, "Arn"] };
+    envVars[`QUEUE_${upperName}_ARN`] = { "Fn::GetAtt": [logicalId, "Arn"] };
+    envVars[`${upperName}_QUEUE_ARN`] = { "Fn::GetAtt": [logicalId, "Arn"] };
   }
 
   for (const topic of graph.topics || []) {

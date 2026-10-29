@@ -55,6 +55,9 @@ export function extractTopic(
             if (proto === "sqs" && context?.varToQueueName) {
               const baseVar = endp.includes(".") ? endp.split(".")[0]! : endp;
               endp = context.varToQueueName[baseVar] || context.varToQueueName[endp] || endp;
+            } else if (proto === "firehose" && context?.varToDeliveryStreamName) {
+              const baseVar = endp.includes(".") ? endp.split(".")[0]! : endp;
+              endp = context.varToDeliveryStreamName[baseVar] || context.varToDeliveryStreamName[endp] || endp;
             }
             if (endp) {
               subscriptions.push({ protocol: proto, endpoint: endp });

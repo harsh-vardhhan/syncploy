@@ -37,24 +37,59 @@ export function extractBudget(
   }
 
   let amount: number | undefined;
-  let unit = "USD";
+  let unit: string | undefined = "USD";
+  let unitInvalid: boolean | undefined;
   let topicName: string | undefined;
   let threshold: number | undefined;
+  let thresholdInvalid: boolean | undefined;
   let logicalId: string | undefined;
   let customBudgetName: string | undefined;
+  let budgetNameInvalid: boolean | undefined;
   let filterByStack: boolean | undefined;
+  let filterByStackInvalid: boolean | undefined;
 
   if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
     const opts = args[1] as ObjectLiteralExpression;
     logicalId = extractString(opts.getProperty("logicalId"));
-    customBudgetName = extractString(opts.getProperty("budgetName"));
+
+    const budgetNameProp = opts.getProperty("budgetName");
+    if (budgetNameProp) {
+      customBudgetName = extractString(budgetNameProp);
+      if (!customBudgetName) {
+        budgetNameInvalid = true;
+      }
+    }
+
     amount = extractNumber(opts.getProperty("amount"));
-    unit = extractString(opts.getProperty("unit")) || "USD";
-    threshold = extractNumber(opts.getProperty("threshold")) ?? 80;
+
+    const unitProp = opts.getProperty("unit");
+    if (unitProp) {
+      unit = extractString(unitProp);
+      if (!unit) {
+        unitInvalid = true;
+      }
+    }
+
+    const thresholdProp = opts.getProperty("threshold");
+    if (thresholdProp) {
+      threshold = extractNumber(thresholdProp);
+      if (threshold === undefined || isNaN(threshold) || threshold <= 0) {
+        thresholdInvalid = true;
+      }
+    } else {
+      threshold = 80;
+    }
 
     const filterProp = opts.getProperty("filterByStack");
     if (filterProp && filterProp.isKind(SyntaxKind.PropertyAssignment)) {
-      filterByStack = filterProp.getInitializer()?.getText() === "true";
+      const initText = filterProp.getInitializer()?.getText();
+      if (initText === "true") {
+        filterByStack = true;
+      } else if (initText === "false") {
+        filterByStack = false;
+      } else {
+        filterByStackInvalid = true;
+      }
     }
 
     const topicProp = opts.getProperty("topic");
@@ -75,11 +110,15 @@ export function extractBudget(
     id: budgetId,
     amount,
     unit,
+    unitInvalid,
     topicName,
     threshold,
+    thresholdInvalid,
     logicalId,
     budgetName: customBudgetName,
+    budgetNameInvalid,
     filterByStack,
+    filterByStackInvalid,
     sourceFile: sourceFile.getFilePath(),
     suppressions: extractCommentSuppressions(decl),
   };

@@ -152,9 +152,10 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
     );
   }
 
-  // E. Budget Safety Rails (Static Amount, Notifications, and Cost Allocation Tags)
+  // E. Budget Safety Rails (Static Amount, Threshold, Unit, Notifications, and Cost Allocation Tags)
   const budgetList = graph.budgets || (graph.budget ? [graph.budget] : []);
   const seenBudgetIds = new Set<string>();
+  const seenBudgetNames = new Set<string>();
 
   for (const b of budgetList) {
     if (seenBudgetIds.has(b.id)) {
@@ -167,11 +168,57 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
     }
     seenBudgetIds.add(b.id);
 
+    if (b.budgetNameInvalid) {
+      ctx.addError(
+        "ERR_BUDGET_INVALID_NAME",
+        b.id,
+        `Budget '${b.id}' has invalid 'budgetName'. Must be a static string literal.`,
+        b.sourceFile
+      );
+    } else if (b.budgetName) {
+      if (seenBudgetNames.has(b.budgetName)) {
+        ctx.addError(
+          "ERR_DUPLICATE_BUDGET_NAME",
+          b.id,
+          `Duplicate budgetName '${b.budgetName}' declared on Budget '${b.id}'. AWS Budgets names are account-global and must be unique.`,
+          b.sourceFile
+        );
+      }
+      seenBudgetNames.add(b.budgetName);
+    }
+
     if (b.amount === undefined || isNaN(b.amount) || b.amount <= 0) {
       ctx.addError(
         "ERR_BUDGET_INVALID_AMOUNT",
         b.id,
         `Budget '${b.id}' must declare a static positive 'amount' in options (e.g. amount: 100). Dynamic or missing budget limits cannot be synthesized into CloudFormation.`,
+        b.sourceFile
+      );
+    }
+
+    if (b.thresholdInvalid || b.threshold === undefined || isNaN(b.threshold) || b.threshold <= 0 || b.threshold > 1000) {
+      ctx.addError(
+        "ERR_BUDGET_INVALID_THRESHOLD",
+        b.id,
+        `Budget '${b.id}' has invalid 'threshold'. Must be a static positive number literal (e.g. threshold: 80).`,
+        b.sourceFile
+      );
+    }
+
+    if (b.unitInvalid || (b.unit && b.unit !== "USD")) {
+      ctx.addError(
+        "ERR_BUDGET_INVALID_UNIT",
+        b.id,
+        `Budget '${b.id}' has invalid 'unit'. AWS Budgets monetary limits require unit to be string literal 'USD', but received '${b.unit}'.`,
+        b.sourceFile
+      );
+    }
+
+    if (b.filterByStackInvalid) {
+      ctx.addError(
+        "ERR_BUDGET_INVALID_FILTER",
+        b.id,
+        `Budget '${b.id}' has invalid 'filterByStack'. Must be a boolean literal (true | false). Dynamic expressions are not supported.`,
         b.sourceFile
       );
     }

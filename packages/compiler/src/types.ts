@@ -326,11 +326,15 @@ export interface BudgetIR {
   id: string;
   amount?: number | undefined;
   unit?: string | undefined;
+  unitInvalid?: boolean | undefined;
   topicName?: string | undefined;
   threshold?: number | undefined;
+  thresholdInvalid?: boolean | undefined;
   logicalId?: string | undefined;
   budgetName?: string | undefined;
+  budgetNameInvalid?: boolean | undefined;
   filterByStack?: boolean | undefined;
+  filterByStackInvalid?: boolean | undefined;
   sourceFile?: string | undefined;
   suppressions?: Record<string, string> | undefined;
 }

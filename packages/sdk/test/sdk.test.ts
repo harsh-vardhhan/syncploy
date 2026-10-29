@@ -101,6 +101,17 @@ describe("@syncploy/sdk", () => {
       expect(queue.queueUrl).toBe("https://sqs.us-east-1.amazonaws.com/123/emails");
     });
 
+    it("resolves queue ARN from environment variable or throws descriptive error", () => {
+      delete process.env.SYNCPLOY_QUEUE_EMAILS_ARN;
+      delete process.env.QUEUE_EMAILS_ARN;
+      const queue = new Queue("emails");
+
+      expect(() => queue.queueArn).toThrow("Queue ARN for 'emails' is not set");
+
+      process.env.SYNCPLOY_QUEUE_EMAILS_ARN = "arn:aws:sqs:us-east-1:123456789012:emails";
+      expect(queue.queueArn).toBe("arn:aws:sqs:us-east-1:123456789012:emails");
+    });
+
     it("has send and consumer methods", () => {
       const queue = new Queue("emails");
       expect(typeof queue.send).toBe("function");
