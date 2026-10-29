@@ -11,9 +11,13 @@
   ],
   "scripts": {
     "build": "bun --filter \"*\" build",
+    "build:packages": "bun --filter \"@syncploy/*\" build",
+    "build:web": "bun --filter syncploy-web build",
     "dev": "bun --filter \"*\" dev",
     "test": "bun test",
     "typecheck": "tsc --noEmit && bun --filter syncploy-web typecheck",
+    "typecheck:packages": "tsc --noEmit",
+    "typecheck:web": "bun --filter syncploy-web typecheck",
     "package:plugin": "bun run ./scripts/package-plugin.ts",
     "audit:security": "bun run ./scripts/audit-security.ts"
   },

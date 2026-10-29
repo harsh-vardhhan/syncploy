@@ -1,0 +1,49 @@
+name: Packages CI (SDK & Compiler)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'examples/**'
+      - 'scripts/audit-security.ts'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/packages-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'examples/**'
+      - 'scripts/audit-security.ts'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/packages-ci.yml'
+
+jobs:
+  test:
+    name: Build, Typecheck, Test, and Audit Packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Packages (@syncploy/sdk)
+        run: bun run build:packages
+
+      - name: Typecheck Packages
+        run: bun run typecheck:packages
+
+      - name: Run Test Suite
+        run: bun test
+
+      - name: Run Security & Supply Chain Audit
+        run: bun run audit:security

@@ -1,0 +1,44 @@
+name: Website CI (syncploy.com)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'packages/compiler/src/validator/rules-catalog.ts'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/web-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/web/**'
+      - 'packages/compiler/src/validator/rules-catalog.ts'
+      - 'package.json'
+      - 'bun.lock'
+      - '.github/workflows/web-ci.yml'
+
+jobs:
+  web:
+    name: Build and Validate Website
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build SDK Prerequisite
+        run: bun run build:packages
+
+      - name: Typecheck Web App
+        run: bun run typecheck:web
+
+      - name: Build Website (Next.js SSG)
+        run: bun run build:web
