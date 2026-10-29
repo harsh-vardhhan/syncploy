@@ -205,11 +205,11 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
       );
     }
 
-    if (b.unitInvalid || (b.unit && b.unit !== "USD")) {
+    if (b.unitInvalid || (b.unit && !/^[A-Z]{3}$/.test(b.unit))) {
       ctx.addError(
         "ERR_BUDGET_INVALID_UNIT",
         b.id,
-        `Budget '${b.id}' has invalid 'unit'. AWS Budgets monetary limits require unit to be string literal 'USD', but received '${b.unit}'.`,
+        `Budget '${b.id}' has invalid 'unit'. AWS Budgets requires a 3-letter uppercase ISO currency code (e.g. 'USD', 'EUR', 'GBP'), but received '${b.unit}'.`,
         b.sourceFile
       );
     }
@@ -223,23 +223,34 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
       );
     }
 
-    const hasExplicitTopic =
-      b.topicName &&
-      (graph.topics || []).some((t) => t.name === b.topicName || t.id === b.topicName);
-    const hasFallbackTopic = (graph.topics || []).some(
-      (t) =>
-        t.name.toLowerCase().includes("alert") ||
-        t.name.toLowerCase().includes("kill") ||
-        t.name.toLowerCase().includes("alarm")
-    );
-
-    if (!hasExplicitTopic && !hasFallbackTopic) {
-      ctx.addWarning(
-        "WARN_DOW_BUDGET_NO_NOTIFICATION",
-        b.id,
-        `Budget '${b.id}' has no notification topic configured. An unnotified budget cannot alert anyone on budget overruns. Configure 'topic: myAlertTopic'.`,
-        b.sourceFile
+    if (b.topicName) {
+      const explicitTopicMatches = (graph.topics || []).some(
+        (t) => t.name === b.topicName || t.id === b.topicName
       );
+      if (!explicitTopicMatches) {
+        ctx.addError(
+          "ERR_BUDGET_UNRESOLVED_TOPIC",
+          b.id,
+          `Budget '${b.id}' configured notification topic '${b.topicName}', but no matching Topic exists in the stack. Check the topic identifier or declare 'new Topic("${b.topicName}", ...)'.`,
+          b.sourceFile
+        );
+      }
+    } else {
+      const hasFallbackTopic = (graph.topics || []).some(
+        (t) =>
+          t.name.toLowerCase().includes("alert") ||
+          t.name.toLowerCase().includes("kill") ||
+          t.name.toLowerCase().includes("alarm")
+      );
+
+      if (!hasFallbackTopic) {
+        ctx.addWarning(
+          "WARN_DOW_BUDGET_NO_NOTIFICATION",
+          b.id,
+          `Budget '${b.id}' has no notification topic configured. An unnotified budget cannot alert anyone on budget overruns. Configure 'topic: myAlertTopic'.`,
+          b.sourceFile
+        );
+      }
     }
 
     if (b.filterByStack) {

@@ -6,7 +6,7 @@ import {
 } from "ts-morph";
 import type { TopicIR } from "../../../types";
 import type { ParseContext } from "../../types";
-import { extractString } from "../ast-utils";
+import { extractString, unwrapExpression } from "../ast-utils";
 
 export function extractTopic(
   decl: VariableDeclaration,
@@ -44,12 +44,22 @@ export function extractTopic(
         for (const el of arr.getElements()) {
           if (el.isKind(SyntaxKind.ObjectLiteralExpression)) {
             const proto = extractString(el.getProperty("protocol")) || "email";
-            let endp = extractString(el.getProperty("endpoint")) || "";
-            if (!endp) {
-              const epProp = el.getProperty("endpoint");
-              if (epProp && epProp.isKind(SyntaxKind.PropertyAssignment)) {
-                const initText = epProp.getInitializer()?.getText() || "";
-                endp = initText.replace(/['"]/g, "");
+            const epProp = el.getProperty("endpoint");
+            let endp = extractString(epProp) || "";
+            if (!endp && epProp) {
+              let initNode: any;
+              if (epProp.isKind(SyntaxKind.PropertyAssignment)) {
+                initNode = epProp.getInitializer();
+              } else if (epProp.isKind(SyntaxKind.ShorthandPropertyAssignment)) {
+                initNode = epProp.getNameNode();
+              }
+              const unwrapped = unwrapExpression(initNode);
+              if (unwrapped) {
+                if (unwrapped.isKind(SyntaxKind.StringLiteral)) {
+                  endp = unwrapped.getLiteralValue();
+                } else {
+                  endp = unwrapped.getText().replace(/['"]/g, "").trim();
+                }
               }
             }
             if (proto === "sqs" && context?.varToQueueName) {

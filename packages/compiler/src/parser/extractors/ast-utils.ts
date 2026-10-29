@@ -15,7 +15,8 @@ export function unwrapExpression(node: Node | undefined): Node | undefined {
   while (
     curr.isKind(SyntaxKind.AsExpression) ||
     curr.isKind(SyntaxKind.TypeAssertionExpression) ||
-    curr.isKind(SyntaxKind.ParenthesizedExpression)
+    curr.isKind(SyntaxKind.ParenthesizedExpression) ||
+    curr.isKind(SyntaxKind.NonNullExpression)
   ) {
     curr = (curr as any).getExpression();
   }

@@ -48,6 +48,12 @@ export function generateBudget(
 
     const budgetProps: any = {
       Budget: budgetInner,
+      ResourceTags: [
+        {
+          Key: "StackName",
+          Value: { "Fn::Sub": "${AWS::StackName}" },
+        },
+      ],
     };
 
     const targetTopic = budget.topicName

@@ -81,27 +81,36 @@ export function extractBudget(
     }
 
     const filterProp = opts.getProperty("filterByStack");
-    if (filterProp && filterProp.isKind(SyntaxKind.PropertyAssignment)) {
-      const initText = filterProp.getInitializer()?.getText();
-      if (initText === "true") {
-        filterByStack = true;
-      } else if (initText === "false") {
-        filterByStack = false;
+    if (filterProp) {
+      if (filterProp.isKind(SyntaxKind.PropertyAssignment)) {
+        const initText = filterProp.getInitializer()?.getText();
+        if (initText === "true") {
+          filterByStack = true;
+        } else if (initText === "false") {
+          filterByStack = false;
+        } else {
+          filterByStackInvalid = true;
+        }
       } else {
         filterByStackInvalid = true;
       }
     }
 
     const topicProp = opts.getProperty("topic");
-    if (topicProp && topicProp.isKind(SyntaxKind.PropertyAssignment)) {
-      const tInit = topicProp.getInitializer();
-      if (tInit) {
-        if (tInit.isKind(SyntaxKind.StringLiteral)) {
-          topicName = tInit.getLiteralValue();
-        } else if (tInit.isKind(SyntaxKind.Identifier)) {
-          const idName = tInit.getText();
-          topicName = context?.varToTopicName?.[idName] || idName;
+    if (topicProp) {
+      if (topicProp.isKind(SyntaxKind.PropertyAssignment)) {
+        const tInit = topicProp.getInitializer();
+        if (tInit) {
+          if (tInit.isKind(SyntaxKind.StringLiteral)) {
+            topicName = tInit.getLiteralValue();
+          } else if (tInit.isKind(SyntaxKind.Identifier)) {
+            const idName = tInit.getText();
+            topicName = context?.varToTopicName?.[idName] || idName;
+          }
         }
+      } else if (topicProp.isKind(SyntaxKind.ShorthandPropertyAssignment)) {
+        const idName = topicProp.getName();
+        topicName = context?.varToTopicName?.[idName] || idName;
       }
     }
   }

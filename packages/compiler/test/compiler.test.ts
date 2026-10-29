@@ -1475,7 +1475,7 @@ export const betaTopic = new Topic("betaTopic", {
 });
 
 export const rawBucket = new Bucket("raw-data");
-rawBucket.on("objectCreated", eventsQueue, { prefix: "uploads/" });
+rawBucket.on("objectCreated", eventsQueue, { prefix: "uploads/", queuePolicyLogicalId: "CustomQueuePolicyForEvents" });
 
 export const budgetA = new Budget("budgetA", {
   amount: 200,
@@ -1515,6 +1515,8 @@ export const budgetB = new Budget("budgetB", {
           res[k].Properties.Queues.some((q: any) => q.Ref === "QueueeventsQueue")
       );
       expect(queuePolicies.length).toBe(1);
+      expect(queuePolicies[0]).toBe("CustomQueuePolicyForEvents");
+      expect(res["QueuePolicyQueueeventsQueue"]).toBeUndefined();
 
       const policyResource = res[queuePolicies[0]!];
       expect(policyResource).toBeDefined();
@@ -1544,6 +1546,13 @@ export const budgetB = new Budget("budgetB", {
       expect(envVars["SYNCPLOY_QUEUE_EVENTSQUEUE_ARN"]).toEqual({
         "Fn::GetAtt": ["QueueeventsQueue", "Arn"],
       });
+
+      // Verify Budget carries ResourceTags
+      const budgetRes = res["Budgetcompanycostceiling"] || res["BudgetbudgetA"];
+      expect(budgetRes).toBeDefined();
+      expect(budgetRes.Properties.ResourceTags).toEqual([
+        { Key: "StackName", Value: { "Fn::Sub": "${AWS::StackName}" } },
+      ]);
     });
 
     it("validates strict budget options and catches duplicate budgetName", async () => {
@@ -1577,7 +1586,18 @@ export const badThresholdBudget = new Budget("badThreshold", {
 
 export const badUnitBudget = new Budget("badUnit", {
   amount: 100,
-  unit: "EUR",
+  unit: "EUROPE",
+});
+
+const filterByStack = true;
+export const badFilterBudget = new Budget("badFilter", {
+  amount: 100,
+  filterByStack,
+});
+
+export const badUnresolvedTopicBudget = new Budget("badUnresolvedTopic", {
+  amount: 100,
+  topic: "nonExistentTopic",
 });
 `;
       await fs.writeFile(path.join(invalidDir, "app.ts"), badCode);
@@ -1593,6 +1613,8 @@ export const badUnitBudget = new Budget("badUnit", {
         expect(validation.errors.some((e) => e.code === "ERR_SNS_LAMBDA_ENDPOINT")).toBe(true);
         expect(validation.errors.some((e) => e.code === "ERR_BUDGET_INVALID_THRESHOLD")).toBe(true);
         expect(validation.errors.some((e) => e.code === "ERR_BUDGET_INVALID_UNIT")).toBe(true);
+        expect(validation.errors.some((e) => e.code === "ERR_BUDGET_INVALID_FILTER")).toBe(true);
+        expect(validation.errors.some((e) => e.code === "ERR_BUDGET_UNRESOLVED_TOPIC")).toBe(true);
       } finally {
         await fs.rm(invalidDir, { recursive: true, force: true });
       }

@@ -1,5 +1,6 @@
 import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
 import type { Queue } from "./queue";
+import type { DeliveryStream } from "./delivery-stream";
 import type { ContainerOptions } from "./container";
 import type { Duration, MemorySize, PolicyStatement } from "./types";
 
@@ -7,7 +8,7 @@ export type TopicProtocol = "email" | "email-json" | "sms" | "sqs" | "lambda" | 
 
 export interface TopicSubscription {
   protocol: TopicProtocol;
-  endpoint: Queue | string;
+  endpoint: Queue | DeliveryStream | string;
 }
 
 export interface TopicOptions {

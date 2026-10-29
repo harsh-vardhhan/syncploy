@@ -26,7 +26,13 @@ export function addQueuePolicyStatement(
       resources[k]?.Properties?.Queues?.some((q: any) => q.Ref === qLogicalId)
   );
 
-  if (!policyKey) {
+  if (policyKey) {
+    if (preferredLogicalId && policyKey !== preferredLogicalId) {
+      resources[preferredLogicalId] = resources[policyKey];
+      delete resources[policyKey];
+      policyKey = preferredLogicalId;
+    }
+  } else {
     policyKey = preferredLogicalId || `QueuePolicy${qLogicalId}`;
     resources[policyKey] = {
       Type: "AWS::SQS::QueuePolicy",
