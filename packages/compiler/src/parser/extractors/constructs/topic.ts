@@ -45,8 +45,8 @@ export function extractTopic(
           if (el.isKind(SyntaxKind.ObjectLiteralExpression)) {
             const proto = extractString(el.getProperty("protocol")) || "email";
             const epProp = el.getProperty("endpoint");
-            let endp = extractString(epProp) || "";
-            if (!endp && epProp) {
+            let endp = "";
+            if (epProp) {
               let initNode: any;
               if (epProp.isKind(SyntaxKind.PropertyAssignment)) {
                 initNode = epProp.getInitializer();
@@ -55,10 +55,23 @@ export function extractTopic(
               }
               const unwrapped = unwrapExpression(initNode);
               if (unwrapped) {
-                if (unwrapped.isKind(SyntaxKind.StringLiteral)) {
+                if (
+                  unwrapped.isKind(SyntaxKind.StringLiteral) ||
+                  unwrapped.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)
+                ) {
                   endp = unwrapped.getLiteralValue();
+                } else if (unwrapped.isKind(SyntaxKind.Identifier)) {
+                  endp = unwrapped.getText();
                 } else {
-                  endp = unwrapped.getText().replace(/['"]/g, "").trim();
+                  const raw = unwrapped.getText().trim();
+                  const match = raw.match(/^process\.env\.([a-zA-Z0-9_]+)(?:\s*\|\|\s*['"](.*)['"])?$/);
+                  if (match) {
+                    const varName = match[1] || "";
+                    const fallback = match[2] ?? "";
+                    endp = process.env[varName] || fallback || raw;
+                  } else {
+                    endp = raw.replace(/['"]/g, "").trim();
+                  }
                 }
               }
             }

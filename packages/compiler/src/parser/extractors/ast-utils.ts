@@ -71,10 +71,28 @@ export function extractMemory(propNode: Node | undefined): number | undefined {
 }
 
 export function extractNumber(propNode: Node | undefined): number | undefined {
-  if (!propNode || !propNode.isKind(SyntaxKind.PropertyAssignment)) return undefined;
-  const init = propNode.getInitializer();
-  if (!init || !init.isKind(SyntaxKind.NumericLiteral)) return undefined;
-  return init.getLiteralValue();
+  if (!propNode) return undefined;
+  let init: Node | undefined;
+  if (propNode.isKind(SyntaxKind.PropertyAssignment)) {
+    init = unwrapExpression((propNode as any).getInitializer());
+  } else if (propNode.isKind(SyntaxKind.ShorthandPropertyAssignment)) {
+    init = (propNode as any).getNameNode();
+  } else {
+    init = unwrapExpression(propNode);
+  }
+  if (!init) return undefined;
+  if (init.isKind(SyntaxKind.NumericLiteral)) {
+    return (init as any).getLiteralValue();
+  }
+  if (init.isKind(SyntaxKind.Identifier)) {
+    const sourceFile = init.getSourceFile();
+    const decl = sourceFile.getVariableDeclaration(init.getText());
+    const declInit = unwrapExpression(decl?.getInitializer());
+    if (declInit && declInit.isKind(SyntaxKind.NumericLiteral)) {
+      return (declInit as any).getLiteralValue();
+    }
+  }
+  return undefined;
 }
 
 export function extractCors(propNode: Node | undefined): CorsConfig | boolean | undefined {
@@ -115,14 +133,56 @@ export function extractCors(propNode: Node | undefined): CorsConfig | boolean | 
   return undefined;
 }
 
+export function extractStringLiteral(node: Node | undefined): string | undefined {
+  if (!node) return undefined;
+  let target = node;
+  if (node.isKind(SyntaxKind.PropertyAssignment)) {
+    target = (node as any).getInitializer() || node;
+  } else if (node.isKind(SyntaxKind.ShorthandPropertyAssignment)) {
+    target = (node as any).getNameNode() || node;
+  }
+  target = unwrapExpression(target) || target;
+  if (target.isKind(SyntaxKind.StringLiteral) || target.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) {
+    return (target as any).getLiteralValue();
+  }
+  if (target.isKind(SyntaxKind.Identifier)) {
+    const sourceFile = target.getSourceFile();
+    const decl = sourceFile.getVariableDeclaration(target.getText());
+    const declInit = unwrapExpression(decl?.getInitializer());
+    if (
+      declInit &&
+      (declInit.isKind(SyntaxKind.StringLiteral) ||
+        declInit.isKind(SyntaxKind.NoSubstitutionTemplateLiteral))
+    ) {
+      return (declInit as any).getLiteralValue();
+    }
+  }
+  return undefined;
+}
+
 export function extractString(node: Node | undefined): string | undefined {
   if (!node) return undefined;
   let target = node;
   if (node.isKind(SyntaxKind.PropertyAssignment)) {
     target = (node as any).getInitializer() || node;
+  } else if (node.isKind(SyntaxKind.ShorthandPropertyAssignment)) {
+    target = (node as any).getNameNode() || node;
   }
-  if (target.isKind(SyntaxKind.StringLiteral)) {
+  target = unwrapExpression(target) || target;
+  if (target.isKind(SyntaxKind.StringLiteral) || target.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) {
     return (target as any).getLiteralValue();
+  }
+  if (target.isKind(SyntaxKind.Identifier)) {
+    const sourceFile = target.getSourceFile();
+    const decl = sourceFile.getVariableDeclaration(target.getText());
+    const declInit = unwrapExpression(decl?.getInitializer());
+    if (
+      declInit &&
+      (declInit.isKind(SyntaxKind.StringLiteral) ||
+        declInit.isKind(SyntaxKind.NoSubstitutionTemplateLiteral))
+    ) {
+      return (declInit as any).getLiteralValue();
+    }
   }
   const rawText = target.getText();
   const match = rawText.match(/^process\.env\.([a-zA-Z0-9_]+)(?:\s*\|\|\s*['"](.*)['"])?$/);

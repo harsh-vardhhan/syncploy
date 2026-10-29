@@ -6,7 +6,13 @@ import {
 } from "ts-morph";
 import type { BudgetIR } from "../../../types";
 import type { ParseContext } from "../../types";
-import { extractCommentSuppressions, extractNumber, extractString } from "../ast-utils";
+import {
+  extractCommentSuppressions,
+  extractNumber,
+  extractString,
+  extractStringLiteral,
+  unwrapExpression,
+} from "../ast-utils";
 
 export function extractBudget(
   decl: VariableDeclaration,
@@ -54,7 +60,7 @@ export function extractBudget(
 
     const budgetNameProp = opts.getProperty("budgetName");
     if (budgetNameProp) {
-      customBudgetName = extractString(budgetNameProp);
+      customBudgetName = extractStringLiteral(budgetNameProp);
       if (!customBudgetName) {
         budgetNameInvalid = true;
       }
@@ -64,7 +70,7 @@ export function extractBudget(
 
     const unitProp = opts.getProperty("unit");
     if (unitProp) {
-      unit = extractString(unitProp);
+      unit = extractStringLiteral(unitProp);
       if (!unit) {
         unitInvalid = true;
       }
@@ -82,12 +88,29 @@ export function extractBudget(
 
     const filterProp = opts.getProperty("filterByStack");
     if (filterProp) {
+      let initNode: any;
       if (filterProp.isKind(SyntaxKind.PropertyAssignment)) {
-        const initText = filterProp.getInitializer()?.getText();
-        if (initText === "true") {
+        initNode = unwrapExpression(filterProp.getInitializer());
+      } else if (filterProp.isKind(SyntaxKind.ShorthandPropertyAssignment)) {
+        initNode = filterProp.getNameNode();
+      }
+      if (initNode) {
+        const text = initNode.getText();
+        if (text === "true") {
           filterByStack = true;
-        } else if (initText === "false") {
+        } else if (text === "false") {
           filterByStack = false;
+        } else if (initNode.isKind(SyntaxKind.Identifier)) {
+          const decl = sourceFile.getVariableDeclaration(initNode.getText());
+          const declInit = unwrapExpression(decl?.getInitializer());
+          const declText = declInit?.getText();
+          if (declText === "true") {
+            filterByStack = true;
+          } else if (declText === "false") {
+            filterByStack = false;
+          } else {
+            filterByStackInvalid = true;
+          }
         } else {
           filterByStackInvalid = true;
         }

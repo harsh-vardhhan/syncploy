@@ -1470,19 +1470,20 @@ export const alphaTopic = new Topic("alphaTopic", {
 export const betaTopic = new Topic("betaTopic", {
   subscriptions: [
     { protocol: "sqs", endpoint: eventsQueue },
-    { protocol: "firehose", endpoint: analyticsStream },
+    { protocol: "firehose", endpoint: analyticsStream as any },
   ],
 });
 
 export const rawBucket = new Bucket("raw-data");
 rawBucket.on("objectCreated", eventsQueue, { prefix: "uploads/", queuePolicyLogicalId: "CustomQueuePolicyForEvents" });
 
+const filterByStack = true;
 export const budgetA = new Budget("budgetA", {
   amount: 200,
   budgetName: "company-cost-ceiling",
   threshold: 90,
   unit: "USD",
-  filterByStack: true,
+  filterByStack,
   topic: alphaTopic,
 });
 
@@ -1589,7 +1590,7 @@ export const badUnitBudget = new Budget("badUnit", {
   unit: "EUROPE",
 });
 
-const filterByStack = true;
+const filterByStack = "notABoolean";
 export const badFilterBudget = new Budget("badFilter", {
   amount: 100,
   filterByStack,

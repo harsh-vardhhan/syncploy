@@ -6,9 +6,13 @@ import type { Duration, MemorySize, PolicyStatement } from "./types";
 
 export type TopicProtocol = "email" | "email-json" | "sms" | "sqs" | "lambda" | "https" | "http" | "firehose";
 
+export interface ConstructTarget {
+  readonly _kind: string;
+}
+
 export interface TopicSubscription {
   protocol: TopicProtocol;
-  endpoint: Queue | DeliveryStream | string;
+  endpoint: Queue | DeliveryStream | ConstructTarget | string;
 }
 
 export interface TopicOptions {
