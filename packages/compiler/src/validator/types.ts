@@ -1,6 +1,6 @@
 import type { RuleCode } from "./rules-catalog";
 
-export type DiagnosticCode = RuleCode | (string & {});
+export type DiagnosticCode = RuleCode;
 
 export interface Diagnostic {
   code: DiagnosticCode;

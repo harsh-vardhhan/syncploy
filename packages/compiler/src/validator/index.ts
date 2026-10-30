@@ -1,5 +1,5 @@
-import type { ResourceGraph } from "../types";
-import type { Diagnostic, SuppressedDiagnostic, ValidationResult, ValidationContext, ValidationOptions } from "./types";
+import { type ResourceGraph, normalizeResourceGraph } from "../types";
+import type { Diagnostic, SuppressedDiagnostic, ValidationResult, ValidationContext, ValidationOptions, DiagnosticCode } from "./types";
 import { formatDiagnostics } from "./formatter";
 import { validateLogicalIds } from "./rules/common";
 import {
@@ -78,8 +78,9 @@ export class GraphValidator implements ValidationContext {
     return false;
   }
 
-  public addError(
-    code: string,
+  private record(
+    severity: "error" | "warning",
+    code: DiagnosticCode,
     constructId: string,
     message: string,
     sourceFile?: string,
@@ -94,23 +95,35 @@ export class GraphValidator implements ValidationContext {
 
     if (candidateConstructIds && candidateConstructIds.length > 0) {
       for (const cid of candidateConstructIds) {
-        if (this.checkSuppression(code, cid, message, resolvedFile, "error", resolvedLine, resolvedCol)) return;
+        if (this.checkSuppression(code, cid, message, resolvedFile, severity, resolvedLine, resolvedCol)) return;
       }
     }
-    if (this.checkSuppression(code, constructId, message, resolvedFile, "error", resolvedLine, resolvedCol)) return;
+    if (this.checkSuppression(code, constructId, message, resolvedFile, severity, resolvedLine, resolvedCol)) return;
     this.diagnostics.push({
       code,
       constructId,
       message,
-      severity: "error",
+      severity,
       ...(resolvedFile ? { sourceFile: resolvedFile } : {}),
       ...(resolvedLine !== undefined ? { line: resolvedLine } : {}),
       ...(resolvedCol !== undefined ? { column: resolvedCol } : {}),
     });
+  }
+
+  public addError(
+    code: DiagnosticCode,
+    constructId: string,
+    message: string,
+    sourceFile?: string,
+    candidateConstructIds?: string[],
+    line?: number,
+    column?: number
+  ): void {
+    this.record("error", code, constructId, message, sourceFile, candidateConstructIds, line, column);
   }
 
   public addWarning(
-    code: string,
+    code: DiagnosticCode,
     constructId: string,
     message: string,
     sourceFile?: string,
@@ -118,29 +131,11 @@ export class GraphValidator implements ValidationContext {
     line?: number,
     column?: number
   ): void {
-    const loc = this.constructLocationMap.get(constructId);
-    const resolvedFile = sourceFile || loc?.sourceFile;
-    const resolvedLine = line ?? loc?.line;
-    const resolvedCol = column ?? loc?.column;
-
-    if (candidateConstructIds && candidateConstructIds.length > 0) {
-      for (const cid of candidateConstructIds) {
-        if (this.checkSuppression(code, cid, message, resolvedFile, "warning", resolvedLine, resolvedCol)) return;
-      }
-    }
-    if (this.checkSuppression(code, constructId, message, resolvedFile, "warning", resolvedLine, resolvedCol)) return;
-    this.diagnostics.push({
-      code,
-      constructId,
-      message,
-      severity: "warning",
-      ...(resolvedFile ? { sourceFile: resolvedFile } : {}),
-      ...(resolvedLine !== undefined ? { line: resolvedLine } : {}),
-      ...(resolvedCol !== undefined ? { column: resolvedCol } : {}),
-    });
+    this.record("warning", code, constructId, message, sourceFile, candidateConstructIds, line, column);
   }
 
   public validate(graph: ResourceGraph): ValidationResult {
+    graph = normalizeResourceGraph(graph);
     this.diagnostics = [];
     this.suppressions = [];
     this.suppressionMap.clear();
@@ -201,17 +196,13 @@ export class GraphValidator implements ValidationContext {
       indexLoc(ds.id, ds);
       indexLoc(ds.name, ds);
     }
-    if (graph.auths) {
-      for (const au of graph.auths) {
-        indexLoc(au.id, au);
-        indexLoc(au.name, au);
-      }
+    for (const au of graph.auths) {
+      indexLoc(au.id, au);
+      indexLoc(au.name, au);
     }
-    if (graph.electroEntities) {
-      for (const ee of graph.electroEntities) {
-        indexLoc(ee.id, ee);
-        indexLoc(ee.entityName, ee);
-      }
+    for (const ee of graph.electroEntities) {
+      indexLoc(ee.id, ee);
+      indexLoc(ee.entityName, ee);
     }
     if (graph.bindings) {
       for (const bd of graph.bindings) {

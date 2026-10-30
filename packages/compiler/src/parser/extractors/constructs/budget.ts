@@ -45,15 +45,15 @@ export function extractBudget(
 
   let amount: number | undefined;
   let unit: string | undefined = "USD";
-  let unitInvalid: boolean | undefined;
+  let unitRaw: string | undefined;
   let topicName: string | undefined;
   let threshold: number | undefined;
-  let thresholdInvalid: boolean | undefined;
+  let thresholdRaw: string | undefined;
   let logicalId: string | undefined;
   let customBudgetName: string | undefined;
-  let budgetNameInvalid: boolean | undefined;
+  let budgetNameRaw: string | undefined;
   let filterByStack: boolean | undefined;
-  let filterByStackInvalid: boolean | undefined;
+  let filterByStackRaw: string | undefined;
 
   if (args.length > 1 && args[1]?.isKind(SyntaxKind.ObjectLiteralExpression)) {
     const opts = args[1] as ObjectLiteralExpression;
@@ -63,7 +63,7 @@ export function extractBudget(
     if (budgetNameProp) {
       customBudgetName = extractStringLiteral(budgetNameProp);
       if (!customBudgetName) {
-        budgetNameInvalid = true;
+        budgetNameRaw = budgetNameProp.getText();
       }
     }
 
@@ -73,7 +73,7 @@ export function extractBudget(
     if (unitProp) {
       unit = extractStringLiteral(unitProp);
       if (!unit) {
-        unitInvalid = true;
+        unitRaw = unitProp.getText();
       }
     }
 
@@ -81,7 +81,7 @@ export function extractBudget(
     if (thresholdProp) {
       threshold = extractNumber(thresholdProp);
       if (threshold === undefined || isNaN(threshold) || threshold <= 0) {
-        thresholdInvalid = true;
+        thresholdRaw = thresholdProp.getText();
       }
     } else {
       threshold = 80;
@@ -102,7 +102,7 @@ export function extractBudget(
       } else if (resolvedText === "false") {
         filterByStack = false;
       } else {
-        filterByStackInvalid = true;
+        filterByStackRaw = filterProp.getText();
       }
     }
 
@@ -131,15 +131,15 @@ export function extractBudget(
     id: budgetId,
     amount,
     unit,
-    unitInvalid,
+    unitRaw,
     topicName,
     threshold,
-    thresholdInvalid,
+    thresholdRaw,
     logicalId,
     budgetName: customBudgetName,
-    budgetNameInvalid,
+    budgetNameRaw,
     filterByStack,
-    filterByStackInvalid,
+    filterByStackRaw,
     sourceFile: sourceFile.getFilePath(),
     line,
     column,

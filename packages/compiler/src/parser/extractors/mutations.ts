@@ -1,50 +1,16 @@
 import { Node, SourceFile, SyntaxKind, ObjectLiteralExpression } from "ts-morph";
 import type { FunctionMutationsIR, BucketMutationIR } from "../../types";
+import type { ParseContext } from "../types";
+import { resolveDeclarationInFile } from "./ast-utils";
 
-function findDeclarationInFile(file: SourceFile, name: string, depth = 0): Node | undefined {
-  if (depth > 6) return undefined;
-  const fn = file.getFunction(name);
-  if (fn) return fn;
-  const vr = file.getVariableDeclaration(name);
-  if (vr) return vr.getInitializer() || vr;
-  const cls = file.getClass(name);
-  if (cls) return cls;
-
-  for (const exp of file.getExportDeclarations()) {
-    const mod = exp.getModuleSpecifierSourceFile();
-    if (!mod || mod.getFilePath().includes("/node_modules/")) continue;
-    if (exp.isTypeOnly()) continue;
-    const named = exp.getNamedExports().find((ne) => (ne.getAliasNode()?.getText() || ne.getName()) === name);
-    if (named) {
-      return findDeclarationInFile(mod, named.getName(), depth + 1);
-    }
-    if (!exp.getNamedExports().length) {
-      const found = findDeclarationInFile(mod, name, depth + 1);
-      if (found) return found;
-    }
-  }
-
-  for (const imp of file.getImportDeclarations()) {
-    const mod = imp.getModuleSpecifierSourceFile();
-    if (!mod || mod.getFilePath().includes("/node_modules/")) continue;
-    const named = imp.getNamedImports().find((ni) => (ni.getAliasNode()?.getText() || ni.getName()) === name);
-    if (named) {
-      return findDeclarationInFile(mod, named.getName(), depth + 1);
-    }
-  }
-
-  return undefined;
+function findDeclarationInFile(file: SourceFile, name: string): Node | undefined {
+  return resolveDeclarationInFile(file, name, { unwrapInitializer: true });
 }
 
 export function extractMutationsFromNode(
   handlerNode: Node | undefined,
   sourceFile: SourceFile,
-  varToTableName: Record<string, string>,
-  varToBucketName: Record<string, string>,
-  varToQueueName: Record<string, string>,
-  varToTopicName: Record<string, string>,
-  varToDeliveryStreamName?: Record<string, string>,
-  knownApis?: { id: string; path: string }[]
+  context: ParseContext
 ): FunctionMutationsIR | undefined {
   if (!handlerNode) return undefined;
 
@@ -65,13 +31,14 @@ export function extractMutationsFromNode(
   const topicsPublished: string[] = [];
   const deliveryStreamsWritten: string[] = [];
   const httpInvoked: string[] = [];
+  const knownApis = context.knownApis || [];
 
   // Build a scope-isolated alias map for this handler/function AST
-  const localVarToTableName = { ...varToTableName };
-  const localVarToBucketName = { ...varToBucketName };
-  const localVarToQueueName = { ...varToQueueName };
-  const localVarToTopicName = { ...varToTopicName };
-  const localVarToDeliveryStreamName = { ...(varToDeliveryStreamName || {}) };
+  const localVarToTableName = { ...context.varToTableName };
+  const localVarToBucketName = { ...context.varToBucketName };
+  const localVarToQueueName = { ...context.varToQueueName };
+  const localVarToTopicName = { ...context.varToTopicName };
+  const localVarToDeliveryStreamName = { ...(context.varToDeliveryStreamName || {}) };
 
   const localDecls = targetNode.getDescendantsOfKind(SyntaxKind.VariableDeclaration);
   for (const decl of localDecls) {
@@ -192,7 +159,7 @@ export function extractMutationsFromNode(
             }
 
             if (!isExternal && urlPath) {
-              for (const api of knownApis) {
+              for (const api of context.knownApis || []) {
                 const normPath = api.path.startsWith("/") ? api.path : `/${api.path}`;
                 if (urlPath === normPath || urlPath.startsWith(`${normPath}/`)) {
                   if (!httpInvoked.includes(api.id)) {
@@ -355,7 +322,7 @@ export function extractMutationsFromNode(
         }
 
         // Check DeliveryStream writes
-        if (varToDeliveryStreamName) {
+        if (context.varToDeliveryStreamName) {
           const streamName =
             localVarToDeliveryStreamName[callerText] || localVarToDeliveryStreamName[baseCaller];
           if (streamName && ["put", "send", "putRecord", "putRecordBatch"].includes(methodName)) {
@@ -584,15 +551,15 @@ export function extractMutationsFromNode(
 
         // Cross-module resolution: check method on an imported object or service
         if (
-          !varToTableName[callerText] &&
-          !varToTableName[baseCaller] &&
-          !varToBucketName[callerText] &&
-          !varToBucketName[baseCaller] &&
-          !varToQueueName[callerText] &&
-          !varToQueueName[baseCaller] &&
-          !varToTopicName[callerText] &&
-          !varToTopicName[baseCaller] &&
-          (!varToDeliveryStreamName || (!varToDeliveryStreamName[callerText] && !varToDeliveryStreamName[baseCaller]))
+          !context.varToTableName[callerText] &&
+          !context.varToTableName[baseCaller] &&
+          !context.varToBucketName[callerText] &&
+          !context.varToBucketName[baseCaller] &&
+          !context.varToQueueName[callerText] &&
+          !context.varToQueueName[baseCaller] &&
+          !context.varToTopicName[callerText] &&
+          !context.varToTopicName[baseCaller] &&
+          (!context.varToDeliveryStreamName || (!context.varToDeliveryStreamName[callerText] && !context.varToDeliveryStreamName[baseCaller]))
         ) {
           for (const importDecl of currFile.getImportDeclarations()) {
             const namedImports = importDecl.getNamedImports();

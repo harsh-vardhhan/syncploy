@@ -11,7 +11,7 @@ export function generateAuth(
   resources: Record<string, any>,
   outputs: Record<string, any>
 ): void {
-  for (const auth of graph.auths || []) {
+  for (const auth of graph.auths) {
     const userPoolKey = getAuthLogicalId(auth, graph);
     const clientKey = getAuthClientLogicalId(auth, graph);
 

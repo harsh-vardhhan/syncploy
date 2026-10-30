@@ -1,13 +1,14 @@
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
-import type {
-  ResourceGraph,
-  TableIR,
-  BucketIR,
-  QueueIR,
-  TopicIR,
-  DeliveryStreamIR,
-  AlarmIR,
+import {
+  type ResourceGraph,
+  normalizeResourceGraph,
+  type TableIR,
+  type BucketIR,
+  type QueueIR,
+  type TopicIR,
+  type DeliveryStreamIR,
+  type AlarmIR,
   AuthIR,
   CloudFormationStats,
 } from "../types";
@@ -93,6 +94,7 @@ export class Synthesizer {
     graph: ResourceGraph,
     lambdaArtifactDirs: Record<string, string>
   ): Promise<string> {
+    graph = normalizeResourceGraph(graph);
     const resources: Record<string, any> = {};
     const outputs: Record<string, any> = {};
 

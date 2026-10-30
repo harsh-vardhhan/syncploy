@@ -30,7 +30,7 @@ export function extractTable(
     );
   }
 
-  let partitionKey = { name: "id", type: "string" as const };
+  const partitionKey = { name: "id", type: "string" as const };
   let sortKey: { name: string; type: "string" | "number" | "binary" } | undefined;
   let billingMode: "PAY_PER_REQUEST" | "PROVISIONED" = "PAY_PER_REQUEST";
   let stream: "NEW_IMAGE" | "OLD_IMAGE" | "NEW_AND_OLD_IMAGES" | "KEYS_ONLY" | undefined;

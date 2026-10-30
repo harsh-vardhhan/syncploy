@@ -48,63 +48,239 @@ export function isNodeExported(decl: any, sourceFile?: SourceFile): boolean {
   return false;
 }
 
+export function isSyncploySdkModule(moduleSpec?: string, filePath?: string): boolean {
+  if (moduleSpec) {
+    if (
+      moduleSpec === "@syncploy/sdk" ||
+      moduleSpec.startsWith("@syncploy/sdk/") ||
+      moduleSpec.endsWith("/packages/sdk") ||
+      moduleSpec.endsWith("packages/sdk")
+    ) {
+      return true;
+    }
+  }
+  if (filePath) {
+    if (
+      filePath.includes("/node_modules/@syncploy/sdk/") ||
+      filePath.includes("/packages/sdk/")
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function getSyncployConstructKind(
+  exprNode: Node | undefined,
+  sourceFile?: SourceFile
+): string | undefined {
+  if (!exprNode) return undefined;
+  const unwrapped = unwrapExpression(exprNode);
+  if (!unwrapped) return undefined;
+
+  // 1. Property access: sdk.Table or syncploy.Table
+  if (unwrapped.isKind(SyntaxKind.PropertyAccessExpression)) {
+    const memberName = unwrapped.getName();
+    const obj = unwrapped.getExpression();
+    const sym = obj.getSymbol();
+    const decl = sym?.getDeclarations()[0];
+    if (decl && (decl.isKind(SyntaxKind.ImportClause) || decl.isKind(SyntaxKind.NamespaceImport))) {
+      const imp = decl.getFirstAncestorByKind(SyntaxKind.ImportDeclaration);
+      const mod = imp?.getModuleSpecifierValue();
+      const filePath = imp?.getModuleSpecifierSourceFile()?.getFilePath();
+      if (isSyncploySdkModule(mod, filePath)) return memberName;
+    }
+    if (obj.getText() === "syncploy") {
+      return memberName;
+    }
+    return undefined;
+  }
+
+  // 2. Identifier: Table or aliased T or re-exported BaseTable
+  if (unwrapped.isKind(SyntaxKind.Identifier)) {
+    const sym = unwrapped.getSymbol();
+    if (!sym) {
+      const sf = sourceFile || unwrapped.getSourceFile();
+      const text = unwrapped.getText();
+      for (const imp of sf.getImportDeclarations()) {
+        const mod = imp.getModuleSpecifierValue();
+        const targetSf = imp.getModuleSpecifierSourceFile();
+        const filePath = targetSf?.getFilePath();
+        if (isSyncploySdkModule(mod, filePath)) {
+          for (const ni of imp.getNamedImports()) {
+            const alias = ni.getAliasNode()?.getText();
+            if ((alias && alias === text) || ni.getName() === text) {
+              return ni.getName();
+            }
+          }
+        }
+      }
+      return undefined;
+    }
+
+    if (sym.isAlias()) {
+      let targetSym = sym;
+      while (targetSym.isAlias()) {
+        const next = targetSym.getAliasedSymbol();
+        if (!next || next.getName() === "unknown") break;
+        targetSym = next;
+      }
+      const declFile = targetSym.getDeclarations()[0]?.getSourceFile()?.getFilePath();
+      if (isSyncploySdkModule(undefined, declFile)) {
+        return targetSym.getName();
+      }
+    }
+
+    const decl = sym.getDeclarations()[0];
+    if (decl && decl.isKind(SyntaxKind.ImportSpecifier)) {
+      const imp = decl.getImportDeclaration();
+      const mod = imp.getModuleSpecifierValue();
+      const targetSf = imp.getModuleSpecifierSourceFile();
+      const filePath = targetSf?.getFilePath();
+
+      if (isSyncploySdkModule(mod, filePath)) {
+        return decl.getName();
+      }
+
+      if (targetSf) {
+        const importedName = decl.getName();
+        for (const exp of targetSf.getExportDeclarations()) {
+          const expMod = exp.getModuleSpecifierValue();
+          const expSf = exp.getModuleSpecifierSourceFile();
+          const expPath = expSf?.getFilePath();
+
+          if (isSyncploySdkModule(expMod, expPath)) {
+            for (const ne of exp.getNamedExports()) {
+              const localName = ne.getAliasNode()?.getText() || ne.getName();
+              if (localName === importedName) {
+                return ne.getName();
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return undefined;
+}
+
 export function isSyncployConstruct(
   exprNode: Node | undefined,
   expectedName: string,
   sourceFile?: SourceFile
 ): boolean {
-  if (!exprNode) return false;
-  const unwrapped = unwrapExpression(exprNode);
-  if (!unwrapped) return false;
+  return getSyncployConstructKind(exprNode, sourceFile) === expectedName;
+}
 
-  const sf = sourceFile || unwrapped.getSourceFile();
-  const text = unwrapped.getText();
+export interface ResolveOptions {
+  kinds?: SyntaxKind[];
+  unwrapInitializer?: boolean;
+}
 
-  // Direct member access: syncploy.Table
-  if (unwrapped.isKind(SyntaxKind.PropertyAccessExpression)) {
-    return unwrapped.getName() === expectedName;
+/**
+ * Searches a source file and follows its imports and exports to find the declaration
+ * matching `name`. Supports functions, variables, classes, and re-export aliases.
+ */
+export function resolveDeclarationInFile(
+  file: SourceFile,
+  name: string,
+  options: ResolveOptions = {},
+  seen: Set<string> = new Set()
+): Node | undefined {
+  const key = `${file.getFilePath()}::${name}`;
+  if (seen.has(key) || seen.size > 15) return undefined;
+  seen.add(key);
+
+  const kinds = options.kinds;
+  const matchKind = (n: Node) => !kinds || kinds.includes(n.getKind());
+
+  // 1. Check direct local declarations
+  const fn = file.getFunction(name);
+  if (fn && matchKind(fn)) return fn;
+
+  const vr = file.getVariableDeclaration(name);
+  if (vr && matchKind(vr)) {
+    return options.unwrapInitializer ? (vr.getInitializer() || vr) : vr;
   }
 
-  // Check direct name match
-  if (text === expectedName) {
-    for (const imp of sf.getImportDeclarations()) {
-      const moduleSpec = imp.getModuleSpecifierValue();
-      const named = imp.getNamedImports().find((ni) => ni.getName() === text);
+  const cls = file.getClass(name);
+  if (cls && matchKind(cls)) return cls;
+
+  // 2. Follow exports: export { a as b } from "./other" or export * from "./other"
+  for (const exp of file.getExportDeclarations()) {
+    const mod = exp.getModuleSpecifierSourceFile();
+    if (!mod || mod.getFilePath().includes("/node_modules/")) continue;
+    if (exp.isTypeOnly()) continue;
+
+    const namedExports = exp.getNamedExports();
+    if (namedExports.length > 0) {
+      const named = namedExports.find((ne) => (ne.getAliasNode()?.getText() || ne.getName()) === name);
       if (named) {
-        if (
-          moduleSpec.includes("@syncploy/sdk") ||
-          moduleSpec.endsWith("/sdk") ||
-          moduleSpec.includes("sdk")
-        ) {
-          return true;
-        }
-        return false;
+        return resolveDeclarationInFile(mod, named.getName(), options, seen);
       }
-    }
-    const localClass = sf.getClass(text);
-    if (localClass) return false;
-
-    return true;
-  }
-
-  // Check alias match: import { Table as DynamoTable } from "@syncploy/sdk"
-  for (const imp of sf.getImportDeclarations()) {
-    const moduleSpec = imp.getModuleSpecifierValue();
-    if (
-      moduleSpec.includes("@syncploy/sdk") ||
-      moduleSpec.endsWith("/sdk") ||
-      moduleSpec.includes("sdk")
-    ) {
-      for (const ni of imp.getNamedImports()) {
-        const alias = ni.getAliasNode()?.getText();
-        if (alias === text && ni.getName() === expectedName) {
-          return true;
-        }
-      }
+    } else {
+      const found = resolveDeclarationInFile(mod, name, options, seen);
+      if (found) return found;
     }
   }
 
-  return false;
+  // 3. Follow imports: import { a as b } from "./other"
+  for (const imp of file.getImportDeclarations()) {
+    const mod = imp.getModuleSpecifierSourceFile();
+    if (!mod || mod.getFilePath().includes("/node_modules/")) continue;
+    if (imp.isTypeOnly()) continue;
+
+    const named = imp.getNamedImports().find((ni) => (ni.getAliasNode()?.getText() || ni.getName()) === name);
+    if (named) {
+      return resolveDeclarationInFile(mod, named.getName(), options, seen);
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Resolves an AST node or identifier across symbol tables, re-export chains,
+ * and import aliases to its declaration node.
+ */
+export function resolveReferenceDeclaration(
+  node: Node | undefined,
+  options: ResolveOptions = {},
+  seen: Set<string> = new Set()
+): Node | undefined {
+  const unwrapped = unwrapExpression(node);
+  if (!unwrapped) return undefined;
+
+  if (!unwrapped.isKind(SyntaxKind.Identifier)) {
+    return unwrapped;
+  }
+
+  const name = unwrapped.getText();
+  const file = unwrapped.getSourceFile();
+  const key = `${file.getFilePath()}::${name}`;
+  if (seen.has(key) || seen.size > 15) return undefined;
+  seen.add(key);
+
+  // 1. Try ts-morph symbol resolution across modules and aliases
+  try {
+    const symbol = unwrapped.getSymbol();
+    const target = symbol?.isAlias() ? symbol.getAliasedSymbol() : symbol;
+    if (target) {
+      const decls = target.getDeclarations();
+      for (const d of decls) {
+        if (!options.kinds || options.kinds.includes(d.getKind())) {
+          if (d.isKind(SyntaxKind.VariableDeclaration) && options.unwrapInitializer) {
+            return (d as any).getInitializer() || d;
+          }
+          return d;
+        }
+      }
+    }
+  } catch {}
+
+  // 2. Fallback to file-level import/export walking
+  return resolveDeclarationInFile(file, name, options, seen);
 }
 
 /**
@@ -119,25 +295,21 @@ export function resolveConstantInitializer(
   const unwrapped = unwrapExpression(node);
   if (!unwrapped || !unwrapped.isKind(SyntaxKind.Identifier)) return unwrapped;
 
-  const name = unwrapped.getText();
-  const key = `${unwrapped.getSourceFile().getFilePath()}::${name}`;
-  if (seen.has(key) || seen.size > 10) return undefined;
-  seen.add(key);
+  const resolved = resolveReferenceDeclaration(
+    unwrapped,
+    { kinds: [SyntaxKind.VariableDeclaration], unwrapInitializer: true },
+    seen
+  );
+  if (!resolved) return undefined;
 
-  let decl: Node | undefined;
-  try {
-    const symbol = unwrapped.getSymbol();
-    const target = symbol?.isAlias() ? symbol.getAliasedSymbol() : symbol;
-    decl = target?.getDeclarations().find((d) => d.isKind(SyntaxKind.VariableDeclaration));
-  } catch {
-    decl = undefined;
-  }
-  if (!decl) {
-    decl = unwrapped.getSourceFile().getVariableDeclaration(name);
-  }
-  if (!decl) return undefined;
+  const init = resolved.isKind(SyntaxKind.VariableDeclaration)
+    ? (resolved as any).getInitializer()
+    : resolved;
 
-  return resolveConstantInitializer((decl as any).getInitializer(), seen);
+  if (init && init.isKind(SyntaxKind.Identifier)) {
+    return resolveConstantInitializer(init, seen);
+  }
+  return init;
 }
 
 export function parseDurationString(str: string): number {
@@ -248,6 +420,21 @@ export function extractCors(propNode: Node | undefined): CorsConfig | boolean | 
   return undefined;
 }
 
+export function resolveTemplateExpression(template: Node): string | undefined {
+  if (!template.isKind(SyntaxKind.TemplateExpression)) return undefined;
+  let result = template.getHead().getLiteralText();
+  for (const span of template.getTemplateSpans()) {
+    const expr = span.getExpression();
+    const resolvedStr = extractString(expr);
+    if (resolvedStr === undefined) {
+      return undefined;
+    }
+    result += resolvedStr;
+    result += span.getLiteral().getLiteralText();
+  }
+  return result;
+}
+
 export function extractStringLiteral(node: Node | undefined): string | undefined {
   if (!node) return undefined;
   let target = node;
@@ -260,14 +447,21 @@ export function extractStringLiteral(node: Node | undefined): string | undefined
   if (target.isKind(SyntaxKind.StringLiteral) || target.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) {
     return (target as any).getLiteralValue();
   }
+  if (target.isKind(SyntaxKind.TemplateExpression)) {
+    return resolveTemplateExpression(target);
+  }
   if (target.isKind(SyntaxKind.Identifier)) {
     const declInit = resolveConstantInitializer(target);
-    if (
-      declInit &&
-      (declInit.isKind(SyntaxKind.StringLiteral) ||
-        declInit.isKind(SyntaxKind.NoSubstitutionTemplateLiteral))
-    ) {
-      return (declInit as any).getLiteralValue();
+    if (declInit) {
+      if (
+        declInit.isKind(SyntaxKind.StringLiteral) ||
+        declInit.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)
+      ) {
+        return (declInit as any).getLiteralValue();
+      }
+      if (declInit.isKind(SyntaxKind.TemplateExpression)) {
+        return resolveTemplateExpression(declInit);
+      }
     }
   }
   return undefined;
@@ -275,6 +469,9 @@ export function extractStringLiteral(node: Node | undefined): string | undefined
 
 export function extractString(node: Node | undefined): string | undefined {
   if (!node) return undefined;
+  const literalVal = extractStringLiteral(node);
+  if (literalVal !== undefined) return literalVal;
+
   let target = node;
   if (node.isKind(SyntaxKind.PropertyAssignment)) {
     target = (node as any).getInitializer() || node;
@@ -282,27 +479,24 @@ export function extractString(node: Node | undefined): string | undefined {
     target = (node as any).getNameNode() || node;
   }
   target = unwrapExpression(target) || target;
-  if (target.isKind(SyntaxKind.StringLiteral) || target.isKind(SyntaxKind.NoSubstitutionTemplateLiteral)) {
-    return (target as any).getLiteralValue();
+
+  if (target.isKind(SyntaxKind.NumericLiteral)) {
+    return (target as any).getLiteralValue().toString();
   }
-  if (target.isKind(SyntaxKind.Identifier)) {
-    const declInit = resolveConstantInitializer(target);
-    if (
-      declInit &&
-      (declInit.isKind(SyntaxKind.StringLiteral) ||
-        declInit.isKind(SyntaxKind.NoSubstitutionTemplateLiteral))
-    ) {
-      return (declInit as any).getLiteralValue();
-    }
-  }
+
   const rawText = target.getText();
-  const match = rawText.match(/^process\.env\.([a-zA-Z0-9_]+)(?:\s*\|\|\s*['"](.*)['"])?$/);
+  const match = rawText.match(/^process\.env\.([a-zA-Z0-9_]+)(?:\s*\|\|\s*['"`](.*)['"`])?$/);
   if (match) {
     const varName = match[1] || "";
-    const fallback = match[2] ?? "";
-    return process.env[varName] || fallback;
+    const fallback = match[2];
+    const envVal = process.env[varName];
+    if (envVal !== undefined && envVal !== "") return envVal;
+    if (fallback !== undefined) return fallback;
+    return undefined;
   }
-  return rawText.replace(/['"]/g, "");
+
+  // Never return raw unparseable source code (e.g. "buildName()", "config.name")
+  return undefined;
 }
 
 export function extractBoolean(node: Node | undefined): boolean | undefined {

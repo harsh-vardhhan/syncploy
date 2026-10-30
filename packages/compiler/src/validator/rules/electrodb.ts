@@ -2,7 +2,7 @@ import type { ResourceGraph } from "../../types";
 import type { ValidationContext } from "../types";
 
 export function validateElectroDb(ctx: ValidationContext, graph: ResourceGraph): void {
-  const entities = graph.electroEntities || [];
+  const entities = graph.electroEntities;
   if (entities.length === 0) return;
 
   // Group entities by serviceName

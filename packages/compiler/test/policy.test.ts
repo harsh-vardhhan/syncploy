@@ -48,6 +48,8 @@ describe("@syncploy/compiler - Least-Privilege Deploy Policy Generator", () => {
     alarms: [],
     deliveryStreams: [],
     bindings: [],
+    electroEntities: [],
+    budgets: [],
     auths: [
       {
         id: "auth",

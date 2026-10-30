@@ -84,12 +84,7 @@ export function extractQueueConsumer(
   const mutations = extractMutationsFromNode(
     handlerNode,
     sourceFile,
-    context.varToTableName,
-    context.varToBucketName,
-    context.varToQueueName,
-    context.varToTopicName,
-    context.varToDeliveryStreamName,
-    context.knownApis
+    context
   );
 
   const { line, column } = getNodeLocation(decl, sourceFile);
@@ -195,12 +190,7 @@ export function extractTableStream(
   const mutations = extractMutationsFromNode(
     handlerNode,
     sourceFile,
-    context.varToTableName,
-    context.varToBucketName,
-    context.varToQueueName,
-    context.varToTopicName,
-    context.varToDeliveryStreamName,
-    context.knownApis
+    context
   );
 
   const { line, column } = getNodeLocation(decl, sourceFile);
@@ -291,12 +281,7 @@ export function extractTopicSubscriber(
   const mutations = extractMutationsFromNode(
     handlerNode,
     sourceFile,
-    context.varToTableName,
-    context.varToBucketName,
-    context.varToQueueName,
-    context.varToTopicName,
-    context.varToDeliveryStreamName,
-    context.knownApis
+    context
   );
 
   const { line, column } = getNodeLocation(decl, sourceFile);

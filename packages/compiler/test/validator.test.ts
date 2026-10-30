@@ -15,6 +15,9 @@ function createEmptyGraph(): ResourceGraph {
     deliveryStreams: [],
     alarms: [],
     bindings: [],
+    auths: [],
+    electroEntities: [],
+    budgets: [],
   };
 }
 

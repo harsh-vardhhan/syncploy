@@ -15,6 +15,8 @@
     "build:web": "bun --filter syncploy-web build",
     "dev": "bun --filter \"*\" dev",
     "test": "bun test",
+    "lint": "biome check .",
+    "format": "biome format --write .",
     "typecheck": "tsc --noEmit && bun --filter syncploy-web typecheck",
     "typecheck:packages": "tsc --noEmit",
     "typecheck:web": "bun --filter syncploy-web typecheck",
@@ -22,6 +24,7 @@
     "audit:security": "bun run ./scripts/audit-security.ts"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.6.4",
     "@types/node": "^26.6.5",
     "bun-types": "^1.4.4",
     "typescript": "^5.7.3"

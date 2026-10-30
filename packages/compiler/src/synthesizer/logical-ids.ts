@@ -28,7 +28,8 @@ export function toDdbType(type: "string" | "number" | "binary"): string {
 
 export function resolvePhysicalName(name: string | undefined, defaultSub: any): any {
   if (!name) return defaultSub;
-  return name.includes("${") ? { "Fn::Sub": name } : name;
+  const clean = name.replace(/`/g, "");
+  return clean.includes("${") ? { "Fn::Sub": clean } : clean;
 }
 
 export function getTableLogicalId(tableOrName: TableIR | string, graph?: ResourceGraph): string {

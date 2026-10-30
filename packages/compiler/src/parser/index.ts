@@ -1,44 +1,21 @@
 import { Project, SyntaxKind } from "ts-morph";
-import type {
-  ApiRouteIR,
-  ResourceGraph,
-  TableIR,
-  TableStreamConsumerIR,
-  BucketIR,
-  QueueIR,
-  QueueConsumerIR,
-  TopicIR,
-  TopicSubscriberIR,
-  AlarmIR,
-  DeliveryStreamIR,
-  AuthIR,
-  BudgetIR,
-  EventBindingIR,
-  ElectroEntityIR,
-} from "../types";
+import type { ResourceGraph } from "../types";
 import type { ParseContext } from "./types";
 import { extractElectroEntity } from "./extractors/electrodb";
-import { extractApiRoute } from "./extractors/api";
-import {
-  extractQueueConsumer,
-  extractTableStream,
-  extractTopicSubscriber,
-} from "./extractors/consumers";
-import {
-  extractTable,
-  extractBucket,
-  extractQueue,
-  extractTopic,
-  extractAlarm,
-  extractDeliveryStream,
-  extractAuth,
-  extractBudget,
-} from "./extractors/constructs";
 import { extractEventBinding } from "./extractors/events";
 import { enrichTablesWithElectroEntities } from "./extractors/electrodb-enricher";
-import { unwrapExpression, isSyncployConstruct, extractString } from "./extractors/ast-utils";
+import {
+  unwrapExpression,
+  isSyncployConstruct,
+  extractString,
+  getSyncployConstructKind,
+} from "./extractors/ast-utils";
+import { ResourceGraphBuilder } from "./builder";
+import { CALL_EXTRACTORS, NEW_CONSTRUCT_EXTRACTORS } from "./registry";
 
 export * from "./types";
+export * from "./builder";
+export * from "./registry";
 export * from "./extractors/ast-utils";
 export * from "./extractors/mutations";
 export * from "./extractors/electrodb";
@@ -85,20 +62,7 @@ export class Parser {
       `!${this.projectRoot}/**/scripts/test-*.ts`,
     ]);
 
-    const apis: ApiRouteIR[] = [];
-    const tables: TableIR[] = [];
-    const tableStreams: TableStreamConsumerIR[] = [];
-    const buckets: BucketIR[] = [];
-    const queues: QueueIR[] = [];
-    const consumers: QueueConsumerIR[] = [];
-    const topics: TopicIR[] = [];
-    const topicSubscribers: TopicSubscriberIR[] = [];
-    const alarms: AlarmIR[] = [];
-    const deliveryStreams: DeliveryStreamIR[] = [];
-    const auths: AuthIR[] = [];
-    const bindings: EventBindingIR[] = [];
-    const electroEntities: ElectroEntityIR[] = [];
-    const budgets: BudgetIR[] = [];
+    const builder = new ResourceGraphBuilder();
 
     const context: ParseContext = {
       varToTableName: {},
@@ -140,50 +104,53 @@ export class Parser {
 
         if (!init.isKind(SyntaxKind.NewExpression)) continue;
         const expr = init.getExpression();
-        const className = expr.getText();
         const args = init.getArguments();
         const varName = decl.getName();
         const firstArgStr = args.length > 0 ? extractString(args[0]) : undefined;
+        const constructKind = getSyncployConstructKind(expr, sourceFile);
 
-        if (isSyncployConstruct(expr, "Table", sourceFile) && firstArgStr) {
+        if (constructKind === "Table" && firstArgStr) {
           context.varToTableName[varName] = firstArgStr;
-        } else if (isSyncployConstruct(expr, "Bucket", sourceFile) && firstArgStr) {
+        } else if (constructKind === "Bucket" && firstArgStr) {
           context.varToBucketName[varName] = firstArgStr;
-        } else if (isSyncployConstruct(expr, "Queue", sourceFile) && firstArgStr) {
+        } else if (constructKind === "Queue" && firstArgStr) {
           context.varToQueueName[varName] = firstArgStr;
-        } else if (isSyncployConstruct(expr, "Topic", sourceFile) && firstArgStr) {
+        } else if (constructKind === "Topic" && firstArgStr) {
           context.varToTopicName[varName] = firstArgStr;
-        } else if (isSyncployConstruct(expr, "DeliveryStream", sourceFile) && firstArgStr) {
+        } else if (constructKind === "DeliveryStream" && firstArgStr) {
           context.varToDeliveryStreamName[varName] = firstArgStr;
-        } else if (isSyncployConstruct(expr, "Auth", sourceFile) && firstArgStr) {
+        } else if (constructKind === "Auth" && firstArgStr) {
           context.varToAuthName[varName] = firstArgStr;
-        } else if (className === "Entity" || className.endsWith(".Entity")) {
-          const entity = extractElectroEntity(decl, sourceFile);
-          if (entity) {
-            electroEntities.push(entity);
-            context.varToEntity[varName] = entity;
-            context.varToTableName[varName] = entity.tableName || entity.serviceName;
+        } else {
+          const className = expr.getText();
+          if (className === "Entity" || className.endsWith(".Entity")) {
+            const entity = extractElectroEntity(decl, sourceFile);
+            if (entity) {
+              builder.electroEntities.push(entity);
+              context.varToEntity[varName] = entity;
+              context.varToTableName[varName] = entity.tableName || entity.serviceName;
+            }
           }
         }
       }
     }
 
     // Pass 1.5: Alias resolution (e.g. const t = myTable or const q = myQueue)
+    const resourceMaps = [
+      context.varToTableName,
+      context.varToBucketName,
+      context.varToQueueName,
+      context.varToTopicName,
+      context.varToDeliveryStreamName,
+    ];
+
     let aliasAdded = true;
     while (aliasAdded) {
       aliasAdded = false;
       for (const sourceFile of this.project.getSourceFiles()) {
         for (const decl of sourceFile.getVariableDeclarations()) {
           const varName = decl.getName();
-          if (
-            context.varToTableName[varName] ||
-            context.varToBucketName[varName] ||
-            context.varToQueueName[varName] ||
-            context.varToTopicName[varName] ||
-            context.varToDeliveryStreamName[varName]
-          ) {
-            continue;
-          }
+          if (resourceMaps.some((m) => m[varName])) continue;
 
           const init = decl.getInitializer();
           if (!init) continue;
@@ -196,21 +163,12 @@ export class Parser {
           }
 
           if (targetVarName) {
-            if (context.varToTableName[targetVarName]) {
-              context.varToTableName[varName] = context.varToTableName[targetVarName]!;
-              aliasAdded = true;
-            } else if (context.varToBucketName[targetVarName]) {
-              context.varToBucketName[varName] = context.varToBucketName[targetVarName]!;
-              aliasAdded = true;
-            } else if (context.varToQueueName[targetVarName]) {
-              context.varToQueueName[varName] = context.varToQueueName[targetVarName]!;
-              aliasAdded = true;
-            } else if (context.varToTopicName[targetVarName]) {
-              context.varToTopicName[varName] = context.varToTopicName[targetVarName]!;
-              aliasAdded = true;
-            } else if (context.varToDeliveryStreamName[targetVarName]) {
-              context.varToDeliveryStreamName[varName] = context.varToDeliveryStreamName[targetVarName]!;
-              aliasAdded = true;
+            for (const map of resourceMaps) {
+              if (map[targetVarName]) {
+                map[varName] = map[targetVarName]!;
+                aliasAdded = true;
+                break;
+              }
             }
           }
         }
@@ -223,102 +181,40 @@ export class Parser {
         const init = decl.getInitializer();
         if (!init) continue;
 
-        // 1. Detect api(...) and consumer declarations
+        // 1. Detect call expressions: api(...), queue.consumer(...), etc.
         if (init.isKind(SyntaxKind.CallExpression)) {
-          const apiRoute = extractApiRoute(decl, sourceFile, context);
-          if (apiRoute) {
-            apis.push(apiRoute);
-            continue;
+          for (const extractor of CALL_EXTRACTORS) {
+            if (extractor(decl, sourceFile, context, builder)) {
+              break;
+            }
           }
-
-          const queueConsumer = extractQueueConsumer(decl, sourceFile, context);
-          if (queueConsumer) {
-            consumers.push(queueConsumer);
-            continue;
-          }
-
-          const tableStream = extractTableStream(decl, sourceFile, context);
-          if (tableStream) {
-            tableStreams.push(tableStream);
-            continue;
-          }
-
-          const topicSubscriber = extractTopicSubscriber(decl, sourceFile, context);
-          if (topicSubscriber) {
-            topicSubscribers.push(topicSubscriber);
-            continue;
-          }
+          continue;
         }
 
-        // 2. Detect new Table(...), new Bucket(...), etc.
+        // 2. Detect construct instantiations: new Table(...), new Bucket(...), etc.
         if (init.isKind(SyntaxKind.NewExpression)) {
-          const tableResult = extractTable(decl, sourceFile);
-          if (tableResult) {
-            tables.push(tableResult.table);
-            context.varToTableName[decl.getName()] = tableResult.tableName;
-            continue;
-          }
-
-          const bucketResult = extractBucket(decl, sourceFile);
-          if (bucketResult) {
-            buckets.push(bucketResult.bucket);
-            context.varToBucketName[decl.getName()] = bucketResult.bucketName;
-            continue;
-          }
-
-          const queueResult = extractQueue(decl, sourceFile);
-          if (queueResult) {
-            queues.push(queueResult.queue);
-            context.varToQueueName[decl.getName()] = queueResult.queueName;
-            continue;
-          }
-
-          const topicResult = extractTopic(decl, sourceFile, context);
-          if (topicResult) {
-            topics.push(topicResult.topic);
-            context.varToTopicName[decl.getName()] = topicResult.topicName;
-            continue;
-          }
-
-          const alarm = extractAlarm(decl, sourceFile, context);
-          if (alarm) {
-            alarms.push(alarm);
-            continue;
-          }
-
-          const dsResult = extractDeliveryStream(decl, sourceFile, context);
-          if (dsResult) {
-            deliveryStreams.push(dsResult.deliveryStream);
-            context.varToDeliveryStreamName[decl.getName()] = dsResult.streamName;
-            continue;
-          }
-
-          const authResult = extractAuth(decl, sourceFile);
-          if (authResult) {
-            auths.push(authResult.auth);
-            context.varToAuthName[decl.getName()] = authResult.authName;
-            continue;
-          }
-
-          const budgetResult = extractBudget(decl, sourceFile, context);
-          if (budgetResult) {
-            budgets.push(budgetResult);
-            continue;
+          const expr = init.getExpression();
+          const constructKind = getSyncployConstructKind(expr, sourceFile);
+          if (constructKind) {
+            const extractor = NEW_CONSTRUCT_EXTRACTORS[constructKind];
+            if (extractor) {
+              extractor(decl, sourceFile, context, builder);
+            }
           }
         }
       }
 
       // Scan for event bindings: bucketVar.on("objectCreated", queueVar, { prefix })
       for (const statement of sourceFile.getStatements()) {
-        const binding = extractEventBinding(statement, sourceFile, context, buckets);
+        const binding = extractEventBinding(statement, sourceFile, context, builder.buckets);
         if (binding) {
-          bindings.push(binding);
+          builder.bindings.push(binding);
         }
       }
     }
 
     // Resolve bucket references for delivery streams if defined after
-    for (const ds of deliveryStreams) {
+    for (const ds of builder.deliveryStreams) {
       const mapped = context.varToBucketName[ds.destinationBucketName];
       if (mapped) {
         ds.destinationBucketName = mapped;
@@ -326,24 +222,8 @@ export class Parser {
     }
 
     // Pass 3: ElectroDB Integration (Auto-synthesize and enrich DynamoDB tables)
-    enrichTablesWithElectroEntities(electroEntities, tables, context.varToTableName);
+    enrichTablesWithElectroEntities(builder.electroEntities, builder.tables, context.varToTableName);
 
-    return {
-      apis,
-      tables,
-      tableStreams,
-      buckets,
-      queues,
-      consumers,
-      topics,
-      topicSubscribers,
-      alarms,
-      deliveryStreams,
-      bindings,
-      auths,
-      electroEntities,
-      budgets,
-      budget: budgets[0],
-    };
+    return builder.build();
   }
 }

@@ -301,7 +301,7 @@ export function generateDeployPolicy(
 
   // 12. Cognito Authentication (Clean 4 & Shadow CloudFormation Handlers)
   if (
-    (graph.auths && graph.auths.length > 0) ||
+    graph.auths.length > 0 ||
     Object.values(resources).some((r: any) => r.Type === "AWS::Cognito::UserPool")
   ) {
     statements.push({

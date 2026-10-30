@@ -16,7 +16,7 @@ describe("@syncploy/cli - adopt engine", () => {
 version = 0.1
 [default.deploy.parameters]
 stack_name = "test-stack"
-parameter_overrides = "TableParam=\\\"prod-table\\\" BucketParam=\\\"prod-bucket\\\""
+parameter_overrides = "TableParam=\\"prod-table\\" BucketParam=\\"prod-bucket\\""
 `
     );
 

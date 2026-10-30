@@ -1,4 +1,4 @@
-import type { ResourceGraph } from "../../types";
+import { type ResourceGraph, getBudgets } from "../../types";
 import type { ValidationContext } from "../types";
 
 export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGraph): void {
@@ -162,7 +162,7 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
   }
 
   // E. Budget Safety Rails (Static Amount, Threshold, Unit, Notifications, and Cost Allocation Tags)
-  const budgetList = graph.budgets || (graph.budget ? [graph.budget] : []);
+  const budgetList = getBudgets(graph);
   const seenBudgetIds = new Set<string>();
   const seenBudgetNames = new Set<string>();
 
@@ -177,7 +177,7 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
     }
     seenBudgetIds.add(b.id);
 
-    if (b.budgetNameInvalid) {
+    if (b.budgetNameRaw !== undefined) {
       ctx.addError(
         "ERR_BUDGET_INVALID_NAME",
         b.id,
@@ -205,7 +205,7 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
       );
     }
 
-    if (b.thresholdInvalid || b.threshold === undefined || isNaN(b.threshold) || b.threshold <= 0 || b.threshold > 1000) {
+    if (b.thresholdRaw !== undefined || b.threshold === undefined || isNaN(b.threshold) || b.threshold <= 0 || b.threshold > 1000) {
       ctx.addError(
         "ERR_BUDGET_INVALID_THRESHOLD",
         b.id,
@@ -214,7 +214,7 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
       );
     }
 
-    if (b.unitInvalid || (b.unit && !/^[A-Z]{3}$/.test(b.unit))) {
+    if (b.unitRaw !== undefined || (b.unit && !/^[A-Z]{3}$/.test(b.unit))) {
       ctx.addError(
         "ERR_BUDGET_INVALID_UNIT",
         b.id,
@@ -223,7 +223,7 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
       );
     }
 
-    if (b.filterByStackInvalid) {
+    if (b.filterByStackRaw !== undefined) {
       ctx.addError(
         "ERR_BUDGET_INVALID_FILTER",
         b.id,
@@ -286,7 +286,7 @@ export function validateDenialOfWallet(ctx: ValidationContext, graph: ResourceGr
     }
   }
 
-  for (const auth of graph.auths || []) {
+  for (const auth of graph.auths) {
     if (auth.signInMethod === "phone" || auth.autoVerify?.includes("phone")) {
       ctx.addWarning(
         "WARN_DOW_SMS_TOLL_FRAUD",

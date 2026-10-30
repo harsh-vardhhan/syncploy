@@ -29,11 +29,11 @@ export function validateLogicalIds(ctx: ValidationContext, graph: ResourceGraph)
     ...graph.buckets,
     ...graph.tables,
     ...graph.queues,
-    ...(graph.topics || []),
-    ...(graph.deliveryStreams || []),
-    ...(graph.alarms || []),
-    ...(graph.auths || []).map((a) => ({ logicalId: a.logicalId, id: a.id, sourceFile: a.sourceFile })),
-    ...(graph.auths || [])
+    ...graph.topics,
+    ...graph.deliveryStreams,
+    ...graph.alarms,
+    ...graph.auths.map((a) => ({ logicalId: a.logicalId, id: a.id, sourceFile: a.sourceFile })),
+    ...graph.auths
       .filter((a) => a.client?.clientLogicalId)
       .map((a) => ({ logicalId: a.client?.clientLogicalId, id: `${a.id}_Client`, sourceFile: a.sourceFile })),
   ];
@@ -71,10 +71,10 @@ export function validateLogicalIds(ctx: ValidationContext, graph: ResourceGraph)
   for (const t of graph.tables) registerLogicalId(getTableLogicalId(t, graph), t.id, t.sourceFile);
   for (const b of graph.buckets) registerLogicalId(getBucketLogicalId(b, graph), b.id, b.sourceFile);
   for (const q of graph.queues) registerLogicalId(getQueueLogicalId(q, graph), q.id, q.sourceFile);
-  for (const top of graph.topics || []) registerLogicalId(getTopicLogicalId(top, graph), top.id, top.sourceFile);
-  for (const ds of graph.deliveryStreams || []) registerLogicalId(getDeliveryStreamLogicalId(ds, graph), ds.id, ds.sourceFile);
-  for (const al of graph.alarms || []) registerLogicalId(getAlarmLogicalId(al), al.id, al.sourceFile);
-  for (const a of graph.auths || []) {
+  for (const top of graph.topics) registerLogicalId(getTopicLogicalId(top, graph), top.id, top.sourceFile);
+  for (const ds of graph.deliveryStreams) registerLogicalId(getDeliveryStreamLogicalId(ds, graph), ds.id, ds.sourceFile);
+  for (const al of graph.alarms) registerLogicalId(getAlarmLogicalId(al), al.id, al.sourceFile);
+  for (const a of graph.auths) {
     registerLogicalId(getAuthLogicalId(a, graph), a.id, a.sourceFile);
     if (a.client) {
       registerLogicalId(getAuthClientLogicalId(a, graph), `${a.id}_Client`, a.sourceFile);

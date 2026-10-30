@@ -66,7 +66,7 @@ export function buildCommonEnvironment(graph: ResourceGraph): Record<string, any
     envVars[ds.name] = { Ref: logicalId };
   }
 
-  for (const auth of graph.auths || []) {
+  for (const auth of graph.auths) {
     const userPoolLogicalId = getAuthLogicalId(auth, graph);
     const clientLogicalId = getAuthClientLogicalId(auth, graph);
     const upperName = auth.name.toUpperCase().replace(/[^A-Z0-9]/g, "_");

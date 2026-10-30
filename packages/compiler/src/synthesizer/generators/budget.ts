@@ -1,11 +1,11 @@
-import type { ResourceGraph } from "../../types";
+import { type ResourceGraph, getBudgets } from "../../types";
 import { getTopicLogicalId, sanitizeName } from "../logical-ids";
 
 export function generateBudget(
   graph: ResourceGraph,
   resources: Record<string, any>
 ): void {
-  const budgetList = graph.budgets || (graph.budget ? [graph.budget] : []);
+  const budgetList = getBudgets(graph);
   if (budgetList.length === 0) return;
 
   const usedKeys = new Set<string>();

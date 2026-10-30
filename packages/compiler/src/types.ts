@@ -358,15 +358,15 @@ export interface BudgetIR {
   id: string;
   amount?: number | undefined;
   unit?: string | undefined;
-  unitInvalid?: boolean | undefined;
-  topicName?: string | undefined;
+  unitRaw?: string | undefined;
   threshold?: number | undefined;
-  thresholdInvalid?: boolean | undefined;
+  thresholdRaw?: string | undefined;
   logicalId?: string | undefined;
   budgetName?: string | undefined;
-  budgetNameInvalid?: boolean | undefined;
+  budgetNameRaw?: string | undefined;
   filterByStack?: boolean | undefined;
-  filterByStackInvalid?: boolean | undefined;
+  filterByStackRaw?: string | undefined;
+  topicName?: string | undefined;
   sourceFile?: string | undefined;
   line?: number | undefined;
   column?: number | undefined;
@@ -385,10 +385,35 @@ export interface ResourceGraph {
   alarms: AlarmIR[];
   deliveryStreams: DeliveryStreamIR[];
   bindings: EventBindingIR[];
-  auths?: AuthIR[] | undefined;
-  electroEntities?: ElectroEntityIR[] | undefined;
-  budgets?: BudgetIR[] | undefined;
+  auths: AuthIR[];
+  electroEntities: ElectroEntityIR[];
+  budgets: BudgetIR[];
   budget?: BudgetIR | undefined;
+}
+
+export function getBudgets(graph: ResourceGraph): BudgetIR[] {
+  return graph.budgets.length > 0 ? graph.budgets : (graph.budget ? [graph.budget] : []);
+}
+
+export function normalizeResourceGraph(graph: Partial<ResourceGraph>): ResourceGraph {
+  const budgets = graph.budgets ?? (graph.budget ? [graph.budget] : []);
+  return {
+    apis: graph.apis ?? [],
+    tables: graph.tables ?? [],
+    tableStreams: graph.tableStreams ?? [],
+    buckets: graph.buckets ?? [],
+    queues: graph.queues ?? [],
+    consumers: graph.consumers ?? [],
+    topics: graph.topics ?? [],
+    topicSubscribers: graph.topicSubscribers ?? [],
+    alarms: graph.alarms ?? [],
+    deliveryStreams: graph.deliveryStreams ?? [],
+    bindings: graph.bindings ?? [],
+    auths: graph.auths ?? [],
+    electroEntities: graph.electroEntities ?? [],
+    budgets,
+    budget: graph.budget ?? budgets[0],
+  };
 }
 
 export interface CloudFormationStats {

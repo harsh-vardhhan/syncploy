@@ -335,7 +335,7 @@ export function validateAlarms(ctx: ValidationContext, graph: ResourceGraph): vo
 }
 
 export function validateAuths(ctx: ValidationContext, graph: ResourceGraph): void {
-  for (const auth of graph.auths || []) {
+  for (const auth of graph.auths) {
     if (auth.passwordPolicy?.minLength !== undefined) {
       if (auth.passwordPolicy.minLength < 6) {
         ctx.addError(
