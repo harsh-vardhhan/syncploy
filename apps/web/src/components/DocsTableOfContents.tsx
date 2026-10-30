@@ -210,7 +210,7 @@ export function DocsTableOfContents({
             </div>
           )}
 
-          {/* Section 2: Denial-of-Wallet Rules Quick Navigator (for safety-rails) */}
+          {/* Section 2: Safety Rules Quick Navigator (for safety-rails) */}
           {isSafetyRails && (
             <div className="space-y-3">
               <div className="flex items-center justify-between">

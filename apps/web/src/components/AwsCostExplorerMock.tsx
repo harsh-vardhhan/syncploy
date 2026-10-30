@@ -44,7 +44,7 @@ const COST_DATA: CostDataPoint[] = [
       other: 1200.4,
     },
     note: "Rogue DynamoDB stream loop + unthrottled bot scraper",
-    shieldNote: "Tarjan SCC aborted loop at build time. Edge stage rejected 4.2M bot requests at $0.00.",
+    shieldNote: "Loop shield aborted cycle at build time. Edge stage rejected 4.2M bot requests at $0.00.",
   },
   { day: "Sun", date: "Oct 28", standard: 0.15, syncploy: 0.14 },
 ];
@@ -104,7 +104,7 @@ export function AwsCostExplorerMock() {
               }`}
             >
               <ShieldCheck className="h-4 w-4" />
-              <span>With Syncploy (Zero-DoW Shield)</span>
+              <span>With Syncploy (Runaway Bill Protection)</span>
             </button>
           </div>
         </div>
@@ -294,7 +294,7 @@ export function AwsCostExplorerMock() {
                   </h5>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     {selectedDayIndex === 5
-                      ? "High-impact incident window &bull; Denial-of-Wallet stress event"
+                      ? "High-impact incident window &bull; Billing spike stress event"
                       : "Standard operational traffic window"}
                   </p>
                 </div>
@@ -360,7 +360,7 @@ export function AwsCostExplorerMock() {
                   </div>
                   <ul className="text-xs space-y-1.5 leading-relaxed">
                     <li>
-                      • <strong>Tarjan SCC Shield:</strong> Recursive stream loop caught locally in 0.7ms at <code className="font-mono bg-emerald-100 dark:bg-black/40 px-1 py-0.5 rounded text-emerald-800 dark:text-emerald-300">syncploy build</code>. 0 resources touched AWS.
+                      • <strong>Infinite Loop Shield:</strong> Recursive stream loop caught locally in 0.7ms at <code className="font-mono bg-emerald-100 dark:bg-black/40 px-1 py-0.5 rounded text-emerald-800 dark:text-emerald-300">syncploy build</code>. 0 resources touched AWS.
                     </li>
                     <li>
                       • <strong>Edge Stage Throttling:</strong> API Gateway stage dropped 4,200,000 bot requests at edge for $0.00.

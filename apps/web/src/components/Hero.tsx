@@ -62,7 +62,7 @@ export function Hero() {
         <div className="flex flex-wrap items-center gap-2.5 pb-6">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-rose-300 dark:border-rose-500/30 bg-rose-50/80 dark:bg-rose-950/30 text-xs font-semibold text-rose-800 dark:text-rose-300 shadow-sm">
             <Shield className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
-            <span>Zero-DoW Shield</span>
+            <span>Runaway Bill Protection</span>
             <span className="text-rose-400 dark:text-rose-600">&bull;</span>
             <span className="text-slate-700 dark:text-neutral-300">Never Fear Your AWS Bill Again</span>
           </div>
@@ -293,14 +293,14 @@ export function Hero() {
                 {/* Ambient Card Gloss */}
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
 
-                {/* Header & Golden EMV Chip */}
+                {/* Header & Chip */}
                 <div className="relative flex items-center justify-between mb-5">
                   <div className="flex items-center gap-2.5">
                     <div className="w-9 h-7 rounded-md bg-amber-400/90 border border-amber-300 flex items-center justify-center shadow-xs">
                       <div className="w-5 h-4 border border-amber-600/60 rounded-xs bg-amber-400/40" />
                     </div>
                     <span className="text-[10px] font-mono tracking-widest text-emerald-300 uppercase font-bold">
-                      EMV SECURE &bull; ZERO-DOW
+                      AI-GUARDED &bull; BUDGET PROTECTED
                     </span>
                   </div>
                   <div className="font-mono text-xs font-bold text-slate-200 flex items-center gap-1.5">

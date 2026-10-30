@@ -27,7 +27,7 @@ export function Features() {
       title: "2. Infinite Event-Driven Loops",
       fear: "The AI Trap: Agents routinely connect stream consumers that write back to their own source DynamoDB table, spawning a self-amplifying event storm ($20,000+ overnight).",
       solution:
-        "The compiler walks your AST for write mutations and runs Tarjan's SCC cycle algorithm in <1ms. If an event loop exists, compilation aborts with clear self-healing notes for your agent.",
+        "The compiler checks your code for self-referencing triggers in <1ms. If an event loop exists, compilation aborts with clear self-healing instructions so your agent can fix it instantly.",
       codeSnippet: `✖ [ERR_RECURSIVE_LOOP] Table -> Stream -> Table`,
     },
     {
@@ -36,8 +36,8 @@ export function Features() {
       title: "3. Auto-Expiring Logs & S3 Cleanup",
       fear: "The AI Trap: CloudWatch logs default to 'Never Expire' and S3 keeps abandoned multipart uploads forever, silently bleeding money every month on forgotten agent prototypes.",
       solution:
-        "Syncploy automatically synthesizes explicit AWS::Logs::LogGroup with 14-day retention for every Lambda, and injects 7-day AbortIncompleteMultipartUpload lifecycle rules into every S3 bucket.",
-      codeSnippet: `RetentionInDays: 14 • AbortUploads: 7d`,
+        "Syncploy automatically configures 14-day log auto-deletion for every function, and sets 7-day auto-cleanup rules for abandoned file uploads in S3.",
+      codeSnippet: `AutoLogRotation: 14d • AutoCleanup: 7d`,
     },
     {
       icon: <BellRing className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />,

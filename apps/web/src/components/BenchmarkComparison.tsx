@@ -30,7 +30,7 @@ export function BenchmarkComparison() {
       dimension: "Event-Driven Recursion Loops",
       paas: "❌ Unchecked (continuous function re-triggering)",
       rawAws: "❌ None (Table -> Stream -> Table runs indefinitely)",
-      syncploy: "✅ Compile-time Tarjan cycle detection halts deploy in <1ms",
+      syncploy: "✅ Compile-time event loop detection halts deploy in <1ms",
       highlight: true,
     },
     {

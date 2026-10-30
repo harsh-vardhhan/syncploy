@@ -18,7 +18,7 @@ interface TabOption {
 const TABS: TabOption[] = [
   {
     id: "dow-budget",
-    name: "DoW Budget & Throttle",
+    name: "Budget & Scale Caps",
     description: "Compile-time mathematical cost containment with zero YAML.",
     outputLang: "yaml",
     outputFilename: "synthesized-template.yaml",
@@ -166,7 +166,7 @@ export const badStreamWorker = patientTable.stream(
     Table 'patients' -> Stream Consumer 'badStreamWorker' -> Table 'patients'
   
   • This event-driven cycle causes continuous self-amplifying Lambda 
-    invocations and exponential Denial-of-Wallet (DoW).
+    invocations and exponential billing spikes.
 
 ✖ Compilation aborted. 0 AWS resources modified.`,
     benefits: [
@@ -177,7 +177,7 @@ export const badStreamWorker = patientTable.stream(
   },
   {
     id: "diff",
-    name: "0-Replacement Diff",
+    name: "Safe Stack Diff",
     description: "Safely adopt brownfield SAM templates with zero data loss.",
     outputLang: "bash",
     outputFilename: "syncploy-diff.log",

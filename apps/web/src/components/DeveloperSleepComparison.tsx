@@ -228,7 +228,7 @@ export function DeveloperSleepComparison() {
               </span>
               <div>
                 <h3 className="text-sm font-bold tracking-wide uppercase text-emerald-700 dark:text-emerald-400">
-                  With Syncploy (Zero-DoW Shield)
+                  With Syncploy (Runaway Bill Protection)
                 </h3>
                 <p className="text-xs text-emerald-600/80 dark:text-emerald-200/70 font-mono">Status: 3:14 AM &bull; Deep REM Sleep</p>
               </div>
@@ -287,7 +287,7 @@ export function DeveloperSleepComparison() {
                 <div className="rounded-xl p-3 bg-white dark:bg-slate-900/90 border border-emerald-200 dark:border-emerald-500/30 text-xs text-slate-800 dark:text-emerald-200/90 flex items-center justify-between shadow-md">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                    <span>Tarjan SCC Recursion Shield</span>
+                    <span>Infinite Loop Shield</span>
                   </div>
                   <span className="font-mono text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/30">
                     0 LOOPS (0.7ms AST)
@@ -345,7 +345,7 @@ export function DeveloperSleepComparison() {
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
-                  <span><strong>Compile-Time Tarjan Shield:</strong> Recursive loops are detected in the AST and aborted before deployment.</span>
+                  <span><strong>Compile-Time Loop Shield:</strong> Recursive loops are detected in the AST and aborted before deployment.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />

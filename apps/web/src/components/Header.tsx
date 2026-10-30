@@ -176,7 +176,7 @@ export function Header() {
               }`}
             >
               <Layers className="h-4 w-4 shrink-0 text-indigo-500" />
-              <span>Brownfield Adoption</span>
+              <span>Existing Stacks</span>
             </Link>
             <Link
               href="/docs/ehr-backend-case-study"

@@ -105,14 +105,14 @@ export default async function DocArticlePage({ params }: PageProps) {
           <section id="rule-explorer" className="pt-8 border-t border-slate-200 dark:border-slate-800 scroll-mt-24">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
               <h2 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-                Interactive Denial-of-Wallet Rule Explorer
+                Interactive Cloud Safety Rule Explorer
               </h2>
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 w-fit">
-                LIVE AUDIT CATALOG (26)
+                LIVE AUDIT CATALOG (70 RULES)
               </span>
             </div>
             <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-              Explore, filter, and inspect all compile-time Denial-of-Wallet rules, graph cycle diagnostics, and financial blast-radius limits. Switch between hazardous patterns and safe code remediations.
+              Explore, filter, and inspect all compile-time safety rules, recursion loop diagnostics, and budget guardrails. Switch between hazardous patterns and safe code remediations.
             </p>
             <RuleExplorer />
           </section>

@@ -94,7 +94,7 @@ export function DenialOfWalletShowcase() {
               }`}
             >
               <Shield className="h-4 w-4" />
-              <span>With Syncploy (Zero-DoW Shield)</span>
+              <span>With Syncploy (Runaway Bill Protection)</span>
             </button>
           </div>
         </div>
@@ -161,7 +161,7 @@ export function DenialOfWalletShowcase() {
                   <div className="w-9 h-7 rounded-md bg-amber-400/80 border border-amber-300 flex items-center justify-center shadow-xs">
                     <div className="w-5 h-4 border border-amber-600/60 rounded-xs" />
                   </div>
-                  <span className="text-[11px] font-mono text-slate-300">EMV SECURE</span>
+                  <span className="text-[11px] font-mono text-slate-300">VAULT SECURE</span>
                 </div>
                 <div className="font-mono text-xs font-bold text-slate-200 flex items-center gap-1.5">
                   <span>AWS CLOUD</span>
@@ -277,7 +277,7 @@ export function DenialOfWalletShowcase() {
                     <p className="text-xs text-slate-600 dark:text-neutral-400 mt-1">
                       {mode === "standard"
                         ? "AWS deploys without complaint. The loop triggers millions of invocations until your credit card declines."
-                        : "Compile-time Tarjan SCC graph validator catches the cycle in <1ms. Compilation aborts. $0 billed."}
+                        : "Compile-time event loop validator catches the cycle in <1ms. Compilation aborts. $0 billed."}
                     </p>
                   </div>
                   <span

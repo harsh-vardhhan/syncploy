@@ -217,7 +217,7 @@ export function CaseStudyShowcase() {
                   </span>
                 </div>
                 <div className="text-xs font-semibold text-slate-900 dark:text-white">
-                  Live Function URL &amp; DoW Capping
+                  Live API Ingress &amp; Concurrency Capping
                 </div>
                 <p className="text-[11px] text-slate-600 dark:text-neutral-400 leading-relaxed">
                   Configured public Function URL ingress with <code className="text-[10px] font-mono">concurrency: 5</code> and SQS DLQ redrive policies. Sub-50ms latency in production with a $0.42/mo real bill.

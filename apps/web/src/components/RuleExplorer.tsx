@@ -30,7 +30,7 @@ const LAYER_CONFIG: Record<
   recursion: {
     name: "Layer 2: Recursion & Poison-Pills",
     icon: "🔄",
-    description: "Tarjan SCC cycle killer, DynamoDB scans, and SQS timeout safety",
+    description: "Infinite loop prevention, DynamoDB scans, and SQS timeout safety",
     color: "from-purple-500/10 to-indigo-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400",
   },
   storage: {
@@ -204,7 +204,7 @@ export function RuleExplorer() {
       <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
         <span>
           Showing <strong className="text-slate-900 dark:text-slate-200">{filteredRules.length}</strong> of{" "}
-          {allRules.length} Denial-of-Wallet rules
+          {allRules.length} cloud safety &amp; budget rules
         </span>
         <span className="hidden sm:inline">Compiled & enforced deterministically in &lt;1ms</span>
       </div>
