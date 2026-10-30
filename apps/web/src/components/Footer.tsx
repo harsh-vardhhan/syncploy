@@ -15,7 +15,7 @@ export function Footer() {
               <span className="text-lg font-bold text-slate-900 dark:text-white">Syncploy</span>
             </div>
             <p className="text-sm text-slate-600 dark:text-neutral-400 leading-relaxed">
-              Infrastructure-from-Code Compiler and Runtime SDK for Pure AWS Serverless in TypeScript.
+              The pure TypeScript serverless compiler with built-in safety rails for AI coding agents.
             </p>
           </div>
 

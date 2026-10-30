@@ -118,13 +118,13 @@ export function Hero() {
           <div className="lg:col-span-7 space-y-6 text-left">
             <div className="space-y-3">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-[#151926] border border-slate-200 dark:border-[#262C40] text-xs font-mono font-semibold text-slate-700 dark:text-slate-300 shadow-xs">
-                <span className="text-indigo-600 dark:text-indigo-400 font-bold">ZERO-DOW FRAMEWORK</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-bold">AI-NATIVE CLOUD COMPILER</span>
                 <span className="text-slate-400 dark:text-slate-600">&bull;</span>
-                <span>PURE TYPESCRIPT FOR AWS</span>
+                <span>BUILT FOR CODING AGENTS</span>
               </div>
 
               <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-slate-900 dark:text-white leading-[1.06]">
-                Build on AWS. <br />
+                Build on AWS with AI. <br />
                 <span className="bg-gradient-to-r from-rose-600 via-indigo-600 to-emerald-600 dark:from-rose-400 dark:via-indigo-400 dark:to-emerald-400 bg-clip-text text-transparent">
                   Sleep Through the Night.
                 </span>
@@ -132,7 +132,7 @@ export function Hero() {
             </div>
 
             <p className="text-base sm:text-lg text-slate-600 dark:text-neutral-400 leading-relaxed max-w-2xl">
-              Stop paying the PaaS tax out of fear of AWS. Syncploy is the pure TypeScript framework for AWS Serverless with <strong className="text-slate-900 dark:text-white font-semibold">compile-time Denial-of-Wallet immunity</strong>. Statically eliminate infinite loops, uncapped DDoS bills, and poison-pill retries before your code ever touches the cloud.
+              Let Claude Code, Cursor, and Antigravity ship production backends directly on AWS without fear of runaway bills. Syncploy gives your AI coding agents <strong className="text-slate-900 dark:text-white font-semibold">compile-time safety rails</strong>—statically eliminating infinite loops, unreserved concurrency bills, and hallucinated IAM permissions before deploy.
             </p>
 
             {/* CTA Buttons & Installation Pill */}
@@ -342,12 +342,12 @@ export function Hero() {
               {activeScenario === "syncploy" ? (
                 <span className="text-emerald-700 dark:text-emerald-400 font-semibold inline-flex items-center justify-center gap-1.5 transition-all">
                   <Shield className="h-3.5 w-3.5 shrink-0" />
-                  <span>Zero-DoW Shield: Tarjan SCC &amp; concurrency bounds cap max burn at $4.80.</span>
+                  <span>With Syncploy: Agent recursion loops blocked &amp; concurrency capped at $4.80 max.</span>
                 </span>
               ) : (
                 <span className="text-rose-600 dark:text-rose-400 font-semibold inline-flex items-center justify-center gap-1.5 transition-all">
                   <Flame className="h-3.5 w-3.5 shrink-0" />
-                  <span>Standard AWS: Uncapped Lambda concurrency can drain bank limits overnight.</span>
+                  <span>Unguided AI: Uncapped Lambda loops &amp; missing DLQs can drain bank limits overnight.</span>
                 </span>
               )}
             </div>
@@ -358,9 +358,9 @@ export function Hero() {
         <div className="pt-10 sm:pt-14 grid grid-cols-2 md:grid-cols-4 gap-4 w-full text-left">
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-emerald-600 dark:text-emerald-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
-              <Shield className="h-3.5 w-3.5" /> Zero-DoW Shield
+              <Shield className="h-3.5 w-3.5" /> Infinite Loop Shield
             </div>
-            <div className="text-xs text-slate-600 dark:text-neutral-400">Tarjan SCC cycle &amp; poison-pill retry prevention in 0.7ms</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Halts self-amplifying stream loops before your agent deploys</div>
           </div>
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-purple-600 dark:text-purple-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
@@ -370,15 +370,15 @@ export function Hero() {
           </div>
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-cyan-700 dark:text-cyan-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
-              <Zap className="h-3.5 w-3.5" /> Cost Ceilings
+              <Lock className="h-3.5 w-3.5" /> Least-Privilege IAM
             </div>
-            <div className="text-xs text-slate-600 dark:text-neutral-400">Default edge rate limits &amp; reserved concurrency bounds</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Auto-synthesized exact policies; zero hallucinated wildcards</div>
           </div>
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-[#232736] bg-white dark:bg-[#12141C] shadow-sm">
             <div className="text-amber-600 dark:text-amber-400 text-xs font-semibold flex items-center gap-1.5 mb-1">
-              <RefreshCw className="h-3.5 w-3.5" /> 0-Replacement
+              <Bot className="h-3.5 w-3.5" /> Single-File Simplicity
             </div>
-            <div className="text-xs text-slate-600 dark:text-neutral-400">Brownfield SAM adoption with zero data-loss replacements</div>
+            <div className="text-xs text-slate-600 dark:text-neutral-400">Infra and business logic side-by-side in one app.ts file</div>
           </div>
         </div>
       </div>

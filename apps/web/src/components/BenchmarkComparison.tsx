@@ -8,7 +8,7 @@ export function BenchmarkComparison() {
     {
       dimension: "Monthly Base Cost",
       paas: "$20 – $200/mo minimums + per-seat taxes",
-      rawAws: "$0.00 scale-to-zero (if configured right)",
+      rawAws: "$0.00 (until idle EC2/NAT gateways leak)",
       syncploy: "$0.00 true scale-to-zero (pay only for ms used)",
       highlight: true,
     },
@@ -20,31 +20,31 @@ export function BenchmarkComparison() {
       highlight: true,
     },
     {
-      dimension: "Denial-of-Wallet (DDoS) Protection",
+      dimension: "Runaway Scale (DDoS) Protection",
       paas: "❌ Shock overage bills ($10k+ surges with zero appeal)",
       rawAws: "❌ Unreserved Lambdas scale to 1,000+ parallel instances",
-      syncploy: "✅ Mathematical per-route concurrency limits & blast radius caps",
+      syncploy: "✅ Compile-time concurrency bounds & blast radius caps",
       highlight: true,
     },
     {
       dimension: "Event-Driven Recursion Loops",
       paas: "❌ Unchecked (continuous function re-triggering)",
       rawAws: "❌ None (Table -> Stream -> Table runs indefinitely)",
-      syncploy: "✅ Compile-time Tarjan SCC cycle detection halts deploy in <1ms",
+      syncploy: "✅ Compile-time Tarjan cycle detection halts deploy in <1ms",
       highlight: true,
     },
     {
-      dimension: "Monotonic Storage & Log Leaks",
-      paas: "❌ Log retention locked behind higher tiers",
-      rawAws: "❌ CloudWatch defaults to Never-Expire; S3 keeps orphaned chunks",
-      syncploy: "✅ Auto-synthesized 14d log rotation & 7d S3 multipart abort",
+      dimension: "AI Agent Coding Experience",
+      paas: "Simple, but vendor-locked & proprietary dashboards",
+      rawAws: "High hallucination risk across complex multi-file CDK/YAML",
+      syncploy: "Single-file TypeScript. Agent self-heals from compiler diagnostics.",
       highlight: true,
     },
     {
-      dimension: "Setup & Maintenance Toil",
-      paas: "Proprietary dashboards, closed-source runtime lock-in",
-      rawAws: "1,000s of lines of CloudFormation, SAM, or CDK YAML & IAM pain",
-      syncploy: "Pure TypeScript. Standard 1:1 CloudFormation export.",
+      dimension: "Infrastructure Ownership",
+      paas: "Proprietary runtime lock-in & closed-source platforms",
+      rawAws: "Full ownership, but high operational complexity",
+      syncploy: "100% AWS ownership. Pure 1:1 CloudFormation export.",
       highlight: false,
     },
   ];
@@ -54,14 +54,14 @@ export function BenchmarkComparison() {
       <div className="text-center space-y-4 mb-14">
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-xs font-semibold text-indigo-700 dark:text-indigo-400 shadow-sm">
           <DollarSign className="h-3.5 w-3.5" />
-          <span>The True Cost of Cloud</span>
+          <span>The 3 Cloud Realities</span>
         </div>
 
         <h2 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
-          The 3 Paths: Choose Your Reality
+          Choosing Your Cloud Path with AI
         </h2>
         <p className="text-slate-600 dark:text-neutral-400 max-w-2xl mx-auto text-base sm:text-lg">
-          Why pay the PaaS markup out of fear, or risk uncapped cloud liability on raw AWS, when you can have both cheap scale and compile-time safety?
+          Why pay 50x PaaS markups out of fear, or risk uncapped cloud liability on raw AWS, when AI can safely deploy serverless?
         </p>
       </div>
 
@@ -74,16 +74,16 @@ export function BenchmarkComparison() {
               </th>
               <th className="p-5 font-semibold text-slate-700 dark:text-slate-300 bg-slate-50/50 dark:bg-[#141722] w-1/4">
                 <div className="text-xs font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">PaaS Tax</div>
-                Vercel / Render / Railway
+                Vercel / Supabase / Railway
               </th>
               <th className="p-5 font-semibold text-rose-700 dark:text-rose-400 bg-rose-50/30 dark:bg-rose-950/10 w-1/4">
-                <div className="text-xs font-mono uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-1">Uncapped Liability</div>
-                Raw AWS (CDK / SAM)
+                <div className="text-xs font-mono uppercase tracking-wider text-rose-600 dark:text-rose-400 mb-1">AI Hallucination Risk</div>
+                Raw AWS (CDK / Terraform)
               </th>
               <th className="p-5 font-bold text-indigo-900 dark:text-white bg-indigo-50 dark:bg-indigo-950/40 border-l border-r border-indigo-200 dark:border-indigo-500/30 w-1/4">
                 <div className="flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-1">
                   <Shield className="h-3.5 w-3.5" />
-                  Zero-DoW Shield
+                  AI-Guarded AWS
                 </div>
                 Syncploy
               </th>

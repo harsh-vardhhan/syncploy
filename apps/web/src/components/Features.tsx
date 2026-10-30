@@ -14,39 +14,39 @@ export function Features() {
   const pillars = [
     {
       icon: <Gauge className="h-6 w-6 text-rose-600 dark:text-rose-400" />,
-      badge: "DDoS Containment",
-      title: "1. Mathematical Concurrency Caps",
-      fear: "Unreserved Lambdas scale to 1,000+ parallel executions during a bot flood, burning through $10,000+ in hours.",
+      badge: "Uncapped Scale Guard",
+      title: "1. Uncapped Concurrency Spikes",
+      fear: "The AI Trap: Agents generate public APIs without concurrency limits. Under a bot flood or traffic spike, Lambda scales to 1,000+ executions, racking up thousands in hours.",
       solution:
-        "Syncploy enforces strict compile-time concurrency limits and edge stage throttling. Your theoretical maximum 24/7 monthly compute liability is mathematically bounded to exact dollars before you deploy.",
+        "Syncploy enforces strict compile-time concurrency limits and edge stage throttling. Your theoretical maximum 24/7 monthly compute liability is mathematically bounded before deploy.",
       codeSnippet: `concurrency: 5 // Max liability: ~$54/mo`,
     },
     {
       icon: <ShieldAlert className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />,
-      badge: "Tarjan SCC Shield",
-      title: "2. Infinite Recursion Loop Killer",
-      fear: "A stream consumer writes back to its source table or bucket, spawning a self-amplifying event loop ($20k overnight).",
+      badge: "Infinite Loop Shield",
+      title: "2. Infinite Event-Driven Loops",
+      fear: "The AI Trap: Agents routinely connect stream consumers that write back to their own source DynamoDB table, spawning a self-amplifying event storm ($20,000+ overnight).",
       solution:
-        "The compiler walks your AST for write mutations (table.put, bucket.put, queue.send) and runs Tarjan's SCC cycle algorithm in <1ms. If an event loop exists, compilation aborts before anything touches AWS.",
+        "The compiler walks your AST for write mutations and runs Tarjan's SCC cycle algorithm in <1ms. If an event loop exists, compilation aborts with clear self-healing notes for your agent.",
       codeSnippet: `✖ [ERR_RECURSIVE_LOOP] Table -> Stream -> Table`,
     },
     {
       icon: <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />,
       badge: "Zero Zombie Leaks",
       title: "3. Auto-Expiring Logs & S3 Cleanup",
-      fear: "CloudWatch logs default to 'Never Expire' and S3 stores abandoned multipart uploads forever, bleeding cash silently.",
+      fear: "The AI Trap: CloudWatch logs default to 'Never Expire' and S3 keeps abandoned multipart uploads forever, silently bleeding money every month on forgotten agent prototypes.",
       solution:
         "Syncploy automatically synthesizes explicit AWS::Logs::LogGroup with 14-day retention for every Lambda, and injects 7-day AbortIncompleteMultipartUpload lifecycle rules into every S3 bucket.",
       codeSnippet: `RetentionInDays: 14 • AbortUploads: 7d`,
     },
     {
       icon: <BellRing className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />,
-      badge: "Stack-Scoped Ceilings",
-      title: "4. In-Code Budgets & Hard Alerts",
-      fear: "AWS billing alerts are complex, delayed, account-global, and silently fail if IAM permissions are misconfigured.",
+      badge: "Zero Hallucinated IAM",
+      title: "4. Least-Privilege IAM & In-Code Budgets",
+      fear: "The AI Trap: Agents default to wildcard 'Action: *' policies to get code working, creating security vulnerabilities and leaving billing alarms unconfigured.",
       solution:
-        "Declare new Budget('cap', { amount: 25 }) in TypeScript. Syncploy synthesizes verified AWS::Budgets::Budget resources scoped to your stack's Cost Allocation Tag with working SNS notification policies.",
-      codeSnippet: `new Budget("cap", { amount: 25, threshold: 80 })`,
+        "Syncploy generates verified, least-privilege IAM policies directly from AST method calls, and lets you declare stack-scoped budget ceilings right in TypeScript.",
+      codeSnippet: `new Budget("cap", { amount: 25 }) • Least-Privilege IAM`,
     },
   ];
 
@@ -55,14 +55,14 @@ export function Features() {
       <div className="text-center space-y-4 mb-16">
         <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-xs font-semibold text-rose-700 dark:text-rose-400 shadow-sm">
           <ShieldAlert className="h-3.5 w-3.5" />
-          <span>The Zero-DoW Architecture</span>
+          <span>The AI Safety Rails</span>
         </div>
 
         <h2 className="text-3xl sm:text-5xl font-black text-slate-900 dark:text-white tracking-tight">
-          The 4 Layers of Denial-of-Wallet Immunity
+          The 4 Fatal Cloud Mistakes AI Agents Make
         </h2>
         <p className="text-slate-600 dark:text-neutral-400 max-w-2xl mx-auto text-base sm:text-lg">
-          How the Syncploy compiler mathematically eliminates cloud billing anxiety before your code ever touches AWS.
+          AI coding agents write working functions, but consistently configure financially lethal cloud architectures. Here is how Syncploy protects your AWS account.
         </p>
       </div>
 

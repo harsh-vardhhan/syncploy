@@ -46,10 +46,10 @@ export function SecurityTrust() {
               <span>Zero-Trust Architecture</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-              Enterprise Supply-Chain & Privacy Guarantees
+              Enterprise Supply-Chain &amp; Privacy Guarantees
             </h2>
             <p className="text-sm sm:text-base text-slate-600 dark:text-neutral-400 max-w-2xl">
-              We believe cloud tooling should be completely transparent, offline-capable, and safe to execute in strict corporate and sovereign environments.
+              We believe cloud tooling for AI coding agents should be completely transparent, offline-capable, and safe to execute without exfiltrating your code or AWS credentials.
             </p>
           </div>
 
