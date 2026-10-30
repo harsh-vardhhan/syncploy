@@ -17,9 +17,10 @@
     "test": "bun test",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "typecheck": "tsc --noEmit && bun --filter syncploy-web typecheck",
+    "typecheck": "tsc --noEmit && bun --filter syncploy-web typecheck && bun --filter @syncploy/desktop typecheck",
     "typecheck:packages": "tsc --noEmit",
     "typecheck:web": "bun --filter syncploy-web typecheck",
+    "typecheck:desktop": "bun --filter @syncploy/desktop typecheck",
     "package:plugin": "bun run ./scripts/package-plugin.ts",
     "audit:security": "bun run ./scripts/audit-security.ts"
   },

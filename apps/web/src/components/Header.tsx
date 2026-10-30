@@ -43,6 +43,20 @@ export function Header() {
         {/* Desktop Navigation (visible on lg+) */}
         <nav className="hidden lg:flex items-center gap-6 xl:gap-8 text-sm font-medium text-slate-600 dark:text-neutral-300">
           <Link
+            href="/live"
+            className={`flex items-center gap-2 px-2.5 py-1 rounded-full text-xs font-mono font-semibold transition-all border ${
+              pathname === "/live"
+                ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-sm shadow-emerald-500/20"
+                : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
+            }`}
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+            <span>Live Showroom ($0.42/mo)</span>
+          </Link>
+          <Link
             href="/docs"
             className={`hover:text-slate-900 dark:hover:text-white transition-colors ${
               pathname === "/docs" ? "text-indigo-600 dark:text-indigo-400 font-semibold" : ""
@@ -142,6 +156,21 @@ export function Header() {
       {mobileMenuOpen && (
         <div className="lg:hidden border-b border-slate-200 dark:border-[#232736] bg-white/95 dark:bg-[#090A0F]/95 backdrop-blur-md px-4 sm:px-6 pt-3 pb-6 space-y-4 shadow-xl max-h-[calc(100vh-4.5rem)] overflow-y-auto">
           <nav className="flex flex-col space-y-1 text-sm font-medium">
+            <Link
+              href="/live"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-colors ${
+                pathname === "/live"
+                  ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold"
+                  : "text-slate-700 dark:text-neutral-300 hover:bg-slate-100 dark:hover:bg-[#12141C]"
+              }`}
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              <span className="font-mono text-xs font-semibold">Live Showroom ($0.42/mo)</span>
+            </Link>
             <Link
               href="/docs"
               onClick={() => setMobileMenuOpen(false)}
