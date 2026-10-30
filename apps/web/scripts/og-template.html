@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 1200px;
+      height: 630px;
+      overflow: hidden;
+      background-color: #08090E;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #F8FAFC;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 56px 64px;
+    }
+
+    /* Ambient background glowing orbs */
+    .glow-indigo {
+      position: absolute;
+      top: -80px;
+      left: 100px;
+      width: 600px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.22) 0%, rgba(99, 102, 241, 0) 70%);
+      filter: blur(40px);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .glow-cyan {
+      position: absolute;
+      bottom: -60px;
+      right: 120px;
+      width: 550px;
+      height: 380px;
+      background: radial-gradient(circle, rgba(6, 182, 212, 0.18) 0%, rgba(6, 182, 212, 0) 70%);
+      filter: blur(40px);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Grid pattern background */
+    .grid-bg {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, #000 60%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 50%, #000 60%, transparent 100%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Outer border ring */
+    .border-ring {
+      position: absolute;
+      inset: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .content-wrap {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      justify-content: space-between;
+    }
+
+    /* Header with Brand */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .logo-box {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #6366F1, #06B6D4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+    }
+
+    .brand-name {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #FFFFFF;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .alpha-badge {
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      background: rgba(245, 158, 11, 0.12);
+      color: #FBBF24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .framework-tag {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: #94A3B8;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 6px 14px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10B981;
+      box-shadow: 0 0 10px #10B981;
+    }
+
+    /* Main split layout */
+    .hero-split {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 48px;
+      margin: auto 0;
+    }
+
+    .left-col {
+      flex: 1;
+      max-width: 580px;
+    }
+
+    .headline {
+      font-size: 46px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.03em;
+      margin-bottom: 18px;
+      color: #FFFFFF;
+    }
+
+    .headline-gradient {
+      background: linear-gradient(135deg, #818CF8 0%, #38BDF8 60%, #2DD4BF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .tagline {
+      font-size: 18px;
+      line-height: 1.5;
+      color: #94A3B8;
+      margin-bottom: 26px;
+      font-weight: 400;
+    }
+
+    .pill-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .pill {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #E2E8F0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pill-highlight {
+      background: rgba(99, 102, 241, 0.12);
+      border-color: rgba(99, 102, 241, 0.35);
+      color: #A5B4FC;
+    }
+
+    .pill-shield {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.35);
+      color: #6EE7B7;
+    }
+
+    /* Right column: Terminal window */
+    .right-col {
+      width: 440px;
+      flex-shrink: 0;
+    }
+
+    .terminal-card {
+      background: #0E1017;
+      border: 1px solid #232736;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6), 0 0 30px rgba(99, 102, 241, 0.15);
+    }
+
+    .terminal-topbar {
+      height: 38px;
+      background: #141722;
+      border-bottom: 1px solid #232736;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .dot-red { background: #EF4444; }
+    .dot-yellow { background: #F59E0B; }
+    .dot-green { background: #10B981; }
+
+    .tab-title {
+      margin-left: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #94A3B8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .terminal-code {
+      padding: 18px 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.65;
+      color: #CBD5E1;
+    }
+
+    .c-kw { color: #C084FC; font-weight: 600; }
+    .c-fn { color: #60A5FA; }
+    .c-str { color: #34D399; }
+    .c-num { color: #F59E0B; }
+    .c-prop { color: #38BDF8; }
+    .c-cm { color: #64748B; font-style: italic; }
+
+    .terminal-audit {
+      border-top: 1px solid #1E2333;
+      background: rgba(16, 185, 129, 0.05);
+      padding: 10px 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #10B981;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Footer bar */
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      padding-top: 18px;
+      font-size: 14px;
+      color: #64748B;
+    }
+
+    .site-domain {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: #38BDF8;
+      letter-spacing: -0.01em;
+    }
+
+    .footer-desc {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dot-sep {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #475569;
+    }
+  </style>
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="glow-indigo"></div>
+  <div class="glow-cyan"></div>
+  <div class="border-ring"></div>
+
+  <div class="content-wrap">
+    <!-- Header -->
+    <div class="header">
+      <div class="brand">
+        <div class="logo-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 8 11 13 6 18"></polyline>
+            <line x1="13" y1="18" x2="18" y2="18"></line>
+          </svg>
+        </div>
+        <div class="brand-name">
+          Syncploy
+          <span class="alpha-badge">ALPHA</span>
+        </div>
+      </div>
+      <div class="framework-tag">
+        <span class="pulse-dot"></span>
+        Zero-DoW Engine
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="hero-split">
+      <div class="left-col">
+        <h1 class="headline">
+          Build on AWS.<br>
+          <span class="headline-gradient">Sleep Through the Night.</span>
+        </h1>
+        <p class="tagline">
+          The pure TypeScript serverless framework with compile-time Denial-of-Wallet immunity.
+        </p>
+        <div class="pill-list">
+          <div class="pill pill-shield">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            Zero-DoW Immunity
+          </div>
+          <div class="pill pill-highlight">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            Pure TypeScript
+          </div>
+          <div class="pill">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+              <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+              <line x1="6" y1="6" x2="6.01" y2="6"></line>
+              <line x1="6" y1="18" x2="6.01" y2="18"></line>
+            </svg>
+            Direct AWS Serverless
+          </div>
+        </div>
+      </div>
+
+      <div class="right-col">
+        <div class="terminal-card">
+          <div class="terminal-topbar">
+            <div class="dot dot-red"></div>
+            <div class="dot dot-yellow"></div>
+            <div class="dot dot-green"></div>
+            <div class="tab-title">
+              <span>src/infra.ts</span>
+            </div>
+          </div>
+          <div class="terminal-code">
+            <div><span class="c-kw">import</span> { api, Table } <span class="c-kw">from</span> <span class="c-str">"@syncploy/sdk"</span>;</div>
+            <br>
+            <div><span class="c-kw">export const</span> checkout = <span class="c-fn">api</span>({</div>
+            <div>&nbsp;&nbsp;<span class="c-prop">path</span>: <span class="c-str">"/checkout"</span>,</div>
+            <div>&nbsp;&nbsp;<span class="c-prop">ingress</span>: <span class="c-str">"function-url"</span>,</div>
+            <div>&nbsp;&nbsp;<span class="c-prop">concurrency</span>: <span class="c-num">25</span>, <span class="c-cm">// DoW Guard</span></div>
+            <div>}, <span class="c-kw">async</span> (req) =&gt; {</div>
+            <div>&nbsp;&nbsp;<span class="c-cm">// Pure TypeScript logic</span></div>
+            <div>});</div>
+          </div>
+          <div class="terminal-audit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Verified: 0 Denial-of-Wallet leaks</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="site-domain">syncploy.com</div>
+      <div class="footer-desc">
+        <span>Infrastructure-from-Code</span>
+        <div class="dot-sep"></div>
+        <span>No YAML</span>
+        <div class="dot-sep"></div>
+        <span>Least-Privilege IAM</span>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

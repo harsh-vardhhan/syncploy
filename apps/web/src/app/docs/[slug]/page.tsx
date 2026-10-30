@@ -16,9 +16,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { slug } = await params;
   const doc = DOCS_DATA.find((d) => d.slug === slug);
   if (!doc) return { title: "Documentation" };
+  const pageTitle = `${doc.title} | Syncploy Documentation`;
   return {
     title: doc.title,
     description: doc.description,
+    openGraph: {
+      title: pageTitle,
+      description: doc.description,
+      url: `https://www.syncploy.com/docs/${slug}`,
+      siteName: "Syncploy",
+      locale: "en_US",
+      type: "article",
+      images: [
+        {
+          url: "/og-image.png",
+          width: 1200,
+          height: 630,
+          type: "image/png",
+          alt: `${doc.title} — Syncploy Documentation`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: pageTitle,
+      description: doc.description,
+      images: ["/og-image.png"],
+    },
   };
 }
 

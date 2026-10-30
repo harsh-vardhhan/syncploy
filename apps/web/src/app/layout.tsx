@@ -5,6 +5,7 @@ import { Footer } from "@/components/Footer";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.syncploy.com"),
   title: {
     default: "Syncploy — The Zero-DoW Serverless Framework for AWS",
     template: "%s | Syncploy",
@@ -22,19 +23,46 @@ export const metadata: Metadata = {
     "typescript",
     "cloudformation",
   ],
+  authors: [{ name: "Syncploy Team", url: "https://www.syncploy.com" }],
+  creator: "Syncploy",
+  publisher: "Syncploy",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   openGraph: {
     title: "Syncploy — The Zero-DoW Serverless Framework for AWS",
     description:
-      "Build on AWS. Sleep Through the Night. Stop paying the PaaS tax out of fear of AWS.",
+      "Build on AWS. Sleep Through the Night. The pure TypeScript serverless framework with compile-time Denial-of-Wallet immunity.",
     url: "https://www.syncploy.com",
     siteName: "Syncploy",
+    locale: "en_US",
     type: "website",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        type: "image/png",
+        alt: "Syncploy — The Zero-DoW Serverless Framework for AWS",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Syncploy — The Zero-DoW Serverless Framework for AWS",
     description:
-      "Build on AWS. Sleep Through the Night. Stop paying the PaaS tax out of fear of AWS.",
+      "Build on AWS. Sleep Through the Night. The pure TypeScript serverless framework with compile-time Denial-of-Wallet immunity.",
+    images: ["/og-image.png"],
+    creator: "@syncploy",
+    site: "@syncploy",
   },
   icons: {
     icon: [

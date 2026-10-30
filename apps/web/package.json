@@ -7,6 +7,7 @@
     "prebuild": "bun run ./scripts/generate-llms-txt.ts",
     "build": "next build",
     "generate:llms": "bun run ./scripts/generate-llms-txt.ts",
+    "generate:og": "bun run ./scripts/generate-og-image.ts",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
